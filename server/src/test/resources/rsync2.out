@@ -1,0 +1,18 @@
+              0   0%    0.00kB/s    0:00:00 (xfr#0, to-chk=271/301)
+
+Number of files: 301 (reg: 203, dir: 29, link: 69)
+Number of created files: 301 (reg: 203, dir: 29, link: 69)
+Number of deleted files: 0
+Number of regular files transferred: 203
+Total file size: 28047108 bytes
+Total transferred file size: 28045990 bytes
+Literal data: 28045990 bytes
+Matched data: 0 bytes
+File list size: 0
+File list generation time: 0.001 seconds
+File list transfer time: 0.000 seconds
+Total bytes sent: 11158327
+Total bytes received: 4227
+
+sent 115327 bytes  received 4227 bytes  44621.60 bytes/sec
+total size is 28047108  speedup is 2.51

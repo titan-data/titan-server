@@ -1,0 +1,9 @@
+#!/bin/bash
+
+#
+# Main entry point for the titan server.
+#
+
+# Run socat to pipe from unix socket to server port
+socat -v -d -lf /var/log/socat.log UNIX-LISTEN:/run/docker/plugins/titan.sock,reuseaddr,fork TCP:localhost:5001 2>/var/log/socat.trace &
+exec java -jar /titan/titan-server.jar

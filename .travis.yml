@@ -15,7 +15,7 @@ cache:
 
 branches:
   only:
-    - feature/travis
+    - master
 
 jobs:
   include:
@@ -37,9 +37,3 @@ jobs:
       install: skip
       script:
         - ./gradlew integrationTest
-    - stage: "End to End"
-      name: "End to End Build and Test"
-      install: ./gradlew assemble
-      script:
-        - uname -a
-        - ./gradlew endtoendTest --tests *LocalWorkflowTest

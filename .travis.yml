@@ -19,10 +19,10 @@ branches:
 
 jobs:
   include:
-    - stage: build
-      name: "Assemble"
+    - stage: compile
+      name: "Compile"
       script:
-        - ./gradlew assemble
+        - ./gradlew compileKotlin compileJava
     - stage: check
       name: "Style Checks"
       script:
@@ -33,3 +33,8 @@ jobs:
     - name: "Integration Tests"
       script:
         - ./gradlew integrationTest
+    - stage: "End to End"
+      name: "Build and End to End Test"
+      script:
+        - uname -a
+        - ./gradlew assemble endtoendTest --tests *LocalWorkflowTest

@@ -21,20 +21,25 @@ jobs:
   include:
     - stage: compile
       name: "Compile"
+      install: skip
       script:
         - ./gradlew compileKotlin compileJava
     - stage: check
       name: "Style Checks"
+      install: skip
       script:
         - ./gradlew style
     - name: "Unit Tests"
+      install: skip
       script:
         - ./gradlew test
     - name: "Integration Tests"
+      install: skip
       script:
         - ./gradlew integrationTest
     - stage: "End to End"
-      name: "Build and End to End Test"
+      name: "End to End Build and Test"
+      install: ./gradlew assemble
       script:
         - uname -a
-        - ./gradlew assemble endtoendTest --tests *LocalWorkflowTest
+        - ./gradlew endtoendTest --tests *LocalWorkflowTest

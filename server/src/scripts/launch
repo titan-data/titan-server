@@ -1,0 +1,113 @@
+#!/bin/bash
+
+#
+# Main entry point for launching the titan server. The responsibility of this script is to ensure
+# that ZFS is properly installed and configured such that the server can operate on ZFS filesystems
+# without having to worry about how that may have been configured. This is a complex process,
+# because we don't want to put the burden of ZFS installation on the user (the docker VM is
+# basically invisible to desktop users). But at the same time we respect that the user may have
+# installed a compatible ZFS that we could use. This leads to the following flow diagram:
+#
+# +---------------------+      +---------------------+      +--------------------+
+# |      ZFS module     | Yes  |  Running compatible | No   |       FAILURE      |
+# |       Loaded?       +----->+        version?     +----->+ User must upgrade  |
+# +----------+----------+      +----------+----------+      +--------------------+
+#            | No                         | Yes
+#            |                            +--------------------------------------------+
+#            v                                                                         |
+# +----------+----------+      +---------------------+      +--------------------+     |
+# |      ZFS module     | Yes  |      Host module    | Yes  |      Load host     | OK  |
+# |  available on host? +----->+       compatible?   +----->+        module      +-----+
+# +----------+----------+      +----------+----------+      +---------+----------+     |
+#            | No                         | No                        | Fail           |
+#            +----------------------------+---------------------------+                |
+#            V                                                                         |
+# +----------+-----------+     +---------------------+                                 |
+# | Precompiled ZFS for  | Yes | Load precompiled    | OK                              |
+# |   kernel exists?     +---->+ ZFS module          +---------------------------------+
+# +----------+-----------+     +----------+----------+                                 |
+#            | No                         | Fail                                       |
+#            +----------------------------+                                            |
+#            V                                                                         |
+# +----------+----------+       +--------------------+      +--------------------+     |
+# |  Build ZFS kernel   | OK    |   Load compiled    | OK   |       SUCCESS      |     |
+# |        module       +------>+     ZFS module     +----->+                    +<----+
+# +----------+----------+       +--------+-----------+      +--------------------+
+#            | Fail                      | Fail
+#            V                           |
+# +----------+----------+                |
+# |        FAIL         |                |
+# |                     +<---------------+
+# +---------------------+
+#
+# While this flowchart is complicated, it provides maximum flexiblity in terms of using existing
+# or precompiled ZFS kernel modules, but then always falling back to something usable. Once the
+# ZFS module, the following operations are performed:
+#
+#   1. Create miscellaneous directories required by the system
+#   2. Import the ZFS pool if it doesn't exist
+#   3. Create the ZFS pool if import fails
+#   4. Launch titan-server
+#
+# The launcher will use a set of defaults, but these can be overridden via environment, as is done
+# during end to end testing. These configuration variables are:
+#
+#   IDENTITY - Basic identity from which other variables are derived. Defaults to 'titan'
+#   IMAGE - Docker image to launch. Defaults to $IDENTITY:latest
+#   PORT - Host port to forward server traffic to. Defaults to 5001
+#
+# For more information on how to build ZFS modules or run integration tests, see the README. The
+# following docker settings must be specified when running the launcher:
+#
+#   --restart=always                            Always run even in the event of restart or failure
+#   --privileged                                Run in privileged mode to manipulate host
+#   -v /var/run/docker.sock:<same>              Ability to run docker commands
+#   -v /run/docker:<same>                       Same as above
+#   -v /var/lib:<same>                          Ability to manipulate mount and pool data namespace
+#   -v $IDENTITY-data:/var/lib/$IDENTITY/data   Location for persistent data beyond container
+#   -v /lib:/var/lib/$IDENTITY/system           Provide access to host ZFS kernel modules (if any)
+#
+
+source $(dirname $0)/zfs.sh
+source $(dirname $0)/titan.sh
+source $(dirname $0)/util.sh
+
+log_begin
+
+#
+# Ensure that various needed
+#
+mkdir -p $POOL_DIR || log_error "failed to create $POOL_DIR"
+
+#
+# Determine if ZFS is currently running on the host VM, and whether it's compatible. This will
+# exit with failure if ZFS is running an incompatible version. We deposit compiled ZFS modules
+# in a kernel-specific subdirectory so that if the underlying system is upgraded and rebooted,
+# we won't try to load the previously compiled modules and instead try to find a new compatible
+# module.
+#
+# If we don't have a running ZFS module, no compatible system modules are available, and no
+# previously compiled modules are available, then we'll try our prebuilt modules. Failing that,
+# compile new modules on demand.
+#
+mkdir -p $INSTALL_DIR || log_error "failed to create $INSTALL_DIR"
+if ! check_running_zfs &&
+   ! load_zfs $SYSTEM_MODULES system $INSTALL_DIR &&
+   ! load_zfs $COMPILED_MODULES/$KERNEL_RELEASE compiled $INSTALL_DIR &&
+   ! load_precompiled_zfs $COMPILED_MODULES/$KERNEL_RELEASE $INSTALL_DIR &&
+   ! compile_and_load_zfs $COMPILED_MODULES/$KERNEL_RELEASE $INSTALL_DIR; then
+    log_error "Failed to load ZFS modules"
+fi
+
+# Create necessary bind mounts
+bind_mounts $MNT_DIR
+
+# Sanity test that ZFS is working and then create or import our pool
+check_zfs
+create_import_pool $POOL $POOL_DIR $MNT_DIR
+
+# Launch the server
+launch_server $IDENTITY $POOL $PORT $IMAGE $MNT_DIR
+
+exit 0
+

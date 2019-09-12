@@ -1,0 +1,1122 @@
+openapi: 3.0.2
+info:
+  title: Titan Server API
+  description: API used by the Titan CLI to automate repository operations
+  version: 0.2.0
+servers:
+  - url: http://localhost:5001
+paths:
+
+  #
+  # Repository operations. All repositories follow a simple CRUD model, where
+  # each repositories is referenced by name. All repositories are indexed by name,
+  # and contain both read/write client-controlled properties, as well as read-only
+  # server side properties. Repositories properties can be updated, and they can
+  # renamed by changing the name property during an update.
+  #
+  /v1/repositories:
+    get:
+      summary: List repositories
+      operationId: listRepositories
+      tags:
+        - repositories
+      responses:
+        "200":
+          description: List of repositories
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/repositories"
+        default:
+          $ref: "#/components/responses/default"
+    post:
+      summary: Create new repository
+      operationId: createRepository
+      tags:
+        - repositories
+      requestBody:
+        description: New repository to create
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/repository"
+      responses:
+        "201":
+          description: Newly created repository
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/repository"
+        "401":
+          $ref: "#/components/responses/badinput"
+        default:
+          $ref: "#/components/responses/default"
+  /v1/repositories/{repositoryName}:
+    get:
+      summary: Get info for a repository
+      operationId: getRepository
+      tags:
+        - repositories
+      parameters:
+        - $ref: "#/components/parameters/repositoryName"
+      responses:
+        "200":
+          description: Repository info
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/repository"
+        "404":
+          $ref: "#/components/responses/nosuchobject"
+        default:
+          $ref: "#/components/responses/default"
+    post:
+      summary: Update or rename a repository
+      operationId: updateRepository
+      tags:
+        - repositories
+      description: Update any properties of the repository. If the repository name
+                   is changed, this will rename the repository.
+      parameters:
+        - $ref: "#/components/parameters/repositoryName"
+      requestBody:
+        description: New repository state
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/repository"
+      responses:
+        "200":
+          description: Updated repository
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/repository"
+        "401":
+          $ref: "#/components/responses/badinput"
+        "404":
+          $ref: "#/components/responses/nosuchobject"
+        default:
+          $ref: "#/components/responses/default"
+    delete:
+      summary: Remove a repository
+      operationId: deleteRepository
+      tags:
+        - repositories
+      parameters:
+        - $ref: "#/components/parameters/repositoryName"
+      responses:
+        "204":
+          description: Repository deleted
+        "404":
+          $ref: "#/components/responses/nosuchobject"
+        default:
+          $ref: "#/components/responses/default"
+
+  #
+  # Commit operations. The log of commits is associated with each repository, and
+  # can be managed via standard CRUD operations. The exception is that commits
+  # cannot be updated, only discarded (deleted).
+  #
+  /v1/repositories/{repositoryName}/commits:
+    get:
+      summary: Get commit history for a repository
+      operationId: listCommits
+      tags:
+        - commits
+      parameters:
+        - $ref: "#/components/parameters/repositoryName"
+      responses:
+        "200":
+          description: List of commits
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/commits"
+        "404":
+          $ref: "#/components/responses/nosuchobject"
+        default:
+          $ref: "#/components/responses/default"
+    post:
+      summary: Create new commit state
+      operationId: createCommit
+      tags:
+        - commits
+      parameters:
+        - $ref: "#/components/parameters/repositoryName"
+      requestBody:
+        description: "New commit to create"
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/commit"
+      responses:
+        "200":
+          description: Newly created commit
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/commit"
+        "401":
+          $ref: "#/components/responses/badinput"
+        "404":
+          $ref: "#/components/responses/nosuchobject"
+        default:
+          $ref: "#/components/responses/default"
+  /v1/repositories/{repositoryName}/commits/{commitId}:
+    get:
+      summary: Get information for a specific commit
+      operationId: getCommit
+      tags:
+        - commits
+      parameters:
+        - $ref: "#/components/parameters/repositoryName"
+        - $ref: "#/components/parameters/commitId"
+      responses:
+        "200":
+          description: Commit information
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/commit"
+        "404":
+          $ref: "#/components/responses/nosuchobject"
+        default:
+          $ref: "#/components/responses/default"
+    delete:
+      summary: Discard a past commit
+      operationId: deleteCommit
+      tags:
+        - commits
+      parameters:
+        - $ref: "#/components/parameters/repositoryName"
+        - $ref: "#/components/parameters/commitId"
+      responses:
+        "204":
+          description: Commit discarded
+        "404":
+          $ref: "#/components/responses/nosuchobject"
+        default:
+          $ref: "#/components/responses/default"
+  /v1/repositories/{repositoryName}/commits/{commitId}/checkout:
+    post:
+      summary: Checkout the given commit
+      operationId: checkoutCommit
+      tags:
+        - commits
+      parameters:
+        - $ref: "#/components/parameters/repositoryName"
+        - $ref: "#/components/parameters/commitId"
+      responses:
+        "204":
+          description: Operation succeeded
+        "404":
+          $ref: "#/components/responses/nosuchobject"
+        default:
+          $ref: "#/components/responses/default"
+
+  #
+  # Remote management. Every repository can have zero or one remote configured. Each
+  # remote uses provider-specific configuration that must be in sync between the client
+  # and server.
+  #
+  /v1/repositories/{repositoryName}/remotes:
+    get:
+      summary: Get list of remotes
+      operationId: listRemotes
+      tags:
+        - remotes
+      parameters:
+        - $ref: "#/components/parameters/repositoryName"
+      responses:
+        "200":
+          description: Current remote information
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/remotes"
+        "404":
+          $ref: "#/components/responses/nosuchobject"
+        default:
+          $ref: "#/components/responses/default"
+    post:
+      summary: Create new remote
+      operationId: createRemote
+      tags:
+        - remotes
+      parameters:
+        - $ref: "#/components/parameters/repositoryName"
+      requestBody:
+        description: "Remote information to create"
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/anyRemote"
+      responses:
+        "201":
+          description: Newly created remote
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/anyRemote"
+        "401":
+          $ref: "#/components/responses/badinput"
+        "404":
+          $ref: "#/components/responses/nosuchobject"
+        default:
+          $ref: "#/components/responses/default"
+
+  /v1/repositories/{repositoryName}/remotes/{remoteName}:
+    get:
+      summary: Get information about a particular remote
+      operationId: getRemote
+      tags:
+        - remotes
+      parameters:
+        - $ref: "#/components/parameters/repositoryName"
+        - $ref: "#/components/parameters/remoteName"
+      responses:
+        "200":
+          description: Remote information
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/anyRemote"
+        "404":
+          $ref: "#/components/responses/nosuchobject"
+        default:
+          $ref: "#/components/responses/default"
+    post:
+      summary: Update remote information
+      operationId: updateRemote
+      tags:
+        - remotes
+      parameters:
+        - $ref: "#/components/parameters/repositoryName"
+        - $ref: "#/components/parameters/remoteName"
+      requestBody:
+        description: "Remote information to create"
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/anyRemote"
+      responses:
+        "200":
+          description: Remote information
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/anyRemote"
+        "401":
+          $ref: "#/components/responses/badinput"
+        "404":
+          $ref: "#/components/responses/nosuchobject"
+        default:
+          $ref: "#/components/responses/default"
+    delete:
+      summary: Delete remote
+      operationId: deleteRemote
+      tags:
+        - remotes
+      parameters:
+        - $ref: "#/components/parameters/repositoryName"
+        - $ref: "#/components/parameters/remoteName"
+      responses:
+        "204":
+          description: Remote deleted
+        "404":
+          $ref: "#/components/responses/nosuchobject"
+        default:
+          $ref: "#/components/responses/default"
+
+  /v1/repositories/{repositoryName}/remotes/{remoteName}/commits:
+    get:
+      summary: List remote commits
+      operationId: listRemoteCommits
+      tags:
+        - remotes
+      parameters:
+        - $ref: "#/components/parameters/repositoryName"
+        - $ref: "#/components/parameters/remoteName"
+        - in: header
+          name: titan-remote-request
+          schema:
+            $ref: "#/components/schemas/anyRemoteParameters"
+      responses:
+        "200":
+          description: List of commits
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/commits"
+        "404":
+          $ref: "#/components/responses/nosuchobject"
+        default:
+          $ref: "#/components/responses/default"
+  /v1/repositories/{repositoryName}/remotes/{remoteName}/commits/{commitId}:
+    get:
+      summary: Get a single remote commit
+      operationId: getRemoteCommit
+      tags:
+        - remotes
+      parameters:
+        - $ref: "#/components/parameters/repositoryName"
+        - $ref: "#/components/parameters/remoteName"
+        - $ref: "#/components/parameters/commitId"
+        - in: header
+          name: titan-remote-request
+          schema:
+            $ref: "#/components/schemas/anyRemoteParameters"
+      responses:
+        "200":
+          description: Remote commit
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/commit"
+        "404":
+          $ref: "#/components/responses/nosuchobject"
+        default:
+          $ref: "#/components/responses/default"
+
+  #
+  # Push and pull operations. While the current implementation only supports
+  # a single operation at a time, the API is constructed such that multiple
+  # operations could be performed in parallel (such as pulling a tree of commits).
+  #
+  /v1/repositories/{repositoryName}/remotes/{remoteName}/commits/{commitId}/pull:
+    post:
+      summary: Start a pull operation
+      operationId: pull
+      tags:
+        - operations
+      parameters:
+        - $ref: "#/components/parameters/repositoryName"
+        - $ref: "#/components/parameters/remoteName"
+        - $ref: "#/components/parameters/commitId"
+      requestBody:
+        description: Provider specific parameters
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/anyRemoteParameters"
+      responses:
+        "201":
+          description: New operation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/operation"
+        "401":
+          $ref: "#/components/responses/badinput"
+        "404":
+          $ref: "#/components/responses/nosuchobject"
+        default:
+          $ref: "#/components/responses/default"
+  /v1/repositories/{repositoryName}/remotes/{remoteName}/commits/{commitId}/push:
+    post:
+      summary: Start a push operation
+      operationId: push
+      tags:
+        - operations
+      parameters:
+        - $ref: "#/components/parameters/repositoryName"
+        - $ref: "#/components/parameters/remoteName"
+        - $ref: "#/components/parameters/commitId"
+      requestBody:
+        description: Provider specific parameters
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/anyRemoteParameters"
+      responses:
+        "201":
+          description: New operation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/operation"
+        "401":
+          $ref: "#/components/responses/badinput"
+        "404":
+          $ref: "#/components/responses/nosuchobject"
+        default:
+          $ref: "#/components/responses/default"
+  /v1/repositories/{repositoryName}/operations:
+    get:
+      summary: List active operations
+      operationId: listOperations
+      tags:
+        - operations
+      parameters:
+        - $ref: "#/components/parameters/repositoryName"
+      responses:
+        "200":
+          description: List of operations
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/operations"
+        "404":
+          $ref: "#/components/responses/nosuchobject"
+        default:
+          $ref: "#/components/responses/default"
+  /v1/repositories/{repositoryName}/operations/{operationId}:
+    get:
+      summary: Get operation state
+      operationId: getOperation
+      description: Return operation information. The operation
+        will remain even after complete, until the operation
+        is marked completed.
+      tags:
+        - operations
+      parameters:
+        - $ref: "#/components/parameters/repositoryName"
+        - $ref: "#/components/parameters/operationId"
+      responses:
+        "200":
+          description: Operation info
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/operation"
+        "404":
+          $ref: "#/components/responses/nosuchobject"
+        default:
+          $ref: "#/components/responses/default"
+    delete:
+      summary: Abort operation
+      operationId: deleteOperation
+      tags:
+        - operations
+      parameters:
+        - $ref: "#/components/parameters/repositoryName"
+        - $ref: "#/components/parameters/operationId"
+      responses:
+        "204":
+          description: Operation completed
+        "404":
+          $ref: "#/components/responses/nosuchobject"
+        default:
+          $ref: "#/components/responses/default"
+  /v1/repositories/{repositoryName}/operations/{operationId}/progress:
+    get:
+      summary: Get operation progress
+      operationId: getProgress
+      tags:
+        - operations
+      parameters:
+        - $ref: "#/components/parameters/repositoryName"
+        - $ref: "#/components/parameters/operationId"
+      description: Return a list of progress entries. Each progress
+                   entry is retained until it's been read by the client.
+                   Operation will be marked completed when last entry is read
+      responses:
+        "200":
+          description: List of progress entries.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/progress"
+        "404":
+          $ref: "#/components/responses/nosuchobject"
+        default:
+          $ref: "#/components/responses/default"
+
+  #
+  # Docker volume driver endpoints. We run the docker endpoints within the
+  # same server, and redirect traffic from the docker socket over HTTP. This
+  # greatly simplifies the implementation, and will allow us to leverage
+  # common capabilities like caching, sychronization, etc.
+  #
+  /VolumeDriver.Create:
+    post:
+      summary: Create a new volume
+      operationId: createVolume
+      tags:
+        - volume
+      requestBody:
+        description: Volume to create
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/volumeCreateRequest"
+      responses:
+        "200":
+          description: "Created volume"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/volumeResponse"
+        default:
+          $ref: "#/components/responses/volumeDefault"
+
+  /VolumeDriver.Remove:
+    post:
+      summary: Remove a volume
+      operationId: removeVolume
+      tags:
+        - volume
+      requestBody:
+        description: Volume to remove
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/volumeRequest"
+      responses:
+        "200":
+          description: "Volume removed"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/volumeResponse"
+        default:
+          $ref: "#/components/responses/volumeDefault"
+
+  /VolumeDriver.Mount:
+    post:
+      summary: Mount a volume
+      operationId: mountVolume
+      tags:
+        - volume
+      requestBody:
+        description: Volume to mount
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/volumeMountRequest"
+      responses:
+        "200":
+          description: "Volume mounted"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/volumePathResponse"
+        default:
+          $ref: "#/components/responses/volumeDefault"
+  /VolumeDriver.Unmount:
+    post:
+      summary: Unmount a volume
+      operationId: unmountVolume
+      tags:
+        - volume
+      requestBody:
+        description: Volume to unmount
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/volumeMountRequest"
+      responses:
+        "200":
+          description: "Volume unmounted"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/volumeResponse"
+        default:
+          $ref: "#/components/responses/volumeDefault"
+  /VolumeDriver.Path:
+    post:
+      summary: Get volume path
+      operationId: getVolumePath
+      tags:
+        - volume
+      requestBody:
+        description: Volume to get
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/volumeRequest"
+      responses:
+        "200":
+          description: "Volume info"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/volumePathResponse"
+        default:
+          $ref: "#/components/responses/volumeDefault"
+  /VolumeDriver.Get:
+    post:
+      summary: Get volume info
+      operationId: getVolume
+      tags:
+        - volume
+      requestBody:
+        description: Volume to get
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/volumeRequest"
+      responses:
+        "200":
+          description: "Volume info"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/volumeGetResponse"
+        default:
+          $ref: "#/components/responses/volumeDefault"
+  /VolumeDriver.List:
+    post:
+      summary: List volumes
+      operationId: listVolumes
+      tags:
+        - volume
+      requestBody:
+        description: Empty body
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        "200":
+          description: "Volume list"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/volumeListResponse"
+        default:
+          $ref: "#/components/responses/volumeDefault"
+  /VolumeDriver.Capabilities:
+    post:
+      summary: Get volume driver capabilities
+      operationId: getCapabilities
+      tags:
+        - volume
+      requestBody:
+        description: Empty body
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        "200":
+          description: "Driver capabilities"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/volumeCapabilities"
+        default:
+          $ref: "#/components/responses/volumeDefault"
+  /Plugin.Activate:
+    post:
+      summary: Activate volume plugin
+      operationId: pluginActivate
+      tags:
+        - volume
+      responses:
+        "200":
+          description: "Plugin description"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/pluginDescription"
+        default:
+          $ref: "#/components/responses/volumeDefault"
+
+components:
+  schemas:
+    repository:
+      properties:
+        name:
+          type: string
+          description: Name of the repository
+        properties:
+          type: object
+          description: Client-controlled repository properties
+    repositories:
+      type: array
+      items:
+        $ref: "#/components/schemas/repository"
+    commit:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Commit identifier
+        properties:
+          type: object
+          description: Additional commit metadata
+    commits:
+      type: array
+      items:
+        $ref: "#/components/schemas/commit"
+
+    remoteParameters:
+      type: object
+      discriminator:
+        propertyName: provider
+        mapping:
+          engine: "#/components/schemas/engineParameters"
+          nop: "#/components/schemas/nopParameters"
+          ssh: "#/components/schemas/sshParameters"
+          s3: "#/components/schemas/s3Parameters"
+      properties:
+        provider:
+          type: string
+          description: Provider type, must match type of remote
+    anyRemoteParameters:
+      oneOf:
+        - $ref: "#/components/schemas/engineRemoteParameters"
+        - $ref: "#/components/schemas/nopRemoteParameters"
+        - $ref: "#/components/schemas/sshRemoteParameters"
+        - $ref: "#/components/schemas/s3Parameters"
+    engineParameters:
+      allOf:
+        - $ref: "#/components/schemas/remoteParameters"
+        - type: object
+          properties:
+            password:
+              type: string
+              description: Password to connect to remote, if not configured for the remote
+    s3Parameters:
+      allOf:
+        - $ref: "#/components/schemas/remoteParameters"
+        - type: object
+          properties:
+            accessKey:
+              type: string
+              description: AWS acess key
+            secretKey:
+              type: string
+              description: AWS secret key
+            region:
+              type: string
+              description: AWS region
+    sshParameters:
+      allOf:
+        - $ref: "#/components/schemas/remoteParameters"
+        - type: object
+          properties:
+            password:
+              type: string
+              description: Password to connect to remote, if not configured for the remote
+    nopParameters:
+      allOf:
+        - $ref: "#/components/schemas/nopParameters"
+        - type: object
+          properties:
+            delay:
+              type: integer
+              description: Delay, in seconds, to wait before completing job
+
+    operation:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Operation identifier
+        type:
+          type: string
+          description: Operation type (push or pull)
+          enum: [ PUSH, PULL ]
+        state:
+          type: string
+          description: State of operation
+          enum: [ RUNNING, RETRYING, ABORTED, COMPLETE ]
+        remote:
+          type: string
+          description: Name of remote used for operation
+        commitId:
+          type: string
+          description: Source commit identifier
+    operations:
+      type: array
+      items:
+        $ref: "#/components/schemas/operation"
+
+    remote:
+      type: object
+      discriminator:
+        propertyName: provider
+        mapping:
+          engine: "#/components/schemas/engineRemote"
+          nop: "#/components/schemas/nopRemote"
+          ssh: "#/components/schemas/sshRemote"
+          s3: "#/components/schemas/s3Remote"
+      properties:
+        provider:
+          type: string
+          description: Backing provider for remote
+        name:
+          type: string
+          description: Name of the remote
+      required:
+        - provider
+
+    anyRemote:
+      oneOf:
+        - $ref: "#/components/schemas/engineRemote"
+        - $ref: "#/components/schemas/nopRemote"
+        - $ref: "#/components/schemas/sshRemote"
+        - $ref: "#/components/schemas/s3Remote"
+
+    remotes:
+      type: array
+      items:
+        $ref: "#/components/schemas/anyRemote"
+
+    engineRemote:
+      allOf:
+        - $ref: "#/components/schemas/remote"
+        - type: object
+          properties:
+            address:
+              type: string
+              description: Engine address
+            username:
+              type: string
+              description: Engine user login
+            password:
+              type: string
+              description: Engine user password
+              format: password
+            repository:
+              type: string
+              description: Name of repository on engine
+
+    s3Remote:
+      allOf:
+        - $ref: "#/components/schemas/remote"
+        - type: object
+          properties:
+            bucket:
+              type: string
+              description: AWS S3 bucket name
+            object:
+              type: string
+              description: S3 object path within bucket
+            accessKey:
+              type: string
+              description: AWS access key to use. If not specified (recommended), key must be passed in parameters
+            secretKey:
+              type: string
+              description: AWS secret key to use. If not specified (recommended), key must be passed in parameters
+            regsion:
+              type: string
+              description: AWS region to use. If not specified, key must be passed in parameters
+
+    sshRemote:
+      allOf:
+        - $ref: "#/components/schemas/remote"
+        - type: object
+          properties:
+            address:
+              type: string
+              description: Host address
+            username:
+              type: string
+              description: Login user
+            password:
+              type: string
+              description: Optional password
+              format: password
+            path:
+              type: string
+              description: Path to base directory on host
+
+    nopRemote:
+      allOf:
+        - $ref: "#/components/schemas/remote"
+
+    progressEntry:
+      type: object
+      properties:
+        type:
+          type: string
+          description: Progress entry type
+          enum: [ "START", "END", "ERROR", "ABORT", "COMPLETE" ]
+        message:
+          type: string
+          description: Progress message
+        percent:
+          type: integer
+          description: Progress percent for this step, or -1 if there is no estimate
+
+    progress:
+      type: array
+      items:
+        $ref: "#/components/schemas/progressEntry"
+
+    error:
+      type: object
+      properties:
+        code:
+          type: string
+          description: Code for this error type
+        message:
+          type: string
+          description: Short message describing the error
+        details:
+          type: string
+          description: Optional extended details about the error
+
+    volumeRequest:
+      type: object
+      properties:
+        Name:
+          type: string
+          description: Volume name
+
+    volumeCreateRequest:
+      type: object
+      properties:
+        Name:
+          type: string
+          description: Volume name
+        Opts:
+          type: object
+          description: User-provided options
+
+    volumeMountRequest:
+      type: object
+      properties:
+        Name:
+          type: string
+          description: Volume name
+        ID:
+          type: string
+          description: Volume identifier
+
+    volumeListResponse:
+      type: object
+      properties:
+        Err:
+          type: string
+          description: Error string, if an error occurred
+        Volumes:
+          type: array
+          items:
+            $ref: "#/components/schemas/volume"
+
+    volumeGetResponse:
+      type: object
+      properties:
+        Err:
+          type: string
+          description: Error string, if an error occurred
+        Volume:
+          $ref: "#/components/schemas/volume"
+
+    volumePathResponse:
+      type: object
+      properties:
+        Err:
+          type: string
+          description: Error string, if an error occurred
+        Mountpoint:
+          type: string
+          description: Volume Mountpoint
+
+    volumeResponse:
+      type: object
+      properties:
+        Err:
+          type: string
+          description: Error string, if an error occurred
+
+    volume:
+      type: object
+      properties:
+        Name:
+          type: string
+          description: Volume name
+        Mountpoint:
+          type: string
+          description: Volume Mountpoint
+        Status:
+          type: object
+          description: Additional volume status
+        Properties:
+          type: object
+          description: Additional volume properties (not part of the docker specification)
+
+    volumeCapabilities:
+      type: object
+      properties:
+        Capabilities:
+          type: object
+          properties:
+            Scope:
+              type: string
+              description: "Volume scope"
+              enum: [ global, local ]
+
+    pluginDescription:
+      type: object
+      properties:
+        Implements:
+          type: array
+          items:
+            type: string
+
+  responses:
+    default:
+      description: An internal error occurred
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/error"
+    badinput:
+      description: Malformed user input
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/error"
+    nosuchobject:
+      description: No such object
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/error"
+
+    volumeDefault:
+      description: Internal error
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/volumeResponse"
+
+  parameters:
+    repositoryName:
+      name: repositoryName
+      in: path
+      required: true
+      description: Name of the repository
+      schema:
+        type: string
+    remoteName:
+      name: remoteName
+      in: path
+      required: true
+      description: Name of the remote
+      schema:
+        type: string
+    commitId:
+      name: commitId
+      in: path
+      required: true
+      description: Commit identifier
+      schema:
+        type: string
+    operationId:
+      name: operationId
+      in: path
+      required: true
+      description: Operation identifier
+      schema:
+        type: string

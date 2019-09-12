@@ -1,0 +1,19 @@
+#!/bin/bash
+
+#
+# Utility script used during the docker build process to download and extract ZFS userland, using the same shell
+# methods as are used at runtime.
+#
+
+source $(dirname $0)/zfs.sh
+source $(dirname $0)/util.sh
+
+set -xe
+
+zfs_version=$(get_zfs_build_version)
+download_url=$(get_asset_url zfs-$zfs_version-userland.tar.gz)
+[[ -z $download_url ]] && log_error "failed to find asset zfs-$zfs_version-userland.tar.gz"
+
+curl -fssL $download_url > /var/tmp/userland.tar.gz
+cd / && tar -xvzf /var/tmp/userland.tar.gz
+rm /var/tmp/userland.tar.gz

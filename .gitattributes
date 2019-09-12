@@ -1,0 +1,15 @@
+# By default, all files should have LF newlines. This ensures that they
+# will continue to function if they are copied into a Linux container
+# (as with our launch and shell test scripts)
+* text eol=lf
+
+# Windows batch files (namely gradlew.bat) should always be CRLF so they
+# can work as-is on Windows.
+*.bat eol=crlf
+
+# Binary files that should not be modified
+server/zfs/kernel/* binary
+server/zfs/userland/** binary
+*.jar binary
+*.gz binary
+*.png binary

@@ -1,2 +1,17 @@
-# OS Generated files
-.DS_Store
+# IntelliJ files
+/.idea
+/server.iml
+
+# Generated files
+target
+bin
+coverage
+build
+.gradle
+out
+.kotlintest
+.openapi-generator
+
+# Development files
+/notes
+/.env

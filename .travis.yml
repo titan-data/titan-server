@@ -10,10 +10,11 @@ branches:
 
 jobs:
   include:
-    - step: build
+    - stage: build
+      name: "Assemble"
       script:
         - ./gradlew assemble
-    - step: check
+    - stage: check
       name: "Style Checks"
       script:
         - ./gradlew style

@@ -1,0 +1,39 @@
+language: java
+os: linux
+dist: bionic
+services: docker
+jdk: openjdk11
+
+before_cache:
+  - rm -f  $HOME/.gradle/caches/modules-2/modules-2.lock
+  - rm -fr $HOME/.gradle/caches/*/plugin-resolution/
+
+cache:
+  directories:
+    - $HOME/.gradle/caches/
+    - $HOME/.gradle/wrapper/
+
+branches:
+  only:
+    - master
+
+jobs:
+  include:
+    - stage: compile
+      name: "Compile"
+      install: skip
+      script:
+        - ./gradlew compileKotlin compileJava
+    - stage: check
+      name: "Style Checks"
+      install: skip
+      script:
+        - ./gradlew style
+    - name: "Unit Tests"
+      install: skip
+      script:
+        - ./gradlew test
+    - name: "Integration Tests"
+      install: skip
+      script:
+        - ./gradlew integrationTest

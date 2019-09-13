@@ -4,11 +4,8 @@ plugins {
 }
 
 val titanVersion: String by rootProject.extra
-val artifactoryUser: String = System.getProperty("ARTIFACTORY_USERNAME", "none")
-val artifactoryPassword: String = System.getProperty("ARTIFACTORY_PASSWORD", "none")
-var artifactoryUrl: String = System.getProperty("ARTIFACTORY_URL", "http://artifactory.delphix.com/artifactory/titan-gradle")
 
-group = "com.delphix.titan.client"
+group = "io.titan-data.client"
 version = titanVersion
 
 java {
@@ -27,20 +24,10 @@ val jar by tasks.getting(Jar::class) {
 publishing {
     publications {
         create<MavenPublication>("maven") {
-            groupId = "com.delphix.titan"
+            groupId = "io.titan-data"
             artifactId = "titan-client"
 
             from(components["java"])
-        }
-    }
-
-    repositories {
-        maven {
-            credentials {
-                username = artifactoryUser
-                password = artifactoryPassword
-            }
-            url = uri(artifactoryUrl)
         }
     }
 }

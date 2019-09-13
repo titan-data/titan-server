@@ -28,16 +28,16 @@ The titan server is built from `server/src`. It is a web server wrapped around a
 persistence layer, and remote executor framework. The important parts of the server can be
 found at:
 
-  * `com.delphix.titan.apis.*` - Entry points for the remote APIs. Very thin layer that translates
+  * `io.titandata.apis.*` - Entry points for the remote APIs. Very thin layer that translates
     from JSON into native models and then invokes the appropriate backend model.
-  * `com.delphix.titan.storage.*` - Provider for storage and metadata persistence. While there is
+  * `io.titandata.storage.*` - Provider for storage and metadata persistence. While there is
     an abstraction layer, there is only one provider for ZFS. See `ZfsStorageProvider` for more
     information.
-  * `com.delphix.operation.*` - Handlers for asynchronous push and pull operations. The actual
+  * `io.titandata.operation.*` - Handlers for asynchronous push and pull operations. The actual
     operations are run through the remote providers, but the generic operations framework handles
     starting and stopping operations, reporting back to the APIs, etc. For more information,
     see `OperationProvider`
-  * `com.delphix.remote.*` - Per-remote handlers for push and pull operations. These handle the
+  * `io.titandata.remote.*` - Per-remote handlers for push and pull operations. These handle the
     work of pushing and pulling, within the context set up by the operations provider.
   
 
@@ -113,7 +113,7 @@ assign every active filesystem state, called an instance, its own GUID:
 
     titan/<repo>/<guid>
 
-We then set a ZFS user property on the repository (`com.delphix.titan:active`) that indicates the
+We then set a ZFS user property on the repository (`io.titan-data:active`) that indicates the
 currently active GUID. Any attempt to get info, mount, unmount, etc this logical volume will first
 lookup that active path and redirect to that filesystem.
 
@@ -133,7 +133,7 @@ can update its mountpoint as needed. Note that from a hygeine perspective, it wo
 
 Listing commits is therefor just listing all the snapshots for each of the GUIDs and assembling them
 together into a single list. The commit message is stored as a ZFS user property on the snapshot
-(`com.delphix.titan:message`).
+(`io.titan-data:message`).
 
 ## Build
 
@@ -172,7 +172,7 @@ To publish the image to dockerhub and the client to artifactory, run:
 ```
 
 This should really only be done by CI/CD automation, and will require you to `docker login` with
-appropriate privileges prior to pushing to the `delphix/titan` image.
+appropriate privileges prior to pushing to the `titandata/titan` image.
 
 ## ZFS Packaging
 

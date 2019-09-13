@@ -19,29 +19,31 @@ branches:
 
 jobs:
   include:
-    - stage: compile
-      name: "Compile"
-      install: skip
-      script:
-        - ./gradlew compileKotlin compileJava
-    - stage: check
-      name: "Style Checks"
-      install: skip
-      script:
-        - ./gradlew style
-    - name: "Unit Tests"
-      install: skip
-      script:
-        - ./gradlew test
-    - name: "Integration Tests"
-      install: skip
-      script:
-        - ./gradlew integrationTest
+#    - stage: compile
+#      name: "Compile"
+#      install: skip
+#      script:
+#        - ./gradlew compileKotlin compileJava
+#    - stage: check
+#      name: "Style Checks"
+#      install: skip
+#      script:
+#        - ./gradlew style
+#    - name: "Unit Tests"
+#      install: skip
+#      script:
+#        - ./gradlew test
+#    - name: "Integration Tests"
+#      install: skip
+#      script:
+#        - ./gradlew integrationTest
     - stage: publish
+      if: tag IS present
       name: "Publish Docker Image"
+      install:
+        - ./gradlew assemble -PserverImageName=$DOCKER_IMAGE -PtitanVersion=$TRAVIS_TAG
       before_deploy:
         - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
-        - ./gradlew shadowJar buildDockerServer -PserverImageName=$DOCKER_IMAGE
       deploy:
-        provider: script
-        script: ./gradlew publishDockerVersion publishDockerLatest -PserverImageName=$DOCKER_IMAGE
+        - provider: script
+          script: ./gradlew publishDockerVersion publishDockerLatest -PserverImageName=$DOCKER_IMAGE -PtitanVersion=$TRAVIS_TAG

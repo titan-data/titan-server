@@ -47,8 +47,6 @@ publishing {
     }
 }
 
-val openapiVersion = "v4.0.2"
-
 dependencies {
     compile(kotlin("stdlib"))
     compile("com.squareup.okhttp3:okhttp:3.14.2")

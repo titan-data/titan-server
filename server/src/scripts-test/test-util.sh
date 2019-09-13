@@ -9,7 +9,7 @@ util_script=/test/src/scripts/util.sh
    source $util_script
    [ $IDENTITY = "titan" ]
    [ $PORT = "5001" ]
-   [ $IMAGE = "delphix/titan:latest" ]
+   [ $IMAGE = "titan:latest" ]
 }
 
 @test "user overrides propagated correctly" {
@@ -18,11 +18,11 @@ util_script=/test/src/scripts/util.sh
 
    export TITAN_IDENTITY=test
    export TITAN_PORT=6001
-   export TITAN_IMAGE=delphix/titan:test
+   export TITAN_IMAGE=titandata/titan:test
    source $util_script
    [ $IDENTITY = "test" ]
    [ $PORT = "6001" ]
-   [ $IMAGE = "delphix/titan:test" ]
+   [ $IMAGE = "titandata/titan:test" ]
 }
 
 @test "derived variables set correctly" {

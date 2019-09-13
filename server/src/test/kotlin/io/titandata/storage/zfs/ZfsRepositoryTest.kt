@@ -88,7 +88,7 @@ class ZfsRepositoryTest : StringSpec() {
             val result = provider.listRepositories()
             result.size shouldBe 0
             verify {
-                executor.exec("zfs", "list", "-Ho", "name,com.delphix.titan:metadata",
+                executor.exec("zfs", "list", "-Ho", "name,io.titan-data:metadata",
                         "-d", "1", "test/repo")
             }
             confirmVerified()
@@ -122,7 +122,7 @@ class ZfsRepositoryTest : StringSpec() {
             result.properties["a"] shouldBe "b"
             verify {
                 executor.exec("zfs", "list", "-Ho",
-                        "name,com.delphix.titan:metadata", "test/repo/repo")
+                        "name,io.titan-data:metadata", "test/repo/repo")
             }
             confirmVerified()
         }
@@ -166,7 +166,7 @@ class ZfsRepositoryTest : StringSpec() {
             every { executor.exec(*anyVararg()) } returns ""
             provider.updateRepository("foo", repo)
             verify {
-                executor.exec("zfs", "set", "com.delphix.titan:metadata={\"a\":\"b\"}",
+                executor.exec("zfs", "set", "io.titan-data:metadata={\"a\":\"b\"}",
                         "test/repo/foo")
             }
             confirmVerified()
@@ -178,7 +178,7 @@ class ZfsRepositoryTest : StringSpec() {
             provider.updateRepository("foo", repo)
 
             verifySequence {
-                executor.exec("zfs", "set", "com.delphix.titan:metadata={\"a\":\"b\"}",
+                executor.exec("zfs", "set", "io.titan-data:metadata={\"a\":\"b\"}",
                         "test/repo/foo")
                 executor.exec("zfs", "rename", "test/repo/foo", "test/repo/bar")
             }
@@ -238,11 +238,11 @@ class ZfsRepositoryTest : StringSpec() {
 
             verifySequence {
                 executor.exec("zfs", "create", "-o", "mountpoint=legacy", "-o",
-                        "com.delphix.titan:active=guid", "-o",
-                        "com.delphix.titan:metadata={\"a\":\"b\"}", "test/repo/foo")
+                        "io.titan-data:active=guid", "-o",
+                        "io.titan-data:metadata={\"a\":\"b\"}", "test/repo/foo")
                 executor.exec("zfs", "create", "test/repo/foo/guid")
                 executor.exec("zfs", "snapshot", "-o",
-                        "com.delphix.titan:metadata={}", "test/repo/foo/guid@initial")
+                        "io.titan-data:metadata={}", "test/repo/foo/guid@initial")
             }
             confirmVerified()
         }
@@ -298,7 +298,7 @@ class ZfsRepositoryTest : StringSpec() {
             provider.updateRemotes("repo", listOf(NopRemote(name = "foo")))
             verifySequence {
                 executor.exec("zfs", "set",
-                        "com.delphix.titan:remotes=[{\"provider\":\"nop\",\"name\":\"foo\"}]",
+                        "io.titan-data:remotes=[{\"provider\":\"nop\",\"name\":\"foo\"}]",
                         "test/repo/repo")
             }
             confirmVerified()

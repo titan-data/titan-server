@@ -61,9 +61,9 @@ class ZfsOperationTest : StringSpec() {
         val json = "{\"operation\":{\"id\":\"id\"," +
                 "\"type\":\"PUSH\",\"state\":\"RUNNING\",\"remote\":\"remote\"," +
                 "\"commitId\":\"commit\"},\"params\":{\"provider\":\"nop\"}}"
-        every { executor.exec("zfs", "list", "-Ho", "name,com.delphix.titan:metadata",
+        every { executor.exec("zfs", "list", "-Ho", "name,io.titan-data:metadata",
                 "test/repo/foo") } returns "test/repo/foo\t{}"
-        every { executor.exec("zfs", "list", "-Ho", "name,com.delphix.titan:operation",
+        every { executor.exec("zfs", "list", "-Ho", "name,io.titan-data:operation",
                 "test/repo/foo/id") } returns "test/repo/foo/id\t$json"
     }
 
@@ -113,28 +113,28 @@ class ZfsOperationTest : StringSpec() {
             every { executor.exec("zfs", "list", "-Ho", "name,defer_destroy", "-t", "snapshot",
                     "-d", "2", "test/repo/foo")
             } returns "test/repo/foo/guid@hash\toff"
-            every { executor.exec("zfs", "list", "-rHo", "name,com.delphix.titan:metadata", "test/repo/foo/guid") } returns
+            every { executor.exec("zfs", "list", "-rHo", "name,io.titan-data:metadata", "test/repo/foo/guid") } returns
                     arrayOf("test/repo/foo/guid\t-", "test/repo/foo/guid/v0\t{}", "test/repo/foo/guid/v1\t{}").joinToString("\n")
             every { executor.exec("zfs", "create", "test/repo/foo/id") } returns ""
-            every { executor.exec("zfs", "clone", "-o", "com.delphix.titan:metadata={}", "test/repo/foo/guid/v0@hash",
+            every { executor.exec("zfs", "clone", "-o", "io.titan-data:metadata={}", "test/repo/foo/guid/v0@hash",
                     "test/repo/foo/id/v0") } returns ""
-            every { executor.exec("zfs", "clone", "-o", "com.delphix.titan:metadata={}", "test/repo/foo/guid/v1@hash",
+            every { executor.exec("zfs", "clone", "-o", "io.titan-data:metadata={}", "test/repo/foo/guid/v1@hash",
                     "test/repo/foo/id/v1") } returns ""
             val op = getOperation()
             val json = "{\"operation\":{\"id\":\"id\"," +
                     "\"type\":\"PUSH\",\"state\":\"RUNNING\",\"remote\":\"remote\"," +
                     "\"commitId\":\"commit\"},\"params\":{\"provider\":\"nop\",\"delay\":0}}"
-            every { executor.exec("zfs", "set", "com.delphix.titan:operation=$json", "test/repo/foo/id") } returns ""
+            every { executor.exec("zfs", "set", "io.titan-data:operation=$json", "test/repo/foo/id") } returns ""
             provider.createOperation("foo", op, "hash")
 
             verifySequence {
                 executor.exec("zfs", "list", "-Ho", "name,defer_destroy", "-t", "snapshot",
                         "-d", "2", "test/repo/foo")
-                executor.exec("zfs", "list", "-rHo", "name,com.delphix.titan:metadata", "test/repo/foo/guid")
+                executor.exec("zfs", "list", "-rHo", "name,io.titan-data:metadata", "test/repo/foo/guid")
                 executor.exec("zfs", "create", "test/repo/foo/id")
-                executor.exec("zfs", "clone", "-o", "com.delphix.titan:metadata={}", "test/repo/foo/guid/v0@hash", "test/repo/foo/id/v0")
-                executor.exec("zfs", "clone", "-o", "com.delphix.titan:metadata={}", "test/repo/foo/guid/v1@hash", "test/repo/foo/id/v1")
-                executor.exec("zfs", "set", "com.delphix.titan:operation=$json", "test/repo/foo/id")
+                executor.exec("zfs", "clone", "-o", "io.titan-data:metadata={}", "test/repo/foo/guid/v0@hash", "test/repo/foo/id/v0")
+                executor.exec("zfs", "clone", "-o", "io.titan-data:metadata={}", "test/repo/foo/guid/v1@hash", "test/repo/foo/id/v1")
+                executor.exec("zfs", "set", "io.titan-data:operation=$json", "test/repo/foo/id")
             }
             confirmVerified()
         }
@@ -179,7 +179,7 @@ class ZfsOperationTest : StringSpec() {
         }
 
         "get operation for non existent repo fails" {
-            every { executor.exec("zfs", "list", "-Ho", "name,com.delphix.titan:metadata",
+            every { executor.exec("zfs", "list", "-Ho", "name,io.titan-data:metadata",
                     "test/repo/foo") } throws CommandException("", 1, "does not exist")
             val exception = shouldThrow<NoSuchObjectException> {
                 provider.getOperation("foo", "op")
@@ -188,9 +188,9 @@ class ZfsOperationTest : StringSpec() {
         }
 
         "get operation for non existent operation fails" {
-            every { executor.exec("zfs", "list", "-Ho", "name,com.delphix.titan:metadata",
+            every { executor.exec("zfs", "list", "-Ho", "name,io.titan-data:metadata",
                     "test/repo/foo") } returns "test/repo/foo\t{}"
-            every { executor.exec("zfs", "list", "-Ho", "name,com.delphix.titan:operation",
+            every { executor.exec("zfs", "list", "-Ho", "name,io.titan-data:operation",
                     "test/repo/foo/op") } throws CommandException("", 1, "does not exist")
             val exception = shouldThrow<NoSuchObjectException> {
                 provider.getOperation("foo", "op")
@@ -199,9 +199,9 @@ class ZfsOperationTest : StringSpec() {
         }
 
         "get operation for a normal guid fails" {
-            every { executor.exec("zfs", "list", "-Ho", "name,com.delphix.titan:metadata",
+            every { executor.exec("zfs", "list", "-Ho", "name,io.titan-data:metadata",
                     "test/repo/foo") } returns "test/repo/foo\t{}"
-            every { executor.exec("zfs", "list", "-Ho", "name,com.delphix.titan:operation",
+            every { executor.exec("zfs", "list", "-Ho", "name,io.titan-data:operation",
                     "test/repo/foo/op") } returns "test/repo/foo/op\t-"
             val exception = shouldThrow<NoSuchObjectException> {
                 provider.getOperation("foo", "op")
@@ -228,8 +228,8 @@ class ZfsOperationTest : StringSpec() {
         "commit operation succeeds" {
             mockOperation()
             every { executor.exec("zfs", "snapshot", "-r", "-o",
-                    "com.delphix.titan:metadata={\"a\":\"b\"}", "test/repo/foo/id@commit") } returns ""
-            every { executor.exec("zfs", "inherit", "com.delphix.titan:operation",
+                    "io.titan-data:metadata={\"a\":\"b\"}", "test/repo/foo/id@commit") } returns ""
+            every { executor.exec("zfs", "inherit", "io.titan-data:operation",
                     "test/repo/foo/id") } returns ""
 
             val commit = Commit(id = "commit", properties = mapOf("a" to "b"))
@@ -237,8 +237,8 @@ class ZfsOperationTest : StringSpec() {
 
             verify {
                 executor.exec("zfs", "snapshot", "-r", "-o",
-                        "com.delphix.titan:metadata={\"a\":\"b\"}", "test/repo/foo/id@commit")
-                executor.exec("zfs", "inherit", "com.delphix.titan:operation",
+                        "io.titan-data:metadata={\"a\":\"b\"}", "test/repo/foo/id@commit")
+                executor.exec("zfs", "inherit", "io.titan-data:operation",
                         "test/repo/foo/id")
             }
         }
@@ -275,13 +275,13 @@ class ZfsOperationTest : StringSpec() {
             val newJson = "{\"operation\":{\"id\":\"id\"," +
                     "\"type\":\"PUSH\",\"state\":\"COMPLETE\",\"remote\":\"remote\"," +
                     "\"commitId\":\"commit\"},\"params\":{\"provider\":\"nop\",\"delay\":0}}"
-            every { executor.exec("zfs", "set", "com.delphix.titan:operation=$newJson",
+            every { executor.exec("zfs", "set", "io.titan-data:operation=$newJson",
                     "test/repo/foo/id") } returns ""
 
             provider.updateOperationState("foo", "id", Operation.State.COMPLETE)
 
             verify {
-                executor.exec("zfs", "set", "com.delphix.titan:operation=$newJson",
+                executor.exec("zfs", "set", "io.titan-data:operation=$newJson",
                         "test/repo/foo/id")
             }
         }
@@ -296,9 +296,9 @@ class ZfsOperationTest : StringSpec() {
 
         "mount operation volumes succeeds" {
             mockOperation()
-            every { executor.exec("zfs", "list", "-Hpo", "com.delphix.titan:active",
+            every { executor.exec("zfs", "list", "-Hpo", "io.titan-data:active",
                     "test/repo/foo") } returns "guid"
-            every { executor.exec("zfs", "list", "-Ho", "name,com.delphix.titan:metadata",
+            every { executor.exec("zfs", "list", "-Ho", "name,io.titan-data:metadata",
                     "-r", "test/repo/foo/guid") } returns arrayOf(
                     "test/repo/foo/guid/one\t{\"a\":\"b\"}",
                     "test/repo/foo/guid/two\t{\"c\":\"d\"}"
@@ -330,9 +330,9 @@ class ZfsOperationTest : StringSpec() {
 
         "unmount operation volumes succeeds" {
             mockOperation()
-            every { executor.exec("zfs", "list", "-Hpo", "com.delphix.titan:active",
+            every { executor.exec("zfs", "list", "-Hpo", "io.titan-data:active",
                     "test/repo/foo") } returns "guid"
-            every { executor.exec("zfs", "list", "-Ho", "name,com.delphix.titan:metadata",
+            every { executor.exec("zfs", "list", "-Ho", "name,io.titan-data:metadata",
                     "-r", "test/repo/foo/guid") } returns arrayOf(
                     "test/repo/foo/guid/one\t{\"a\":\"b\"}",
                     "test/repo/foo/guid/two\t{\"c\":\"d\"}"

@@ -88,7 +88,7 @@ class ZfsCommitManager(val provider: ZfsStorageProvider) {
         val guid = provider.getCommitGuid(repo, id)
         guid ?: throw NoSuchObjectException("no such commit '$id' in repository '$repo'")
         val output = provider.executor.exec("zfs", "list", "-Ho",
-                "com.delphix.titan:metadata", "$poolName/repo/$repo/$guid@$id")
+                "io.titan-data:metadata", "$poolName/repo/$repo/$guid@$id")
         val deferDestroy = output.substringBefore("\t")
         if (deferDestroy == "on") {
             throw NoSuchObjectException("")

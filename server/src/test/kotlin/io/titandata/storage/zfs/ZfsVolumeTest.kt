@@ -63,7 +63,7 @@ class ZfsVolumeTest : StringSpec() {
         }
 
         "create volume fails with unknown repository" {
-            every { executor.exec("zfs", "list", "-Hpo", "com.delphix.titan:active",
+            every { executor.exec("zfs", "list", "-Hpo", "io.titan-data:active",
                     "test/repo/foo") } throws CommandException("", 1, "does not exist")
             shouldThrow<NoSuchObjectException> {
                 provider.createVolume("foo", "vol", mapOf("a" to "b"))
@@ -71,10 +71,10 @@ class ZfsVolumeTest : StringSpec() {
         }
 
         "create volume fails with duplicate volume" {
-            every { executor.exec("zfs", "list", "-Hpo", "com.delphix.titan:active",
+            every { executor.exec("zfs", "list", "-Hpo", "io.titan-data:active",
                     "test/repo/foo") } returns "guid"
             every { executor.exec("zfs", "create", "-o",
-                    "com.delphix.titan:metadata={\"a\":\"b\"}", "test/repo/foo/guid/vol") } throws
+                    "io.titan-data:metadata={\"a\":\"b\"}", "test/repo/foo/guid/vol") } throws
                     CommandException("", 1, "already exists")
             shouldThrow<ObjectExistsException> {
                 provider.createVolume("foo", "vol", mapOf("a" to "b"))
@@ -82,10 +82,10 @@ class ZfsVolumeTest : StringSpec() {
         }
 
         "create volume succeeds" {
-            every { executor.exec("zfs", "list", "-Hpo", "com.delphix.titan:active",
+            every { executor.exec("zfs", "list", "-Hpo", "io.titan-data:active",
                     "test/repo/foo") } returns "guid"
             every { executor.exec("zfs", "create", "-o",
-                    "com.delphix.titan:metadata={\"a\":\"b\"}", "test/repo/foo/guid/vol") } returns ""
+                    "io.titan-data:metadata={\"a\":\"b\"}", "test/repo/foo/guid/vol") } returns ""
             every { executor.exec("zfs", "snapshot", "test/repo/foo/guid/vol@initial") } returns ""
             every { executor.exec("mkdir", "-p", "/var/lib/test/mnt/foo/vol") } returns ""
 
@@ -96,10 +96,10 @@ class ZfsVolumeTest : StringSpec() {
             vol.status shouldNotBe null
 
             verifySequence {
-                executor.exec("zfs", "list", "-Hpo", "com.delphix.titan:active",
+                executor.exec("zfs", "list", "-Hpo", "io.titan-data:active",
                         "test/repo/foo")
                 executor.exec("zfs", "create", "-o",
-                        "com.delphix.titan:metadata={\"a\":\"b\"}", "test/repo/foo/guid/vol")
+                        "io.titan-data:metadata={\"a\":\"b\"}", "test/repo/foo/guid/vol")
                 executor.exec("zfs", "snapshot", "test/repo/foo/guid/vol@initial")
                 executor.exec("mkdir", "-p", "/var/lib/test/mnt/foo/vol")
             }
@@ -119,7 +119,7 @@ class ZfsVolumeTest : StringSpec() {
         }
 
         "delete volume fails with unknown repository" {
-            every { executor.exec("zfs", "list", "-Hpo", "com.delphix.titan:active",
+            every { executor.exec("zfs", "list", "-Hpo", "io.titan-data:active",
                     "test/repo/foo") } throws CommandException("", 1, "does not exist")
             shouldThrow<NoSuchObjectException> {
                 provider.deleteVolume("foo", "vol")
@@ -127,13 +127,13 @@ class ZfsVolumeTest : StringSpec() {
         }
 
         "delete volume succeeds" {
-            every { executor.exec("zfs", "list", "-Hpo", "com.delphix.titan:active",
+            every { executor.exec("zfs", "list", "-Hpo", "io.titan-data:active",
                     "test/repo/foo") } returns "guid"
             every { executor.exec("zfs", "destroy", "-R", "test/repo/foo/guid/vol") } returns ""
             every { executor.exec("rmdir", "/var/lib/test/mnt/foo/vol") } returns ""
             provider.deleteVolume("foo", "vol")
             verifySequence {
-                executor.exec("zfs", "list", "-Hpo", "com.delphix.titan:active",
+                executor.exec("zfs", "list", "-Hpo", "io.titan-data:active",
                         "test/repo/foo")
                 executor.exec("zfs", "destroy", "-R", "test/repo/foo/guid/vol")
                 executor.exec("rmdir", "/var/lib/test/mnt/foo/vol")
@@ -142,7 +142,7 @@ class ZfsVolumeTest : StringSpec() {
         }
 
         "delete volume fails for unknown volume" {
-            every { executor.exec("zfs", "list", "-Hpo", "com.delphix.titan:active",
+            every { executor.exec("zfs", "list", "-Hpo", "io.titan-data:active",
                     "test/repo/foo") } returns "guid"
             every { executor.exec("zfs", "destroy", "-R", "test/repo/foo/guid/vol") } throws
                     CommandException("", 1, "does not exist")
@@ -164,7 +164,7 @@ class ZfsVolumeTest : StringSpec() {
         }
 
         "get volume fails with unknown repository" {
-            every { executor.exec("zfs", "list", "-Hpo", "com.delphix.titan:active",
+            every { executor.exec("zfs", "list", "-Hpo", "io.titan-data:active",
                     "test/repo/foo") } throws CommandException("", 1, "does not exist")
             shouldThrow<NoSuchObjectException> {
                 provider.getVolume("foo", "vol")
@@ -172,9 +172,9 @@ class ZfsVolumeTest : StringSpec() {
         }
 
         "get volume succeeds" {
-            every { executor.exec("zfs", "list", "-Hpo", "com.delphix.titan:active",
+            every { executor.exec("zfs", "list", "-Hpo", "io.titan-data:active",
                     "test/repo/foo") } returns "guid"
-            every { executor.exec("zfs", "list", "-Ho", "com.delphix.titan:metadata",
+            every { executor.exec("zfs", "list", "-Ho", "io.titan-data:metadata",
                     "test/repo/foo/guid/vol") } returns "{\"a\":\"b\"}"
             val vol = provider.getVolume("foo", "vol")
             vol.name shouldBe "vol"
@@ -183,9 +183,9 @@ class ZfsVolumeTest : StringSpec() {
             vol.properties!!["a"] shouldBe "b"
 
             verifySequence {
-                executor.exec("zfs", "list", "-Hpo", "com.delphix.titan:active",
+                executor.exec("zfs", "list", "-Hpo", "io.titan-data:active",
                         "test/repo/foo")
-                executor.exec("zfs", "list", "-Ho", "com.delphix.titan:metadata",
+                executor.exec("zfs", "list", "-Ho", "io.titan-data:metadata",
                         "test/repo/foo/guid/vol")
             }
             confirmVerified()
@@ -204,7 +204,7 @@ class ZfsVolumeTest : StringSpec() {
         }
 
         "mount volume fails with unknown repository" {
-            every { executor.exec("zfs", "list", "-Hpo", "com.delphix.titan:active",
+            every { executor.exec("zfs", "list", "-Hpo", "io.titan-data:active",
                     "test/repo/foo") } throws CommandException("", 1, "does not exist")
             shouldThrow<NoSuchObjectException> {
                 provider.mountVolume("foo", "vol")
@@ -212,9 +212,9 @@ class ZfsVolumeTest : StringSpec() {
         }
 
         "mount volume succeeds" {
-            every { executor.exec("zfs", "list", "-Hpo", "com.delphix.titan:active",
+            every { executor.exec("zfs", "list", "-Hpo", "io.titan-data:active",
                     "test/repo/foo") } returns "guid"
-            every { executor.exec("zfs", "list", "-Ho", "com.delphix.titan:metadata",
+            every { executor.exec("zfs", "list", "-Ho", "io.titan-data:metadata",
                     "test/repo/foo/guid/vol") } returns "{}"
             every { executor.exec("mount", "-t", "zfs", "test/repo/foo/guid/vol",
                     "/var/lib/test/mnt/foo/vol") } returns ""
@@ -222,11 +222,11 @@ class ZfsVolumeTest : StringSpec() {
             vol.name shouldBe "vol"
             vol.mountpoint shouldBe "/var/lib/test/mnt/foo/vol"
             verifySequence {
-                executor.exec("zfs", "list", "-Hpo", "com.delphix.titan:active",
+                executor.exec("zfs", "list", "-Hpo", "io.titan-data:active",
                         "test/repo/foo")
-                executor.exec("zfs", "list", "-Hpo", "com.delphix.titan:active",
+                executor.exec("zfs", "list", "-Hpo", "io.titan-data:active",
                         "test/repo/foo")
-                executor.exec("zfs", "list", "-Ho", "com.delphix.titan:metadata",
+                executor.exec("zfs", "list", "-Ho", "io.titan-data:metadata",
                         "test/repo/foo/guid/vol")
                 executor.exec("mount", "-t", "zfs", "test/repo/foo/guid/vol",
                         "/var/lib/test/mnt/foo/vol")
@@ -247,7 +247,7 @@ class ZfsVolumeTest : StringSpec() {
         }
 
         "unmount volume fails with unknown repository" {
-            every { executor.exec("zfs", "list", "-Hpo", "com.delphix.titan:active",
+            every { executor.exec("zfs", "list", "-Hpo", "io.titan-data:active",
                     "test/repo/foo") } throws CommandException("", 1, "does not exist")
             shouldThrow<NoSuchObjectException> {
                 provider.unmountVolume("foo", "vol")
@@ -255,12 +255,12 @@ class ZfsVolumeTest : StringSpec() {
         }
 
         "unmount volume succeeds" {
-            every { executor.exec("zfs", "list", "-Hpo", "com.delphix.titan:active",
+            every { executor.exec("zfs", "list", "-Hpo", "io.titan-data:active",
                     "test/repo/foo") } returns "guid"
             every { executor.exec("umount", "/var/lib/test/mnt/foo/vol") } returns ""
             provider.unmountVolume("foo", "vol")
             verifySequence {
-                executor.exec("zfs", "list", "-Hpo", "com.delphix.titan:active",
+                executor.exec("zfs", "list", "-Hpo", "io.titan-data:active",
                         "test/repo/foo")
                 executor.exec("umount", "/var/lib/test/mnt/foo/vol")
             }
@@ -268,7 +268,7 @@ class ZfsVolumeTest : StringSpec() {
         }
 
         "unmount volume succeeds if not mounted" {
-            every { executor.exec("zfs", "list", "-Hpo", "com.delphix.titan:active",
+            every { executor.exec("zfs", "list", "-Hpo", "io.titan-data:active",
                     "test/repo/foo") } returns "guid"
             every { executor.exec("umount", "/var/lib/test/mnt/foo/vol") } throws
                     CommandException("", 1, "not mounted")
@@ -282,9 +282,9 @@ class ZfsVolumeTest : StringSpec() {
         }
 
         "list volumes succeeds" {
-            every { executor.exec("zfs", "list", "-Hpo", "com.delphix.titan:active",
+            every { executor.exec("zfs", "list", "-Hpo", "io.titan-data:active",
                     "test/repo/foo") } returns "guid"
-            every { executor.exec("zfs", "list", "-Ho", "name,com.delphix.titan:metadata",
+            every { executor.exec("zfs", "list", "-Ho", "name,io.titan-data:metadata",
                     "-r", "test/repo/foo/guid") } returns arrayOf(
                     "test/repo/foo\t{}",
                     "test/repo/foo/guid/one\t{\"a\":\"b\"}",
@@ -301,9 +301,9 @@ class ZfsVolumeTest : StringSpec() {
         }
 
         "list volumes ignores datasets with leading underscores" {
-            every { executor.exec("zfs", "list", "-Hpo", "com.delphix.titan:active",
+            every { executor.exec("zfs", "list", "-Hpo", "io.titan-data:active",
                     "test/repo/foo") } returns "guid"
-            every { executor.exec("zfs", "list", "-Ho", "name,com.delphix.titan:metadata",
+            every { executor.exec("zfs", "list", "-Ho", "name,io.titan-data:metadata",
                     "-r", "test/repo/foo/guid") } returns arrayOf(
                     "test/repo/foo\t{}",
                     "test/repo/foo/guid/one\t{\"a\":\"b\"}",

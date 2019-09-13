@@ -83,16 +83,16 @@ class ZfsCommitTest : StringSpec() {
 
         "create commit succeeds" {
             val commit = Commit(id = "hash", properties = mapOf("a" to "b"))
-            every { executor.exec("zfs", "list", "-Hpo", "com.delphix.titan:active",
+            every { executor.exec("zfs", "list", "-Hpo", "io.titan-data:active",
                     "test/repo/foo") } returns "guid\n"
             every { executor.exec("zfs", "list", "-Ho", "name,defer_destroy", "-t", "snapshot",
                     "-d", "2", "test/repo/foo") } returns ""
             every { executor.exec("zfs", "snapshot", "-r", "-o",
-                    "com.delphix.titan:metadata={\"a\":\"b\"}", "test/repo/foo/guid@hash") } returns ""
+                    "io.titan-data:metadata={\"a\":\"b\"}", "test/repo/foo/guid@hash") } returns ""
             every { executor.exec("zfs", "list", "-Hpo", "creation",
                     "test/repo/foo/guid@hash") } returns "1556492646\n"
             every { executor.exec("zfs", "set",
-                    "com.delphix.titan:metadata={\"a\":\"b\",\"timestamp\":\"2019-04-28T23:04:06Z\"}",
+                    "io.titan-data:metadata={\"a\":\"b\",\"timestamp\":\"2019-04-28T23:04:06Z\"}",
                     "test/repo/foo/guid@hash") } returns ""
             val result = provider.createCommit("foo", commit)
             result.properties["timestamp"] shouldBe "2019-04-28T23:04:06Z"
@@ -101,12 +101,12 @@ class ZfsCommitTest : StringSpec() {
 
         "create commit of existing hash on same dataset throws exception" {
             val commit = Commit(id = "hash", properties = mapOf("a" to "b"))
-            every { executor.exec("zfs", "list", "-Hpo", "com.delphix.titan:active",
+            every { executor.exec("zfs", "list", "-Hpo", "io.titan-data:active",
                     "test/repo/foo") } returns "guid\n"
             every { executor.exec("zfs", "list", "-Ho", "name,defer_destroy", "-t", "snapshot",
                     "-d", "2", "test/repo/foo") } returns ""
             every { executor.exec("zfs", "snapshot", "-r", "-o",
-                    "com.delphix.titan:metadata={\"a\":\"b\"}", "test/repo/foo/guid@hash") } throws
+                    "io.titan-data:metadata={\"a\":\"b\"}", "test/repo/foo/guid@hash") } throws
                     CommandException("", 1, "snapshot already exists")
             val exception = shouldThrow<ObjectExistsException> {
                 provider.createCommit("foo", commit)
@@ -116,7 +116,7 @@ class ZfsCommitTest : StringSpec() {
 
         "create commit of existing hash on different dataset throws exception" {
             val commit = Commit(id = "hash", properties = mapOf("a" to "b"))
-            every { executor.exec("zfs", "list", "-Hpo", "com.delphix.titan:active",
+            every { executor.exec("zfs", "list", "-Hpo", "io.titan-data:active",
                     "test/repo/foo") } returns "guid\n"
             every { executor.exec("zfs", "list", "-Ho", "name,defer_destroy", "-t", "snapshot",
                     "-d", "2", "test/repo/foo") } returns "test/repo/foo/guid2@hash\toff"
@@ -174,7 +174,7 @@ class ZfsCommitTest : StringSpec() {
         "get commit succeeds" {
             every { executor.exec("zfs", "list", "-Ho", "name,defer_destroy", "-t", "snapshot",
                     "-d", "2", "test/repo/foo") } returns "test/repo/foo/guid@hash\toff\n"
-            every { executor.exec("zfs", "list", "-Ho", "com.delphix.titan:metadata",
+            every { executor.exec("zfs", "list", "-Ho", "io.titan-data:metadata",
                     "test/repo/foo/guid@hash") } returns "{\"a\":\"b\"}\n"
             val commit = provider.getCommit("foo", "hash")
             commit.id shouldBe "hash"
@@ -215,7 +215,7 @@ class ZfsCommitTest : StringSpec() {
             result.size shouldBe 0
             verify {
                 executor.exec("zfs", "list", "-Ho",
-                        "name,defer_destroy,com.delphix.titan:metadata", "-t", "snapshot", "-d",
+                        "name,defer_destroy,io.titan-data:metadata", "-t", "snapshot", "-d",
                         "2", "test/repo/foo")
             }
             confirmVerified()
@@ -292,14 +292,14 @@ class ZfsCommitTest : StringSpec() {
                         "-d", "2", "test/repo/foo")
             } returns "test/repo/foo/guid@hash\toff\n"
             every { executor.exec("zfs", "destroy", "-rd", "test/repo/foo/guid@hash") } returns ""
-            every { executor.exec("zfs", "list", "-Hpo", "com.delphix.titan:active",
+            every { executor.exec("zfs", "list", "-Hpo", "io.titan-data:active",
                     "test/repo/foo") } returns "guid"
             provider.deleteCommit("foo", "hash")
             verifySequence {
                 executor.exec("zfs", "list", "-Ho", "name,defer_destroy", "-t", "snapshot",
                         "-d", "2", "test/repo/foo")
                 executor.exec("zfs", "destroy", "-rd", "test/repo/foo/guid@hash")
-                executor.exec("zfs", "list", "-Hpo", "com.delphix.titan:active",
+                executor.exec("zfs", "list", "-Hpo", "io.titan-data:active",
                         "test/repo/foo")
             }
             confirmVerified()
@@ -310,7 +310,7 @@ class ZfsCommitTest : StringSpec() {
                     "-d", "2", "test/repo/foo")
             } returns "test/repo/foo/guid@hash\toff"
             every { executor.exec("zfs", "destroy", "-rd", "test/repo/foo/guid@hash") } returns ""
-            every { executor.exec("zfs", "list", "-Hpo", "com.delphix.titan:active",
+            every { executor.exec("zfs", "list", "-Hpo", "io.titan-data:active",
                     "test/repo/foo") } returns "guid2"
             every { executor.exec("zfs", "list", "-H", "-t", "snapshot", "-d", "1",
                     "test/repo/foo/guid") } returns "blah"
@@ -319,7 +319,7 @@ class ZfsCommitTest : StringSpec() {
                 executor.exec("zfs", "list", "-Ho", "name,defer_destroy", "-t", "snapshot",
                         "-d", "2", "test/repo/foo")
                 executor.exec("zfs", "destroy", "-rd", "test/repo/foo/guid@hash")
-                executor.exec("zfs", "list", "-Hpo", "com.delphix.titan:active",
+                executor.exec("zfs", "list", "-Hpo", "io.titan-data:active",
                         "test/repo/foo")
                 executor.exec("zfs", "list", "-H", "-t", "snapshot", "-d", "1",
                         "test/repo/foo/guid")
@@ -332,7 +332,7 @@ class ZfsCommitTest : StringSpec() {
                     "-d", "2", "test/repo/foo")
             } returns "test/repo/foo/guid@hash\toff"
             every { executor.exec("zfs", "destroy", "-rd", "test/repo/foo/guid@hash") } returns ""
-            every { executor.exec("zfs", "list", "-Hpo", "com.delphix.titan:active",
+            every { executor.exec("zfs", "list", "-Hpo", "io.titan-data:active",
                     "test/repo/foo") } returns "guid2"
             every { executor.exec("zfs", "list", "-H", "-t", "snapshot", "-d", "1",
                     "test/repo/foo/guid") } returns ""
@@ -342,7 +342,7 @@ class ZfsCommitTest : StringSpec() {
                 executor.exec("zfs", "list", "-Ho", "name,defer_destroy", "-t", "snapshot",
                         "-d", "2", "test/repo/foo")
                 executor.exec("zfs", "destroy", "-rd", "test/repo/foo/guid@hash")
-                executor.exec("zfs", "list", "-Hpo", "com.delphix.titan:active",
+                executor.exec("zfs", "list", "-Hpo", "io.titan-data:active",
                         "test/repo/foo")
                 executor.exec("zfs", "list", "-H", "-t", "snapshot", "-d", "1",
                         "test/repo/foo/guid")
@@ -375,25 +375,25 @@ class ZfsCommitTest : StringSpec() {
             every { executor.exec("zfs", "list", "-Ho", "name,defer_destroy", "-t", "snapshot",
                     "-d", "2", "test/repo/foo")
             } returns "test/repo/foo/guid@hash\toff"
-            every { executor.exec("zfs", "list", "-rHo", "name,com.delphix.titan:metadata", "test/repo/foo/guid") } returns
+            every { executor.exec("zfs", "list", "-rHo", "name,io.titan-data:metadata", "test/repo/foo/guid") } returns
                     arrayOf("test/repo/foo/guid\t-", "test/repo/foo/guid/v0\t{}", "test/repo/foo/guid/v1\t{}").joinToString("\n")
             every { executor.exec("zfs", "create", "test/repo/foo/newguid") } returns ""
-            every { executor.exec("zfs", "clone", "-o", "com.delphix.titan:metadata={}", "test/repo/foo/guid/v0@hash",
+            every { executor.exec("zfs", "clone", "-o", "io.titan-data:metadata={}", "test/repo/foo/guid/v0@hash",
                     "test/repo/foo/newguid/v0") } returns ""
-            every { executor.exec("zfs", "clone", "-o", "com.delphix.titan:metadata={}", "test/repo/foo/guid/v1@hash",
+            every { executor.exec("zfs", "clone", "-o", "io.titan-data:metadata={}", "test/repo/foo/guid/v1@hash",
                     "test/repo/foo/newguid/v1") } returns ""
-            every { executor.exec("zfs", "set", "com.delphix.titan:active=newguid",
+            every { executor.exec("zfs", "set", "io.titan-data:active=newguid",
                     "test/repo/foo") } returns ""
             provider.checkoutCommit("foo", "hash")
 
             verifySequence {
                 executor.exec("zfs", "list", "-Ho", "name,defer_destroy", "-t", "snapshot",
                         "-d", "2", "test/repo/foo")
-                executor.exec("zfs", "list", "-rHo", "name,com.delphix.titan:metadata", "test/repo/foo/guid")
+                executor.exec("zfs", "list", "-rHo", "name,io.titan-data:metadata", "test/repo/foo/guid")
                 executor.exec("zfs", "create", "test/repo/foo/newguid")
-                executor.exec("zfs", "clone", "-o", "com.delphix.titan:metadata={}", "test/repo/foo/guid/v0@hash", "test/repo/foo/newguid/v0")
-                executor.exec("zfs", "clone", "-o", "com.delphix.titan:metadata={}", "test/repo/foo/guid/v1@hash", "test/repo/foo/newguid/v1")
-                executor.exec("zfs", "set", "com.delphix.titan:active=newguid", "test/repo/foo")
+                executor.exec("zfs", "clone", "-o", "io.titan-data:metadata={}", "test/repo/foo/guid/v0@hash", "test/repo/foo/newguid/v0")
+                executor.exec("zfs", "clone", "-o", "io.titan-data:metadata={}", "test/repo/foo/guid/v1@hash", "test/repo/foo/newguid/v1")
+                executor.exec("zfs", "set", "io.titan-data:active=newguid", "test/repo/foo")
             }
             confirmVerified()
         }

@@ -111,7 +111,7 @@ class RemotesApiTest : StringSpec() {
 
                 verify {
                     executor.exec("zfs", "set",
-                            "com.delphix.titan:remotes=[{\"provider\":\"nop\",\"name\":\"a\"}]",
+                            "io.titan-data:remotes=[{\"provider\":\"nop\",\"name\":\"a\"}]",
                             "test/repo/repo")
                 }
             }
@@ -128,7 +128,7 @@ class RemotesApiTest : StringSpec() {
 
                 verify {
                     executor.exec("zfs", "set",
-                            "com.delphix.titan:remotes=[{\"provider\":\"nop\",\"name\":\"a\"}," +
+                            "io.titan-data:remotes=[{\"provider\":\"nop\",\"name\":\"a\"}," +
                                     "{\"provider\":\"engine\",\"name\":\"bar\",\"address\":\"a\"," +
                                     "\"username\":\"u\",\"password\":\"p\"}]",
                             "test/repo/repo")
@@ -171,7 +171,7 @@ class RemotesApiTest : StringSpec() {
                         "\"username\":\"u\",\"password\":\"p\"}"
                 verify {
                     executor.exec("zfs", "set",
-                            "com.delphix.titan:remotes=[{\"provider\":\"nop\",\"name\":\"foo\"}," +
+                            "io.titan-data:remotes=[{\"provider\":\"nop\",\"name\":\"foo\"}," +
                                     "{\"provider\":\"engine\",\"name\":\"bar\",\"address\":\"b\"," +
                                     "\"username\":\"u\",\"password\":\"p\"}]",
                             "test/repo/repo")
@@ -192,7 +192,7 @@ class RemotesApiTest : StringSpec() {
                 response.status() shouldBe HttpStatusCode.OK
                 verify {
                     executor.exec("zfs", "set",
-                            "com.delphix.titan:remotes=[{\"provider\":\"nop\",\"name\":\"foo\"}," +
+                            "io.titan-data:remotes=[{\"provider\":\"nop\",\"name\":\"foo\"}," +
                                     "{\"provider\":\"engine\",\"name\":\"baz\",\"address\":\"b\"," +
                                     "\"username\":\"u\",\"password\":\"p\"}]",
                             "test/repo/repo")
@@ -224,7 +224,7 @@ class RemotesApiTest : StringSpec() {
 
                 verify {
                     executor.exec("zfs", "set",
-                            "com.delphix.titan:remotes=[{\"provider\":\"nop\",\"name\":\"foo\"}]",
+                            "io.titan-data:remotes=[{\"provider\":\"nop\",\"name\":\"foo\"}]",
                             "test/repo/repo")
                 }
             }

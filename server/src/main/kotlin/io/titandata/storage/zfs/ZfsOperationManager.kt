@@ -19,7 +19,7 @@ import com.google.gson.JsonSyntaxException
  * as a new commit (for pull). In order to support this, all metadata about the operation
  * is stored with the operation itself, such that we can restart the titan server and
  * automatically resume any in-flight operations. To do this, we serialize the entire
- * Operation object to the 'com.delphix.titan:operation' property, which we can then use
+ * Operation object to the 'io.titan-data:operation' property, which we can then use
  * to differentiate these datasets from other GUIDs within the repository.
  *
  * The actual storage and consumption of this information is driven through the OperationProvider
@@ -112,7 +112,7 @@ class ZfsOperationManager(val provider: ZfsStorageProvider) {
      * Commit an operation. Like a normal commit, it takes a recursive snapshot of the dataset,
      * and sets the metadata property. Unlike the normal commit process, we don't take the
      * timestamp from the created dataset, but assume that it's set in the provided commit data.
-     * This will also clear the com.delphix.titan:operation property, at which point it will
+     * This will also clear the io.titan-data:operation property, at which point it will
      * stop showing up as an operation.
      */
     fun commitOperation(repo: String, id: String, commit: Commit) {

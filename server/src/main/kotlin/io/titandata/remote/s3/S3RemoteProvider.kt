@@ -30,7 +30,7 @@ import java.lang.IllegalArgumentException
  */
 class S3RemoteProvider(val providers: ProviderModule) : BaseRemoteProvider() {
 
-    private val METADATA_PROP = "com.delphix.titan"
+    private val METADATA_PROP = "io.titan-data"
     private val gson = ModelTypeAdapters.configure(GsonBuilder()).create()
 
     fun getClient(remote: Remote, params: RemoteParameters): AmazonS3 {

@@ -14,7 +14,7 @@ import com.google.gson.reflect.TypeToken
  * All repositories are placed under the "<pool>/repo" dataset. This is done to provide additional
  * ZFS namespace for titan (such as deathrow for cleaning commits). Within each repo, there can be
  * any number of child datasets, each named by a GUID, that can contain snapshots. Only one of
- * these can be active at any time, however, and is noted by the "com.delphix.titan:active"
+ * these can be active at any time, however, and is noted by the "io.titan-data:active"
  * property on the root repo dataset. Within each repo dataset there can be any number of named
  * volumes, and snapshots are taken at the root of each repo dataset. The result is a hierarchy as
  * such:
@@ -68,7 +68,7 @@ class ZfsRepositoryManager(val provider: ZfsStorageProvider) {
     /**
      * Create a new repository. This involves three steps:
      *
-     *  1. Create a new root repo dataset, with the com.delphix.titan:active property pointing to
+     *  1. Create a new root repo dataset, with the io.titan-data:active property pointing to
      *     a new GUID.
      *  2. Create a new dataset with that GUID beneath the root repo
      *  3. Create a default snapshot named 'initial'

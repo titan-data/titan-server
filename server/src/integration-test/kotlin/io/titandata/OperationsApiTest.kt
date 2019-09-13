@@ -84,14 +84,14 @@ class OperationsApiTest : StringSpec() {
     override fun testCaseOrder() = TestCaseOrder.Random
 
     fun loadOperations(repo: String, vararg operations: OperationData) {
-        every { executor.exec("zfs", "list", "-Ho", "name,com.delphix.titan:metadata",
+        every { executor.exec("zfs", "list", "-Ho", "name,io.titan-data:metadata",
                 "test/repo/$repo") } returns "test/repo/$repo\t{}"
-        every { executor.exec("zfs", "list", "-Ho", "name,com.delphix.titan:metadata",
+        every { executor.exec("zfs", "list", "-Ho", "name,io.titan-data:metadata",
                 "-d", "1", "test/repo") } returns "test/repo/$repo\t{}"
         val lines = operations.map { o -> "test/repo/$repo/${o.operation.id}\t" + gson.toJson(o) }
-        every { executor.exec("zfs", "list", "-Ho", "name,com.delphix.titan:operation",
+        every { executor.exec("zfs", "list", "-Ho", "name,io.titan-data:operation",
                 "-d", "1", "test/repo/foo") } returns lines.joinToString("\n")
-        every { executor.exec("zfs", "list", "-Ho", "com.delphix.titan:remotes",
+        every { executor.exec("zfs", "list", "-Ho", "io.titan-data:remotes",
                 "test/repo/$repo") } returns "[{\"name\":\"remote\",\"provider\":\"nop\"}]"
         providers.operation.loadState()
     }
@@ -110,7 +110,7 @@ class OperationsApiTest : StringSpec() {
 
     init {
         "list empty operations succeeds" {
-            every { executor.exec("zfs", "list", "-Ho", "name,com.delphix.titan:metadata",
+            every { executor.exec("zfs", "list", "-Ho", "name,io.titan-data:metadata",
                     "test/repo/foo") } returns "test/repo/foo\t{}"
             with(engine.handleRequest(HttpMethod.Get, "/v1/repositories/foo/operations")) {
                 response.status() shouldBe HttpStatusCode.OK
@@ -132,9 +132,9 @@ class OperationsApiTest : StringSpec() {
         }
 
         "get operation fails for non-existent operation" {
-            every { executor.exec("zfs", "list", "-Ho", "name,com.delphix.titan:metadata",
+            every { executor.exec("zfs", "list", "-Ho", "name,io.titan-data:metadata",
                     "test/repo/foo") } returns "test/repo/foo\t{}"
-            every { executor.exec("zfs", "list", "-Ho", "name,com.delphix.titan:metadata",
+            every { executor.exec("zfs", "list", "-Ho", "name,io.titan-data:metadata",
                     "-d", "1", "test/repo") } returns "test/repo/foo\t{}"
             with(engine.handleRequest(HttpMethod.Get, "/v1/repositories/foo/operations/id")) {
                 response.status() shouldBe HttpStatusCode.NotFound
@@ -210,16 +210,16 @@ class OperationsApiTest : StringSpec() {
         }
 
         "push starts operation" {
-            every { executor.exec("zfs", "list", "-Ho", "name,com.delphix.titan:metadata",
+            every { executor.exec("zfs", "list", "-Ho", "name,io.titan-data:metadata",
                     "test/repo/foo") } returns "test/repo/foo\t{}"
-            every { executor.exec("zfs", "list", "-Ho", "name,com.delphix.titan:metadata",
+            every { executor.exec("zfs", "list", "-Ho", "name,io.titan-data:metadata",
                     "-d", "1", "test/repo") } returns "test/repo/foo\t{}"
-            every { executor.exec("zfs", "list", "-Ho", "com.delphix.titan:remotes",
+            every { executor.exec("zfs", "list", "-Ho", "io.titan-data:remotes",
                     "test/repo/foo") } returns "[{\"name\":\"remote\",\"provider\":\"nop\"}]"
             every { executor.exec("zfs", "list", "-Ho", "name,defer_destroy", "-t",
                     "snapshot", "-d", "2", "test/repo/foo") } returns
                     "test/repo/foo/guid@commit\toff"
-            every { executor.exec("zfs", "list", "-Ho", "com.delphix.titan:metadata",
+            every { executor.exec("zfs", "list", "-Ho", "io.titan-data:metadata",
                     "test/repo/foo/guid@commit") } returns "{}"
 
             val result = engine.handleRequest(HttpMethod.Post, "/v1/repositories/foo/remotes/remote/commits/commit/push") {
@@ -238,11 +238,11 @@ class OperationsApiTest : StringSpec() {
         }
 
         "pull starts operation" {
-            every { executor.exec("zfs", "list", "-Ho", "name,com.delphix.titan:metadata",
+            every { executor.exec("zfs", "list", "-Ho", "name,io.titan-data:metadata",
                     "test/repo/foo") } returns "test/repo/foo\t{}"
-            every { executor.exec("zfs", "list", "-Ho", "name,com.delphix.titan:metadata",
+            every { executor.exec("zfs", "list", "-Ho", "name,io.titan-data:metadata",
                     "-d", "1", "test/repo") } returns "test/repo/foo\t{}"
-            every { executor.exec("zfs", "list", "-Ho", "com.delphix.titan:remotes",
+            every { executor.exec("zfs", "list", "-Ho", "io.titan-data:remotes",
                     "test/repo/foo") } returns "[{\"name\":\"remote\",\"provider\":\"nop\"}]"
             every { executor.exec("zfs", "list", "-Ho", "name,defer_destroy", "-t",
                     "snapshot", "-d", "2", "test/repo/foo") } returns ""

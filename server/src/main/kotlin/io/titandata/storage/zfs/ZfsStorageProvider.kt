@@ -50,10 +50,10 @@ class ZfsStorageProvider(
         OPERATION("operation")
     }
 
-    internal val METADATA_PROP = "com.delphix.titan:metadata"
-    internal val ACTIVE_PROP = "com.delphix.titan:active"
-    internal val REMOTES_PROP = "com.delphix.titan:remotes"
-    internal val OPERATION_PROP = "com.delphix.titan:operation"
+    internal val METADATA_PROP = "io.titan-data:metadata"
+    internal val ACTIVE_PROP = "io.titan-data:active"
+    internal val REMOTES_PROP = "io.titan-data:remotes"
+    internal val OPERATION_PROP = "io.titan-data:operation"
     internal val INITIAL_COMMIT = "initial"
     internal val executor = CommandExecutor()
     internal val generator = GuidGenerator()
@@ -155,11 +155,11 @@ class ZfsStorageProvider(
 
     /**
      * Helper method to get the current active dataset for a given repo. We accomplish this by
-     * looking at the com.delphix.titan:active property.
+     * looking at the io.titan-data:active property.
      */
     fun getActive(name: String): String {
         try {
-            return executor.exec("zfs", "list", "-Hpo", "com.delphix.titan:active",
+            return executor.exec("zfs", "list", "-Hpo", "io.titan-data:active",
                     "$poolName/repo/$name").trim()
         } catch (e: CommandException) {
             checkNoSuchRepository(e, name)

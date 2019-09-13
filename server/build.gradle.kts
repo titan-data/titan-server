@@ -8,7 +8,7 @@ plugins {
 }
 
 val titanVersion: String by rootProject.extra
-group = "com.delphix.titan"
+group = "io.titan-data"
 version = titanVersion
 
 repositories {
@@ -45,7 +45,7 @@ jacoco {
 }
 
 application {
-    mainClassName = "com.delphix.titan.ApplicationKt"
+    mainClassName = "io.titandata.ApplicationKt"
 }
 
 tasks.withType<ShadowJar> {

@@ -75,10 +75,10 @@ class VolumesApiTest : StringSpec() {
      */
     init {
         "create volume succeeds" {
-            every { executor.exec("zfs", "list", "-Hpo", "com.delphix.titan:active",
+            every { executor.exec("zfs", "list", "-Hpo", "io.titan-data:active",
                     "test/repo/foo") } returns "guid"
             every { executor.exec("zfs", "create", "-o",
-                    "com.delphix.titan:metadata={\"a\":\"b\"}", "test/repo/foo/guid/vol") } returns ""
+                    "io.titan-data:metadata={\"a\":\"b\"}", "test/repo/foo/guid/vol") } returns ""
             every { executor.exec("zfs", "snapshot", "test/repo/foo/guid/vol@initial") } returns ""
             every { executor.exec("mkdir", "-p", "/var/lib/test/mnt/foo/vol") } returns ""
             with(engine.handleRequest(HttpMethod.Post, "/VolumeDriver.Create") {
@@ -90,7 +90,7 @@ class VolumesApiTest : StringSpec() {
 
                 verify {
                     executor.exec("zfs", "create", "-o",
-                            "com.delphix.titan:metadata={\"a\":\"b\"}", "test/repo/foo/guid/vol")
+                            "io.titan-data:metadata={\"a\":\"b\"}", "test/repo/foo/guid/vol")
                     executor.exec("zfs", "snapshot", "test/repo/foo/guid/vol@initial")
                     executor.exec("mkdir", "-p", "/var/lib/test/mnt/foo/vol")
                 }
@@ -133,7 +133,7 @@ class VolumesApiTest : StringSpec() {
         }
 
         "remove volume succeeds" {
-            every { executor.exec("zfs", "list", "-Hpo", "com.delphix.titan:active",
+            every { executor.exec("zfs", "list", "-Hpo", "io.titan-data:active",
                     "test/repo/foo") } returns "guid"
             every { executor.exec("zfs", "destroy", "-R", "test/repo/foo/guid/vol") } returns ""
             every { executor.exec("rmdir", "/var/lib/test/mnt/foo/vol") } returns ""
@@ -150,9 +150,9 @@ class VolumesApiTest : StringSpec() {
         }
 
         "mount volume succeeds" {
-            every { executor.exec("zfs", "list", "-Hpo", "com.delphix.titan:active",
+            every { executor.exec("zfs", "list", "-Hpo", "io.titan-data:active",
                     "test/repo/foo") } returns "guid"
-            every { executor.exec("zfs", "list", "-Ho", "com.delphix.titan:metadata",
+            every { executor.exec("zfs", "list", "-Ho", "io.titan-data:metadata",
                     "test/repo/foo/guid/vol") } returns "{}"
             every { executor.exec("mount", "-t", "zfs", "test/repo/foo/guid/vol",
                     "/var/lib/test/mnt/foo/vol") } returns ""
@@ -171,7 +171,7 @@ class VolumesApiTest : StringSpec() {
         }
 
         "unmount volume succeeds" {
-            every { executor.exec("zfs", "list", "-Hpo", "com.delphix.titan:active",
+            every { executor.exec("zfs", "list", "-Hpo", "io.titan-data:active",
                     "test/repo/foo") } returns "guid"
             every { executor.exec("umount", "/var/lib/test/mnt/foo/vol") } returns ""
             with(engine.handleRequest(HttpMethod.Post, "/VolumeDriver.Unmount") {
@@ -188,9 +188,9 @@ class VolumesApiTest : StringSpec() {
         }
 
         "get path succeeds" {
-            every { executor.exec("zfs", "list", "-Hpo", "com.delphix.titan:active",
+            every { executor.exec("zfs", "list", "-Hpo", "io.titan-data:active",
                     "test/repo/foo") } returns "guid"
-            every { executor.exec("zfs", "list", "-Ho", "com.delphix.titan:metadata",
+            every { executor.exec("zfs", "list", "-Ho", "io.titan-data:metadata",
                     "test/repo/foo/guid/vol") } returns "{\"a\":\"b\"}"
             with(engine.handleRequest(HttpMethod.Post, "/VolumeDriver.Path") {
                 setBody("{\"Name\":\"foo/vol\"}")
@@ -202,9 +202,9 @@ class VolumesApiTest : StringSpec() {
         }
 
         "get volume succeeds" {
-            every { executor.exec("zfs", "list", "-Hpo", "com.delphix.titan:active",
+            every { executor.exec("zfs", "list", "-Hpo", "io.titan-data:active",
                     "test/repo/foo") } returns "guid"
-            every { executor.exec("zfs", "list", "-Ho", "com.delphix.titan:metadata",
+            every { executor.exec("zfs", "list", "-Ho", "io.titan-data:metadata",
                     "test/repo/foo/guid/vol") } returns "{\"a\":\"b\"}"
             with(engine.handleRequest(HttpMethod.Post, "/VolumeDriver.Get") {
                 setBody("{\"Name\":\"foo/vol\"}")
@@ -222,11 +222,11 @@ class VolumesApiTest : StringSpec() {
         }
 
         "list volumes succeeds" {
-            every { executor.exec("zfs", "list", "-Ho", "name,com.delphix.titan:metadata",
+            every { executor.exec("zfs", "list", "-Ho", "name,io.titan-data:metadata",
                     "-d", "1", "test/repo") } returns "test/repo/foo\t{}"
-            every { executor.exec("zfs", "list", "-Hpo", "com.delphix.titan:active",
+            every { executor.exec("zfs", "list", "-Hpo", "io.titan-data:active",
                     "test/repo/foo") } returns "guid"
-            every { executor.exec("zfs", "list", "-Ho", "name,com.delphix.titan:metadata",
+            every { executor.exec("zfs", "list", "-Ho", "name,io.titan-data:metadata",
                     "-r", "test/repo/foo/guid") } returns arrayOf(
                     "test/repo/foo\t{}",
                     "test/repo/foo/guid/one\t{\"a\":\"b\"}",

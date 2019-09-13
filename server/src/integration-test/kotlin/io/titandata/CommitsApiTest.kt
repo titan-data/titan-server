@@ -112,7 +112,7 @@ class CommitsApiTest : StringSpec() {
 
         "get commit succeeds" {
             every { executor.exec("zfs", "list", "-Ho", "name,defer_destroy", "-t", "snapshot", "-d", "2", "test/repo/foo") } returns "test/repo/foo/guid@hash\toff"
-            every { executor.exec("zfs", "list", "-Ho", "com.delphix.titan:metadata", "test/repo/foo/guid@hash") } returns "{\"a\":\"b\"}"
+            every { executor.exec("zfs", "list", "-Ho", "io.titan-data:metadata", "test/repo/foo/guid@hash") } returns "{\"a\":\"b\"}"
             with(engine.handleRequest(HttpMethod.Get, "/v1/repositories/foo/commits/hash")) {
                 response.status() shouldBe HttpStatusCode.OK
                 response.content shouldBe "{\"id\":\"hash\",\"properties\":{\"a\":\"b\"}}"
@@ -152,7 +152,7 @@ class CommitsApiTest : StringSpec() {
         "delete commit succeeds" {
             every { executor.exec("zfs", "list", "-Ho", "name,defer_destroy", "-t", "snapshot", "-d", "2", "test/repo/foo") } returns "test/repo/foo/guid@hash\toff"
             every { executor.exec("zfs", "destroy", "-rd", "test/repo/foo/guid@hash") } returns ""
-            every { executor.exec("zfs", "list", "-Hpo", "com.delphix.titan:active", "test/repo/foo") } returns "guid"
+            every { executor.exec("zfs", "list", "-Hpo", "io.titan-data:active", "test/repo/foo") } returns "guid"
             with(engine.handleRequest(HttpMethod.Delete, "/v1/repositories/foo/commits/hash")) {
                 response.status() shouldBe HttpStatusCode.NoContent
             }
@@ -179,11 +179,11 @@ class CommitsApiTest : StringSpec() {
         }
 
         "create commit succeeds" {
-            every { executor.exec("zfs", "list", "-Hpo", "com.delphix.titan:active", "test/repo/foo") } returns "guid"
+            every { executor.exec("zfs", "list", "-Hpo", "io.titan-data:active", "test/repo/foo") } returns "guid"
             every { executor.exec("zfs", "list", "-Ho", "name,defer_destroy", "-t", "snapshot", "-d", "2", "test/repo/foo") } returns ""
-            every { executor.exec("zfs", "snapshot", "-r", "-o", "com.delphix.titan:metadata={\"a\":\"b\"}", "test/repo/foo/guid@hash") } returns ""
+            every { executor.exec("zfs", "snapshot", "-r", "-o", "io.titan-data:metadata={\"a\":\"b\"}", "test/repo/foo/guid@hash") } returns ""
             every { executor.exec("zfs", "list", "-Hpo", "creation", "test/repo/foo/guid@hash") } returns "1556492646"
-            every { executor.exec("zfs", "set", "com.delphix.titan:metadata={\"a\":\"b\",\"timestamp\":\"2019-04-28T23:04:06Z\"}", "test/repo/foo/guid@hash") } returns ""
+            every { executor.exec("zfs", "set", "io.titan-data:metadata={\"a\":\"b\",\"timestamp\":\"2019-04-28T23:04:06Z\"}", "test/repo/foo/guid@hash") } returns ""
             with(engine.handleRequest(HttpMethod.Post, "/v1/repositories/foo/commits") {
                 addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
                 setBody("{\"id\":\"hash\",\"properties\":{\"a\":\"b\"}}")
@@ -212,14 +212,14 @@ class CommitsApiTest : StringSpec() {
             every { executor.exec("zfs", "list", "-Ho", "name,defer_destroy", "-t", "snapshot",
                     "-d", "2", "test/repo/foo")
             } returns "test/repo/foo/guid@hash\toff"
-            every { executor.exec("zfs", "list", "-rHo", "name,com.delphix.titan:metadata", "test/repo/foo/guid") } returns
+            every { executor.exec("zfs", "list", "-rHo", "name,io.titan-data:metadata", "test/repo/foo/guid") } returns
                     arrayOf("test/repo/foo/guid\t-", "test/repo/foo/guid/v0\t{}", "test/repo/foo/guid/v1\t{}").joinToString("\n")
             every { executor.exec("zfs", "create", "test/repo/foo/newguid") } returns ""
-            every { executor.exec("zfs", "clone", "-o", "com.delphix.titan:metadata={}", "test/repo/foo/guid/v0@hash",
+            every { executor.exec("zfs", "clone", "-o", "io.titan-data:metadata={}", "test/repo/foo/guid/v0@hash",
                     "test/repo/foo/newguid/v0") } returns ""
-            every { executor.exec("zfs", "clone", "-o", "com.delphix.titan:metadata={}", "test/repo/foo/guid/v1@hash",
+            every { executor.exec("zfs", "clone", "-o", "io.titan-data:metadata={}", "test/repo/foo/guid/v1@hash",
                     "test/repo/foo/newguid/v1") } returns ""
-            every { executor.exec("zfs", "set", "com.delphix.titan:active=newguid",
+            every { executor.exec("zfs", "set", "io.titan-data:active=newguid",
                     "test/repo/foo") } returns ""
             with(engine.handleRequest(HttpMethod.Post, "/v1/repositories/foo/commits/hash/checkout")) {
                 response.status() shouldBe HttpStatusCode.NoContent

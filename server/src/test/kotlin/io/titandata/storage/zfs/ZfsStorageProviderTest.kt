@@ -107,26 +107,26 @@ class ZfsStorageProviderTest : StringSpec() {
             every { executor.exec(*anyVararg()) } returns ""
             provider.cloneCommit("foo", "guid", "hash", "newguid")
             verifySequence {
-                executor.exec("zfs", "list", "-rHo", "name,com.delphix.titan:metadata", "test/repo/foo/guid")
+                executor.exec("zfs", "list", "-rHo", "name,io.titan-data:metadata", "test/repo/foo/guid")
                 executor.exec("zfs", "create", "test/repo/foo/newguid")
             }
             confirmVerified()
         }
 
         "clone commit clones all volumes" {
-            every { executor.exec("zfs", "list", "-rHo", "name,com.delphix.titan:metadata", "test/repo/foo/guid") } returns
+            every { executor.exec("zfs", "list", "-rHo", "name,io.titan-data:metadata", "test/repo/foo/guid") } returns
                     arrayOf("test/repo/foo/guid\t-", "test/repo/foo/guid/v0\t{\"a\":\"b\"}", "test/repo/foo/guid/v1\t{\"b\":\"c\"}").joinToString("\n")
             every { executor.exec("zfs", "create", "test/repo/foo/newguid") } returns ""
-            every { executor.exec("zfs", "clone", "-o", "com.delphix.titan:metadata={\"a\":\"b\"}", "test/repo/foo/guid/v0@hash",
+            every { executor.exec("zfs", "clone", "-o", "io.titan-data:metadata={\"a\":\"b\"}", "test/repo/foo/guid/v0@hash",
                     "test/repo/foo/newguid/v0") } returns ""
-            every { executor.exec("zfs", "clone", "-o", "com.delphix.titan:metadata={\"b\":\"c\"}", "test/repo/foo/guid/v1@hash",
+            every { executor.exec("zfs", "clone", "-o", "io.titan-data:metadata={\"b\":\"c\"}", "test/repo/foo/guid/v1@hash",
                     "test/repo/foo/newguid/v1") } returns ""
             provider.cloneCommit("foo", "guid", "hash", "newguid")
             verifySequence {
-                executor.exec("zfs", "list", "-rHo", "name,com.delphix.titan:metadata", "test/repo/foo/guid")
+                executor.exec("zfs", "list", "-rHo", "name,io.titan-data:metadata", "test/repo/foo/guid")
                 executor.exec("zfs", "create", "test/repo/foo/newguid")
-                executor.exec("zfs", "clone", "-o", "com.delphix.titan:metadata={\"a\":\"b\"}", "test/repo/foo/guid/v0@hash", "test/repo/foo/newguid/v0")
-                executor.exec("zfs", "clone", "-o", "com.delphix.titan:metadata={\"b\":\"c\"}", "test/repo/foo/guid/v1@hash", "test/repo/foo/newguid/v1")
+                executor.exec("zfs", "clone", "-o", "io.titan-data:metadata={\"a\":\"b\"}", "test/repo/foo/guid/v0@hash", "test/repo/foo/newguid/v0")
+                executor.exec("zfs", "clone", "-o", "io.titan-data:metadata={\"b\":\"c\"}", "test/repo/foo/guid/v1@hash", "test/repo/foo/newguid/v1")
             }
             confirmVerified()
         }

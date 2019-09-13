@@ -172,7 +172,7 @@ To publish the image to dockerhub and the client to artifactory, run:
 ```
 
 This should really only be done by CI/CD automation, and will require you to `docker login` with
-appropriate privileges prior to pushing to the `delphix/titan` image.
+appropriate privileges prior to pushing to the `titandata/titan` image.
 
 ## ZFS Packaging
 

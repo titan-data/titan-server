@@ -47,3 +47,5 @@ jobs:
       deploy:
         - provider: script
           script: ./gradlew publishDockerVersion publishDockerLatest -PserverImageName=$DOCKER_IMAGE -PtitanVersion=$TRAVIS_TAG
+          on:
+            tags: true

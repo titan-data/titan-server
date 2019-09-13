@@ -4,16 +4,16 @@
 
 package io.titandata.serialization
 
-import io.titandata.models.NopParameters
-import io.titandata.models.NopRemote
-import io.titandata.models.Remote
-import io.titandata.models.RemoteParameters
 import com.google.gson.GsonBuilder
 import com.google.gson.JsonParseException
 import io.kotlintest.matchers.types.shouldBeInstanceOf
 import io.kotlintest.shouldBe
 import io.kotlintest.shouldThrow
 import io.kotlintest.specs.StringSpec
+import io.titandata.models.NopParameters
+import io.titandata.models.NopRemote
+import io.titandata.models.Remote
+import io.titandata.models.RemoteParameters
 
 class NopRemoteTest : StringSpec() {
 

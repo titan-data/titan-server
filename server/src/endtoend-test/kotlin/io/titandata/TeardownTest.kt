@@ -4,11 +4,11 @@
 
 package io.titandata
 
-import io.titandata.client.infrastructure.ClientException
-import io.titandata.models.Repository
 import io.kotlintest.Spec
 import io.kotlintest.shouldBe
 import io.kotlintest.shouldThrow
+import io.titandata.client.infrastructure.ClientException
+import io.titandata.models.Repository
 
 class TeardownTest : EndToEndTest() {
 

@@ -4,14 +4,6 @@
 
 package io.titandata.storage.zfs
 
-import io.titandata.exception.CommandException
-import io.titandata.exception.NoSuchObjectException
-import io.titandata.models.Commit
-import io.titandata.models.NopParameters
-import io.titandata.models.Operation
-import io.titandata.storage.OperationData
-import io.titandata.util.CommandExecutor
-import io.titandata.util.GuidGenerator
 import io.kotlintest.TestCase
 import io.kotlintest.TestCaseOrder
 import io.kotlintest.TestResult
@@ -28,6 +20,14 @@ import io.mockk.impl.annotations.MockK
 import io.mockk.impl.annotations.OverrideMockKs
 import io.mockk.verify
 import io.mockk.verifySequence
+import io.titandata.exception.CommandException
+import io.titandata.exception.NoSuchObjectException
+import io.titandata.models.Commit
+import io.titandata.models.NopParameters
+import io.titandata.models.Operation
+import io.titandata.storage.OperationData
+import io.titandata.util.CommandExecutor
+import io.titandata.util.GuidGenerator
 
 class ZfsOperationTest : StringSpec() {
 

@@ -4,6 +4,10 @@
 
 package io.titandata
 
+import io.kotlintest.Spec
+import io.kotlintest.TestCaseOrder
+import io.kotlintest.shouldBe
+import io.kotlintest.shouldThrow
 import io.titandata.client.infrastructure.ClientException
 import io.titandata.client.infrastructure.ServerException
 import io.titandata.models.Commit
@@ -14,10 +18,6 @@ import io.titandata.models.VolumeCreateRequest
 import io.titandata.models.VolumeMountRequest
 import io.titandata.models.VolumeRequest
 import io.titandata.serialization.RemoteUtil
-import io.kotlintest.Spec
-import io.kotlintest.TestCaseOrder
-import io.kotlintest.shouldBe
-import io.kotlintest.shouldThrow
 
 class SshWorkflowTest : EndToEndTest() {
 

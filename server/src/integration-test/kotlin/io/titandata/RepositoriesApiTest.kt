@@ -1,9 +1,5 @@
 package io.titandata
 
-import io.titandata.exception.CommandException
-import io.titandata.models.Error
-import io.titandata.storage.zfs.ZfsStorageProvider
-import io.titandata.util.CommandExecutor
 import com.google.gson.Gson
 import io.kotlintest.Spec
 import io.kotlintest.TestCase
@@ -27,6 +23,10 @@ import io.mockk.every
 import io.mockk.impl.annotations.InjectMockKs
 import io.mockk.impl.annotations.MockK
 import io.mockk.impl.annotations.OverrideMockKs
+import io.titandata.exception.CommandException
+import io.titandata.models.Error
+import io.titandata.storage.zfs.ZfsStorageProvider
+import io.titandata.util.CommandExecutor
 import java.util.concurrent.TimeUnit
 
 @UseExperimental(KtorExperimentalAPI::class)

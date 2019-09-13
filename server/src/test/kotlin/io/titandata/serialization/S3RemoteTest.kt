@@ -4,15 +4,15 @@
 
 package io.titandata.serialization
 
-import io.titandata.models.Remote
-import io.titandata.models.RemoteParameters
-import io.titandata.models.S3Parameters
-import io.titandata.models.S3Remote
 import com.google.gson.GsonBuilder
 import io.kotlintest.matchers.types.shouldBeInstanceOf
 import io.kotlintest.shouldBe
 import io.kotlintest.shouldThrow
 import io.kotlintest.specs.StringSpec
+import io.titandata.models.Remote
+import io.titandata.models.RemoteParameters
+import io.titandata.models.S3Parameters
+import io.titandata.models.S3Remote
 
 class S3RemoteTest : StringSpec() {
 

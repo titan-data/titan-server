@@ -4,7 +4,6 @@
 
 package io.titandata.remote.engine
 
-import io.titandata.ProviderModule
 import io.kotlintest.TestCase
 import io.kotlintest.TestCaseOrder
 import io.kotlintest.TestResult
@@ -13,6 +12,7 @@ import io.mockk.MockKAnnotations
 import io.mockk.clearAllMocks
 import io.mockk.impl.annotations.InjectMockKs
 import io.mockk.impl.annotations.OverrideMockKs
+import io.titandata.ProviderModule
 
 class EngineRemoteProviderTest : StringSpec() {
 

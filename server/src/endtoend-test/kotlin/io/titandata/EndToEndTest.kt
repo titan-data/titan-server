@@ -4,14 +4,14 @@
 
 package io.titandata
 
+import io.kotlintest.TestCaseOrder
+import io.kotlintest.specs.StringSpec
 import io.titandata.client.apis.CommitsApi
 import io.titandata.client.apis.OperationsApi
 import io.titandata.client.apis.RemotesApi
 import io.titandata.client.apis.RepositoriesApi
 import io.titandata.client.apis.VolumeApi
 import io.titandata.models.ProgressEntry
-import io.kotlintest.TestCaseOrder
-import io.kotlintest.specs.StringSpec
 import org.slf4j.LoggerFactory
 
 abstract class EndToEndTest : StringSpec() {

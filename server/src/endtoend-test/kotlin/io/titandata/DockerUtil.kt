@@ -4,9 +4,9 @@
 
 package io.titandata
 
+import com.jcraft.jsch.JSch
 import io.titandata.exception.CommandException
 import io.titandata.util.CommandExecutor
-import com.jcraft.jsch.JSch
 import java.net.InetAddress
 import okhttp3.OkHttpClient
 import okhttp3.Request

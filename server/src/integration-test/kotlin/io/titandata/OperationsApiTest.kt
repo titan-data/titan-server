@@ -4,14 +4,6 @@
 
 package io.titandata
 
-import io.titandata.models.Error
-import io.titandata.models.NopParameters
-import io.titandata.models.Operation
-import io.titandata.serialization.ModelTypeAdapters
-import io.titandata.storage.OperationData
-import io.titandata.storage.zfs.ZfsStorageProvider
-import io.titandata.util.CommandExecutor
-import io.titandata.util.GuidGenerator
 import com.google.gson.Gson
 import com.google.gson.GsonBuilder
 import io.kotlintest.Spec
@@ -36,6 +28,14 @@ import io.mockk.every
 import io.mockk.impl.annotations.InjectMockKs
 import io.mockk.impl.annotations.MockK
 import io.mockk.impl.annotations.OverrideMockKs
+import io.titandata.models.Error
+import io.titandata.models.NopParameters
+import io.titandata.models.Operation
+import io.titandata.serialization.ModelTypeAdapters
+import io.titandata.storage.OperationData
+import io.titandata.storage.zfs.ZfsStorageProvider
+import io.titandata.util.CommandExecutor
+import io.titandata.util.GuidGenerator
 import java.time.Duration
 import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.time.delay

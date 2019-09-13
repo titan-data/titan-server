@@ -11,6 +11,11 @@ import com.amazonaws.services.s3.model.DeleteObjectsRequest
 import com.amazonaws.services.s3.model.ListObjectsRequest
 import com.amazonaws.services.s3.model.ObjectMetadata
 import com.amazonaws.services.s3.model.PutObjectRequest
+import io.kotlintest.SkipTestException
+import io.kotlintest.Spec
+import io.kotlintest.TestCaseOrder
+import io.kotlintest.shouldBe
+import io.kotlintest.shouldThrow
 import io.titandata.client.infrastructure.ClientException
 import io.titandata.client.infrastructure.ServerException
 import io.titandata.models.Commit
@@ -22,11 +27,6 @@ import io.titandata.models.VolumeMountRequest
 import io.titandata.models.VolumeRequest
 import io.titandata.remote.s3.S3RemoteProvider
 import io.titandata.util.GuidGenerator
-import io.kotlintest.SkipTestException
-import io.kotlintest.Spec
-import io.kotlintest.TestCaseOrder
-import io.kotlintest.shouldBe
-import io.kotlintest.shouldThrow
 import java.io.ByteArrayInputStream
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider
 

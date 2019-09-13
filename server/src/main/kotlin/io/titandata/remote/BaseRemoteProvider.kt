@@ -12,10 +12,10 @@ import io.titandata.models.RemoteParameters
 
 abstract class BaseRemoteProvider : RemoteProvider {
     override fun validateOperation(
-            remote: Remote,
-            commitId: String,
-            opType: Operation.Type,
-            params: RemoteParameters
+        remote: Remote,
+        commitId: String,
+        opType: Operation.Type,
+        params: RemoteParameters
     ) {
         if (opType == Operation.Type.PULL) {
             getCommit(remote, commitId, params)

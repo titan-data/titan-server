@@ -3,8 +3,6 @@
  */
 package io.titandata.apis
 
-import io.titandata.ProviderModule
-import io.titandata.models.Commit
 import io.ktor.application.call
 import io.ktor.http.HttpStatusCode
 import io.ktor.request.receive
@@ -14,6 +12,8 @@ import io.ktor.routing.delete
 import io.ktor.routing.get
 import io.ktor.routing.post
 import io.ktor.routing.route
+import io.titandata.ProviderModule
+import io.titandata.models.Commit
 
 /**
  * Handler for all commit related APIs. These are simplistic wrappers around the underlying storage

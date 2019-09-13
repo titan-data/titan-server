@@ -4,6 +4,7 @@
 
 package io.titandata.remote.ssh
 
+import com.google.gson.GsonBuilder
 import io.titandata.ProviderModule
 import io.titandata.exception.CommandException
 import io.titandata.exception.NoSuchObjectException
@@ -18,7 +19,6 @@ import io.titandata.operation.OperationExecutor
 import io.titandata.remote.BaseRemoteProvider
 import io.titandata.serialization.ModelTypeAdapters
 import io.titandata.sync.RsyncExecutor
-import com.google.gson.GsonBuilder
 import java.io.File
 import java.io.IOException
 import java.nio.file.Files
@@ -74,11 +74,11 @@ class SshRemoteProvider(val providers: ProviderModule) : BaseRemoteProvider() {
     }
 
     fun buildSshCommand(
-            remote: Remote,
-            params: RemoteParameters,
-            file: File,
-            includeAddress: Boolean,
-            vararg command: String
+        remote: Remote,
+        params: RemoteParameters,
+        file: File,
+        includeAddress: Boolean,
+        vararg command: String
     ): List<String> {
         remote as SshRemote
         val args = mutableListOf<String>()

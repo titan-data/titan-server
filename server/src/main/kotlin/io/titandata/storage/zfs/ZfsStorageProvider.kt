@@ -4,6 +4,9 @@
 
 package io.titandata.storage.zfs
 
+import com.google.gson.GsonBuilder
+import com.google.gson.JsonSyntaxException
+import com.google.gson.reflect.TypeToken
 import io.titandata.exception.CommandException
 import io.titandata.exception.InvalidStateException
 import io.titandata.exception.NoSuchObjectException
@@ -18,9 +21,6 @@ import io.titandata.storage.OperationData
 import io.titandata.storage.StorageProvider
 import io.titandata.util.CommandExecutor
 import io.titandata.util.GuidGenerator
-import com.google.gson.GsonBuilder
-import com.google.gson.JsonSyntaxException
-import com.google.gson.reflect.TypeToken
 import org.slf4j.LoggerFactory
 
 /**

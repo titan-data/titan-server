@@ -4,19 +4,6 @@
 
 package io.titandata.remote.ssh
 
-import io.titandata.ProviderModule
-import io.titandata.exception.CommandException
-import io.titandata.exception.NoSuchObjectException
-import io.titandata.exception.ObjectExistsException
-import io.titandata.models.Commit
-import io.titandata.models.Operation
-import io.titandata.models.ProgressEntry
-import io.titandata.models.SshParameters
-import io.titandata.models.SshRemote
-import io.titandata.models.Volume
-import io.titandata.operation.OperationExecutor
-import io.titandata.storage.zfs.ZfsStorageProvider
-import io.titandata.util.CommandExecutor
 import io.kotlintest.TestCase
 import io.kotlintest.TestCaseOrder
 import io.kotlintest.TestResult
@@ -34,6 +21,19 @@ import io.mockk.impl.annotations.SpyK
 import io.mockk.just
 import io.mockk.mockk
 import io.mockk.slot
+import io.titandata.ProviderModule
+import io.titandata.exception.CommandException
+import io.titandata.exception.NoSuchObjectException
+import io.titandata.exception.ObjectExistsException
+import io.titandata.models.Commit
+import io.titandata.models.Operation
+import io.titandata.models.ProgressEntry
+import io.titandata.models.SshParameters
+import io.titandata.models.SshRemote
+import io.titandata.models.Volume
+import io.titandata.operation.OperationExecutor
+import io.titandata.storage.zfs.ZfsStorageProvider
+import io.titandata.util.CommandExecutor
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.io.File

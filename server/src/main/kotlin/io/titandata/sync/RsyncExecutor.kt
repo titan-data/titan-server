@@ -25,13 +25,13 @@ import org.slf4j.LoggerFactory
  * The username and and host should be encoded into either the src
  */
 class RsyncExecutor(
-        val executor: OperationExecutor,
-        val port: Int?,
-        val password: String?,
-        val key: String?,
-        val src: String,
-        val dst: String,
-        val cmd: CommandExecutor = CommandExecutor()
+    val executor: OperationExecutor,
+    val port: Int?,
+    val password: String?,
+    val key: String?,
+    val src: String,
+    val dst: String,
+    val cmd: CommandExecutor = CommandExecutor()
 ) : Runnable {
 
     companion object {

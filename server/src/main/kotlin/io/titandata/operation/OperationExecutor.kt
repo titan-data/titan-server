@@ -23,12 +23,12 @@ import org.slf4j.LoggerFactory
  * back progress, and default hadling of errors
  */
 class OperationExecutor(
-        val providers: ProviderModule,
-        val operation: Operation,
-        val repo: String,
-        val remote: Remote,
-        val params: RemoteParameters,
-        val isResume: Boolean = false
+    val providers: ProviderModule,
+    val operation: Operation,
+    val repo: String,
+    val remote: Remote,
+    val params: RemoteParameters,
+    val isResume: Boolean = false
 ) : Runnable {
 
     companion object {

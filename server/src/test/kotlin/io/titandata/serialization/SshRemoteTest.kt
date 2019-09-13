@@ -4,11 +4,6 @@
 
 package io.titandata.serialization
 
-import io.titandata.models.Remote
-import io.titandata.models.RemoteParameters
-import io.titandata.models.SshParameters
-import io.titandata.models.SshRemote
-import io.titandata.serialization.remote.SshRemoteUtil
 import com.google.gson.GsonBuilder
 import io.kotlintest.TestCase
 import io.kotlintest.TestResult
@@ -22,6 +17,11 @@ import io.mockk.every
 import io.mockk.impl.annotations.InjectMockKs
 import io.mockk.impl.annotations.MockK
 import io.mockk.impl.annotations.OverrideMockKs
+import io.titandata.models.Remote
+import io.titandata.models.RemoteParameters
+import io.titandata.models.SshParameters
+import io.titandata.models.SshRemote
+import io.titandata.serialization.remote.SshRemoteUtil
 import java.io.Console
 import org.junit.rules.TemporaryFolder
 

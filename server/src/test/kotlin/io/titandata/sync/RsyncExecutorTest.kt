@@ -4,14 +4,6 @@
 
 package io.titandata.sync
 
-import io.titandata.ProviderModule
-import io.titandata.exception.CommandException
-import io.titandata.models.Operation
-import io.titandata.models.ProgressEntry
-import io.titandata.models.SshParameters
-import io.titandata.models.SshRemote
-import io.titandata.operation.OperationExecutor
-import io.titandata.util.CommandExecutor
 import io.kotlintest.TestCase
 import io.kotlintest.TestCaseOrder
 import io.kotlintest.TestResult
@@ -27,6 +19,14 @@ import io.mockk.impl.annotations.OverrideMockKs
 import io.mockk.impl.annotations.SpyK
 import io.mockk.just
 import io.mockk.mockk
+import io.titandata.ProviderModule
+import io.titandata.exception.CommandException
+import io.titandata.models.Operation
+import io.titandata.models.ProgressEntry
+import io.titandata.models.SshParameters
+import io.titandata.models.SshRemote
+import io.titandata.operation.OperationExecutor
+import io.titandata.util.CommandExecutor
 import java.io.ByteArrayInputStream
 import java.io.InputStream
 

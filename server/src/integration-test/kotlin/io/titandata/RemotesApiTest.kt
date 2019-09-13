@@ -4,9 +4,6 @@
 
 package io.titandata
 
-import io.titandata.remote.engine.EngineRemoteProvider
-import io.titandata.storage.zfs.ZfsStorageProvider
-import io.titandata.util.CommandExecutor
 import io.kotlintest.Spec
 import io.kotlintest.TestCase
 import io.kotlintest.TestCaseOrder
@@ -30,6 +27,9 @@ import io.mockk.impl.annotations.InjectMockKs
 import io.mockk.impl.annotations.MockK
 import io.mockk.impl.annotations.OverrideMockKs
 import io.mockk.verify
+import io.titandata.remote.engine.EngineRemoteProvider
+import io.titandata.storage.zfs.ZfsStorageProvider
+import io.titandata.util.CommandExecutor
 import java.util.concurrent.TimeUnit
 
 @UseExperimental(KtorExperimentalAPI::class)

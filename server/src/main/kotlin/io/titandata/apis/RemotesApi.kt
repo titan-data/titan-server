@@ -11,11 +11,6 @@
 */
 package io.titandata.apis
 
-import io.titandata.ProviderModule
-import io.titandata.exception.NoSuchObjectException
-import io.titandata.exception.ObjectExistsException
-import io.titandata.models.Remote
-import io.titandata.models.RemoteParameters
 import io.ktor.application.ApplicationCall
 import io.ktor.application.call
 import io.ktor.http.HttpStatusCode
@@ -26,6 +21,11 @@ import io.ktor.routing.delete
 import io.ktor.routing.get
 import io.ktor.routing.post
 import io.ktor.routing.route
+import io.titandata.ProviderModule
+import io.titandata.exception.NoSuchObjectException
+import io.titandata.exception.ObjectExistsException
+import io.titandata.models.Remote
+import io.titandata.models.RemoteParameters
 
 /**
  * The remotes API is slightly more substantial because while we expose a more complete CRUD

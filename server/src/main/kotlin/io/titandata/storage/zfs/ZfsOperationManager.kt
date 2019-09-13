@@ -4,13 +4,13 @@
 
 package io.titandata.storage.zfs
 
+import com.google.gson.JsonSyntaxException
 import io.titandata.exception.CommandException
 import io.titandata.exception.InvalidStateException
 import io.titandata.exception.NoSuchObjectException
 import io.titandata.models.Commit
 import io.titandata.models.Operation
 import io.titandata.storage.OperationData
-import com.google.gson.JsonSyntaxException
 
 /**
  * Start a new operation. Operations are full clones from a local commit ID (ideally one

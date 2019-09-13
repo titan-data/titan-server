@@ -29,10 +29,10 @@ class NopRemoteProvider : BaseRemoteProvider() {
     }
 
     override fun validateOperation(
-            remote: Remote,
-            commitId: String,
-            opType: Operation.Type,
-            params: RemoteParameters
+        remote: Remote,
+        commitId: String,
+        opType: Operation.Type,
+        params: RemoteParameters
     ) {
         // All operations always succeed
     }

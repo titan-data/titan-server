@@ -76,11 +76,11 @@ class OperationProvider(val providers: ProviderModule) {
     }
 
     internal fun createAndStartOperation(
-            type: Operation.Type,
-            repository: String,
-            remote: Remote,
-            commitId: String,
-            params: RemoteParameters
+        type: Operation.Type,
+        repository: String,
+        remote: Remote,
+        commitId: String,
+        params: RemoteParameters
     ): Operation {
         val op = buildOperation(type, remote.name, commitId)
         val exec = OperationExecutor(providers, op, repository, remote, params)

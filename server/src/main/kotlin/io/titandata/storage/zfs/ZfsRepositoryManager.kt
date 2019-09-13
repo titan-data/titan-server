@@ -4,11 +4,11 @@
 
 package io.titandata.storage.zfs
 
+import com.google.gson.reflect.TypeToken
 import io.titandata.exception.CommandException
 import io.titandata.exception.InvalidStateException
 import io.titandata.models.Remote
 import io.titandata.models.Repository
-import com.google.gson.reflect.TypeToken
 
 /**
  * All repositories are placed under the "<pool>/repo" dataset. This is done to provide additional

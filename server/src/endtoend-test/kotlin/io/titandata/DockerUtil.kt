@@ -154,7 +154,7 @@ class DockerUtil(
 
     fun startSsh() {
         executor.exec("docker", "run", "-p", "$sshPort:22", "-d", "--name", "$identity-ssh",
-                "delphix/sshtest:latest")
+                "sshtest:latest")
     }
 
     fun testSsh(): Boolean {

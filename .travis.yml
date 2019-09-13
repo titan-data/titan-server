@@ -13,10 +13,6 @@ cache:
     - $HOME/.gradle/caches/
     - $HOME/.gradle/wrapper/
 
-branches:
-  only:
-    - master
-
 jobs:
   include:
     - stage: compile
@@ -37,3 +33,24 @@ jobs:
       install: skip
       script:
         - ./gradlew integrationTest
+    - stage: publish
+      if: tag IS present
+      name: "Publish Artifacts"
+      install:
+        - ./gradlew assemble -PserverImageName=$DOCKER_IMAGE -PtitanVersion=$TRAVIS_TAG
+      before_deploy:
+        - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
+      deploy:
+        - provider: script
+          skip_cleanup: true
+          script: ./gradlew publishDockerVersion publishDockerLatest -PserverImageName=$DOCKER_IMAGE -PtitanVersion=$TRAVIS_TAG
+          on:
+            tags: true
+        - provider: releases
+          skip_cleanup: true
+          api_key: $GITHUB_TOKEN
+          file: client/build/libs/titan-client-$TRAVIS_TAG.jar
+          draft: true
+          name: $TRAVIS_TAG
+          on:
+            tags: true

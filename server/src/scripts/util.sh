@@ -11,7 +11,7 @@
 #
 IDENTITY=${TITAN_IDENTITY:-titan}
 PORT=${TITAN_PORT:-5001}
-IMAGE=${TITAN_IMAGE:-delphix/titan:latest}
+IMAGE=${TITAN_IMAGE:-titan:latest}
 
 echo "=== User configuration ==="
 echo "IDENTITY = $IDENTITY"

@@ -5,11 +5,11 @@
 package com.delphix.titan.operation
 
 import com.delphix.titan.ProviderModule
-import com.delphix.titan.models.Commit
-import com.delphix.titan.models.Operation
-import com.delphix.titan.models.ProgressEntry
-import com.delphix.titan.models.Remote
-import com.delphix.titan.models.RemoteParameters
+import io.titandata.models.Commit
+import io.titandata.models.Operation
+import io.titandata.models.ProgressEntry
+import io.titandata.models.Remote
+import io.titandata.models.RemoteParameters
 import com.delphix.titan.storage.OperationData
 import com.delphix.titan.util.CommandExecutor
 import org.slf4j.LoggerFactory
@@ -23,12 +23,12 @@ import org.slf4j.LoggerFactory
  * back progress, and default hadling of errors
  */
 class OperationExecutor(
-    val providers: ProviderModule,
-    val operation: Operation,
-    val repo: String,
-    val remote: Remote,
-    val params: RemoteParameters,
-    val isResume: Boolean = false
+        val providers: ProviderModule,
+        val operation: Operation,
+        val repo: String,
+        val remote: Remote,
+        val params: RemoteParameters,
+        val isResume: Boolean = false
 ) : Runnable {
 
     companion object {

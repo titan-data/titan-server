@@ -7,10 +7,10 @@ package com.delphix.titan.operation
 import com.delphix.titan.ProviderModule
 import com.delphix.titan.exception.NoSuchObjectException
 import com.delphix.titan.exception.ObjectExistsException
-import com.delphix.titan.models.Operation
-import com.delphix.titan.models.ProgressEntry
-import com.delphix.titan.models.Remote
-import com.delphix.titan.models.RemoteParameters
+import io.titandata.models.Operation
+import io.titandata.models.ProgressEntry
+import io.titandata.models.Remote
+import io.titandata.models.RemoteParameters
 import com.delphix.titan.util.GuidGenerator
 import org.slf4j.LoggerFactory
 
@@ -76,11 +76,11 @@ class OperationProvider(val providers: ProviderModule) {
     }
 
     internal fun createAndStartOperation(
-        type: Operation.Type,
-        repository: String,
-        remote: Remote,
-        commitId: String,
-        params: RemoteParameters
+            type: Operation.Type,
+            repository: String,
+            remote: Remote,
+            commitId: String,
+            params: RemoteParameters
     ): Operation {
         val op = buildOperation(type, remote.name, commitId)
         val exec = OperationExecutor(providers, op, repository, remote, params)

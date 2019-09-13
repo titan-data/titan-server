@@ -4,16 +4,16 @@
 
 package com.delphix.titan
 
-import com.delphix.titan.client.infrastructure.ClientException
-import com.delphix.titan.models.Commit
-import com.delphix.titan.models.NopParameters
-import com.delphix.titan.models.NopRemote
-import com.delphix.titan.models.Operation
-import com.delphix.titan.models.ProgressEntry
-import com.delphix.titan.models.Repository
-import com.delphix.titan.models.VolumeCreateRequest
-import com.delphix.titan.models.VolumeMountRequest
-import com.delphix.titan.models.VolumeRequest
+import io.titandata.client.infrastructure.ClientException
+import io.titandata.models.Commit
+import io.titandata.models.NopParameters
+import io.titandata.models.NopRemote
+import io.titandata.models.Operation
+import io.titandata.models.ProgressEntry
+import io.titandata.models.Repository
+import io.titandata.models.VolumeCreateRequest
+import io.titandata.models.VolumeMountRequest
+import io.titandata.models.VolumeRequest
 import io.kotlintest.Spec
 import io.kotlintest.matchers.types.shouldBeInstanceOf
 import io.kotlintest.shouldBe

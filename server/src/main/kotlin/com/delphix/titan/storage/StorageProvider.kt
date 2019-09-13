@@ -4,11 +4,11 @@
 
 package com.delphix.titan.storage
 
-import com.delphix.titan.models.Commit
-import com.delphix.titan.models.Operation
-import com.delphix.titan.models.Remote
-import com.delphix.titan.models.Repository
-import com.delphix.titan.models.Volume
+import io.titandata.models.Commit
+import io.titandata.models.Operation
+import io.titandata.models.Remote
+import io.titandata.models.Repository
+import io.titandata.models.Volume
 
 interface StorageProvider {
 

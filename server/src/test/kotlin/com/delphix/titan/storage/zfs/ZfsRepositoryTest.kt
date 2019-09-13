@@ -8,9 +8,9 @@ import com.delphix.titan.exception.CommandException
 import com.delphix.titan.exception.InvalidStateException
 import com.delphix.titan.exception.NoSuchObjectException
 import com.delphix.titan.exception.ObjectExistsException
-import com.delphix.titan.models.EngineRemote
-import com.delphix.titan.models.NopRemote
-import com.delphix.titan.models.Repository
+import io.titandata.models.EngineRemote
+import io.titandata.models.NopRemote
+import io.titandata.models.Repository
 import com.delphix.titan.util.CommandExecutor
 import com.delphix.titan.util.GuidGenerator
 import io.kotlintest.TestCase

@@ -7,16 +7,16 @@ package com.delphix.titan.remote.ssh
 import com.delphix.titan.ProviderModule
 import com.delphix.titan.exception.CommandException
 import com.delphix.titan.exception.NoSuchObjectException
-import com.delphix.titan.models.Commit
-import com.delphix.titan.models.Operation
-import com.delphix.titan.models.ProgressEntry
-import com.delphix.titan.models.Remote
-import com.delphix.titan.models.RemoteParameters
-import com.delphix.titan.models.SshParameters
-import com.delphix.titan.models.SshRemote
+import io.titandata.models.Commit
+import io.titandata.models.Operation
+import io.titandata.models.ProgressEntry
+import io.titandata.models.Remote
+import io.titandata.models.RemoteParameters
+import io.titandata.models.SshParameters
+import io.titandata.models.SshRemote
 import com.delphix.titan.operation.OperationExecutor
 import com.delphix.titan.remote.BaseRemoteProvider
-import com.delphix.titan.serialization.ModelTypeAdapters
+import io.titandata.serialization.ModelTypeAdapters
 import com.delphix.titan.sync.RsyncExecutor
 import com.google.gson.GsonBuilder
 import java.io.File
@@ -74,11 +74,11 @@ class SshRemoteProvider(val providers: ProviderModule) : BaseRemoteProvider() {
     }
 
     fun buildSshCommand(
-        remote: Remote,
-        params: RemoteParameters,
-        file: File,
-        includeAddress: Boolean,
-        vararg command: String
+            remote: Remote,
+            params: RemoteParameters,
+            file: File,
+            includeAddress: Boolean,
+            vararg command: String
     ): List<String> {
         remote as SshRemote
         val args = mutableListOf<String>()

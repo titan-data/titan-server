@@ -1,7 +1,7 @@
 package com.delphix.titan
 
 import com.delphix.titan.exception.CommandException
-import com.delphix.titan.models.Error
+import io.titandata.models.Error
 import com.delphix.titan.storage.zfs.ZfsStorageProvider
 import com.delphix.titan.util.CommandExecutor
 import com.google.gson.Gson

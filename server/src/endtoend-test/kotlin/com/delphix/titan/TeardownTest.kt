@@ -4,8 +4,8 @@
 
 package com.delphix.titan
 
-import com.delphix.titan.client.infrastructure.ClientException
-import com.delphix.titan.models.Repository
+import io.titandata.client.infrastructure.ClientException
+import io.titandata.models.Repository
 import io.kotlintest.Spec
 import io.kotlintest.shouldBe
 import io.kotlintest.shouldThrow

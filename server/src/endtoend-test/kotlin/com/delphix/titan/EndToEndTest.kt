@@ -4,12 +4,12 @@
 
 package com.delphix.titan
 
-import com.delphix.titan.client.apis.CommitsApi
-import com.delphix.titan.client.apis.OperationsApi
-import com.delphix.titan.client.apis.RemotesApi
-import com.delphix.titan.client.apis.RepositoriesApi
-import com.delphix.titan.client.apis.VolumeApi
-import com.delphix.titan.models.ProgressEntry
+import io.titandata.client.apis.CommitsApi
+import io.titandata.client.apis.OperationsApi
+import io.titandata.client.apis.RemotesApi
+import io.titandata.client.apis.RepositoriesApi
+import io.titandata.client.apis.VolumeApi
+import io.titandata.models.ProgressEntry
 import io.kotlintest.TestCaseOrder
 import io.kotlintest.specs.StringSpec
 import org.slf4j.LoggerFactory

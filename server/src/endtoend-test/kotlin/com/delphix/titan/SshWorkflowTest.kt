@@ -4,16 +4,16 @@
 
 package com.delphix.titan
 
-import com.delphix.titan.client.infrastructure.ClientException
-import com.delphix.titan.client.infrastructure.ServerException
-import com.delphix.titan.models.Commit
-import com.delphix.titan.models.Repository
-import com.delphix.titan.models.SshParameters
-import com.delphix.titan.models.SshRemote
-import com.delphix.titan.models.VolumeCreateRequest
-import com.delphix.titan.models.VolumeMountRequest
-import com.delphix.titan.models.VolumeRequest
-import com.delphix.titan.serialization.RemoteUtil
+import io.titandata.client.infrastructure.ClientException
+import io.titandata.client.infrastructure.ServerException
+import io.titandata.models.Commit
+import io.titandata.models.Repository
+import io.titandata.models.SshParameters
+import io.titandata.models.SshRemote
+import io.titandata.models.VolumeCreateRequest
+import io.titandata.models.VolumeMountRequest
+import io.titandata.models.VolumeRequest
+import io.titandata.serialization.RemoteUtil
 import io.kotlintest.Spec
 import io.kotlintest.TestCaseOrder
 import io.kotlintest.shouldBe

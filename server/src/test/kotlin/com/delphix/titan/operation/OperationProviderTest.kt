@@ -7,13 +7,13 @@ package com.delphix.titan.operation
 import com.delphix.titan.ProviderModule
 import com.delphix.titan.exception.NoSuchObjectException
 import com.delphix.titan.exception.ObjectExistsException
-import com.delphix.titan.models.Commit
-import com.delphix.titan.models.EngineParameters
-import com.delphix.titan.models.NopParameters
-import com.delphix.titan.models.NopRemote
-import com.delphix.titan.models.Operation
-import com.delphix.titan.models.ProgressEntry
-import com.delphix.titan.models.Repository
+import io.titandata.models.Commit
+import io.titandata.models.EngineParameters
+import io.titandata.models.NopParameters
+import io.titandata.models.NopRemote
+import io.titandata.models.Operation
+import io.titandata.models.ProgressEntry
+import io.titandata.models.Repository
 import com.delphix.titan.remote.nop.NopRemoteProvider
 import com.delphix.titan.storage.OperationData
 import com.delphix.titan.storage.zfs.ZfsStorageProvider
@@ -375,7 +375,7 @@ class OperationProviderTest : StringSpec() {
 
         "loading completed operations populates operation list" {
             every { zfsStorageProvider.listRepositories() } returns listOf(
-                Repository(name = "foo", properties = mapOf()))
+                    Repository(name = "foo", properties = mapOf()))
             every { zfsStorageProvider.listOperations("foo") } returns listOf(
                     OperationData(operation = Operation(id = "op1", type = Operation.Type.PULL, state = Operation.State.COMPLETE,
                             remote = "remote", commitId = "commit1"), params = NopParameters()),

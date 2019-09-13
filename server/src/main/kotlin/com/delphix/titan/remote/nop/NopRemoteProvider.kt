@@ -4,12 +4,12 @@
 
 package com.delphix.titan.remote.nop
 
-import com.delphix.titan.models.Commit
-import com.delphix.titan.models.NopParameters
-import com.delphix.titan.models.Operation
-import com.delphix.titan.models.ProgressEntry
-import com.delphix.titan.models.Remote
-import com.delphix.titan.models.RemoteParameters
+import io.titandata.models.Commit
+import io.titandata.models.NopParameters
+import io.titandata.models.Operation
+import io.titandata.models.ProgressEntry
+import io.titandata.models.Remote
+import io.titandata.models.RemoteParameters
 import com.delphix.titan.operation.OperationExecutor
 import com.delphix.titan.remote.BaseRemoteProvider
 
@@ -29,10 +29,10 @@ class NopRemoteProvider : BaseRemoteProvider() {
     }
 
     override fun validateOperation(
-        remote: Remote,
-        commitId: String,
-        opType: Operation.Type,
-        params: RemoteParameters
+            remote: Remote,
+            commitId: String,
+            opType: Operation.Type,
+            params: RemoteParameters
     ) {
         // All operations always succeed
     }

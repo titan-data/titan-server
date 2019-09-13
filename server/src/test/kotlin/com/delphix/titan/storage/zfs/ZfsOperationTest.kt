@@ -6,9 +6,9 @@ package com.delphix.titan.storage.zfs
 
 import com.delphix.titan.exception.CommandException
 import com.delphix.titan.exception.NoSuchObjectException
-import com.delphix.titan.models.Commit
-import com.delphix.titan.models.NopParameters
-import com.delphix.titan.models.Operation
+import io.titandata.models.Commit
+import io.titandata.models.NopParameters
+import io.titandata.models.Operation
 import com.delphix.titan.storage.OperationData
 import com.delphix.titan.util.CommandExecutor
 import com.delphix.titan.util.GuidGenerator

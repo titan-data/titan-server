@@ -5,7 +5,7 @@
 package com.delphix.titan.storage.zfs
 
 import com.delphix.titan.exception.CommandException
-import com.delphix.titan.models.Volume
+import io.titandata.models.Volume
 
 /**
  * Every repo can have any number of named volumes beneath it. These volumes must be created

@@ -6,10 +6,10 @@ package com.delphix.titan.sync
 
 import com.delphix.titan.ProviderModule
 import com.delphix.titan.exception.CommandException
-import com.delphix.titan.models.Operation
-import com.delphix.titan.models.ProgressEntry
-import com.delphix.titan.models.SshParameters
-import com.delphix.titan.models.SshRemote
+import io.titandata.models.Operation
+import io.titandata.models.ProgressEntry
+import io.titandata.models.SshParameters
+import io.titandata.models.SshRemote
 import com.delphix.titan.operation.OperationExecutor
 import com.delphix.titan.util.CommandExecutor
 import io.kotlintest.TestCase

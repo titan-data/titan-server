@@ -6,8 +6,8 @@ package com.delphix.titan.storage.zfs
 
 import com.delphix.titan.exception.CommandException
 import com.delphix.titan.exception.InvalidStateException
-import com.delphix.titan.models.Remote
-import com.delphix.titan.models.Repository
+import io.titandata.models.Remote
+import io.titandata.models.Repository
 import com.google.gson.reflect.TypeToken
 
 /**

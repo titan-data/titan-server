@@ -4,7 +4,7 @@
 package com.delphix.titan.apis
 
 import com.delphix.titan.ProviderModule
-import com.delphix.titan.models.Commit
+import io.titandata.models.Commit
 import io.ktor.application.call
 import io.ktor.http.HttpStatusCode
 import io.ktor.request.receive

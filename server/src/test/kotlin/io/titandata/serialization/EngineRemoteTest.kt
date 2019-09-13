@@ -1,0 +1,183 @@
+/*
+ * Copyright (c) 2019 by Delphix. All rights reserved.
+ */
+
+package io.titandata.serialization
+
+import io.titandata.models.EngineParameters
+import io.titandata.models.EngineRemote
+import io.titandata.models.Remote
+import io.titandata.models.RemoteParameters
+import io.titandata.serialization.remote.EngineRemoteUtil
+import com.google.gson.GsonBuilder
+import io.kotlintest.TestCase
+import io.kotlintest.TestResult
+import io.kotlintest.matchers.types.shouldBeInstanceOf
+import io.kotlintest.shouldBe
+import io.kotlintest.shouldThrow
+import io.kotlintest.specs.StringSpec
+import io.mockk.MockKAnnotations
+import io.mockk.clearAllMocks
+import io.mockk.every
+import io.mockk.impl.annotations.InjectMockKs
+import io.mockk.impl.annotations.MockK
+import io.mockk.impl.annotations.OverrideMockKs
+import java.io.Console
+
+class EngineRemoteTest : StringSpec() {
+
+    val gson = ModelTypeAdapters.configure(GsonBuilder()).create()
+    val remoteUtil = RemoteUtil()
+
+    fun parse(uri: String, map: Map<String, String>? = null): Remote {
+        return remoteUtil.parseUri(uri, "name", map ?: mapOf())
+    }
+
+    @MockK
+    lateinit var console: Console
+
+    @InjectMockKs
+    @OverrideMockKs
+    var engineUtil = EngineRemoteUtil()
+
+    override fun beforeTest(testCase: TestCase) {
+        return MockKAnnotations.init(this)
+    }
+
+    override fun afterTest(testCase: TestCase, result: TestResult) {
+        clearAllMocks()
+    }
+
+    init {
+        "parsing full engine URI succeeds" {
+            val result = parse("engine://user:pass@host/path")
+            result.shouldBeInstanceOf<EngineRemote>()
+            val remote = result as EngineRemote
+            remote.name shouldBe "name"
+            remote.username shouldBe "user"
+            remote.password shouldBe "pass"
+            remote.address shouldBe "host"
+            remote.repository shouldBe "path"
+        }
+
+        "parsing engine URI without password succeeds" {
+            val result = parse("engine://user@host/path")
+            result.shouldBeInstanceOf<EngineRemote>()
+            val remote = result as EngineRemote
+            remote.name shouldBe "name"
+            remote.username shouldBe "user"
+            remote.password shouldBe null
+            remote.address shouldBe "host"
+            remote.repository shouldBe "path"
+        }
+
+        "plain engine provider fails" {
+            shouldThrow<IllegalArgumentException> {
+                parse("engine")
+            }
+        }
+
+        "specifying engine port fails" {
+            shouldThrow<IllegalArgumentException> {
+                parse("engine://user:pass@host:123/path")
+            }
+        }
+
+        "specifying engine query parameter fails" {
+            shouldThrow<IllegalArgumentException> {
+                parse("engine://user@host/path?query")
+            }
+        }
+
+        "specifying engine fragment fails" {
+            shouldThrow<IllegalArgumentException> {
+                parse("engine://user@host/path#fragment")
+            }
+        }
+
+        "missing username in engine URI fails" {
+            shouldThrow<IllegalArgumentException> {
+                parse("engine://host/path")
+            }
+        }
+
+        "missing path in engine URI fails" {
+            shouldThrow<IllegalArgumentException> {
+                parse("engine://user@host")
+            }
+        }
+
+        "empty path in engine URI fails" {
+            shouldThrow<IllegalArgumentException> {
+                parse("engine://user@host/")
+            }
+        }
+
+        "missing host in engine URI fails" {
+            shouldThrow<IllegalArgumentException> {
+                parse("engine://user@/path")
+            }
+        }
+
+        "serializing an engine remote succeeds" {
+            val result = gson.toJson(EngineRemote(name = "foo",
+                    address = "a", username = "u", password = "p", repository = "bar"))
+            result.shouldBe("{\"provider\":\"engine\",\"name\":\"foo\",\"address\":\"a\"," +
+                    "\"username\":\"u\",\"password\":\"p\",\"repository\":\"bar\"}")
+        }
+
+        "deserializing an engine remote succeeds" {
+            val result = gson.fromJson("{\"provider\":\"engine\",\"name\":\"foo\",\"address\":\"a\"," +
+                    "\"username\":\"u\",\"password\":\"p\"}", EngineRemote::class.java)
+            result.shouldBeInstanceOf<EngineRemote>()
+            result.provider shouldBe "engine"
+            result.name shouldBe "foo"
+            result.username shouldBe "u"
+            result.password shouldBe "p"
+        }
+
+        "serializing an engine request succeeds" {
+            val result = gson.toJson(EngineParameters(password = "p"))
+            result.shouldBe("{\"provider\":\"engine\",\"password\":\"p\"}")
+        }
+
+        "deserializing an engine request succeeds" {
+            val result = gson.fromJson("{\"provider\":\"engine\",\"password\":\"p\"}",
+                    RemoteParameters::class.java)
+            result.shouldBeInstanceOf<EngineParameters>()
+            val request = result as EngineParameters
+            request.provider shouldBe "engine"
+            request.password shouldBe "p"
+        }
+
+        "engine remote to URI succeeds" {
+            val (result, props) = remoteUtil.toUri(EngineRemote(name = "name", address = "host", username = "user",
+                    repository = "foo"))
+            result shouldBe "engine://user@host/foo"
+            props.size shouldBe 0
+        }
+
+        "engine remote with password to URI succeeds" {
+            val (result, props) = remoteUtil.toUri(EngineRemote(name = "name", address = "host", username = "user",
+                    repository = "foo", password = "pass"))
+            result shouldBe "engine://user:pass@host/foo"
+            props.size shouldBe 0
+        }
+
+        "get engine parameters succeeds" {
+            val result = remoteUtil.getParameters(EngineRemote(name = "name", address = "host", username = "user",
+                    repository = "foo", password = "pass"))
+            result.shouldBeInstanceOf<EngineParameters>()
+            result as EngineParameters
+            result.password shouldBe null
+        }
+
+        "get engine parameters prompts for password" {
+            every { console.readPassword(any()) } returns "pass".toCharArray()
+            val result = engineUtil.getParameters(EngineRemote(name = "name", address = "host", username = "user",
+                    repository = "foo"))
+            result as EngineParameters
+            result.password shouldBe "pass"
+        }
+    }
+}

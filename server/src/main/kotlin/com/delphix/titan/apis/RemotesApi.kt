@@ -14,8 +14,8 @@ package com.delphix.titan.apis
 import com.delphix.titan.ProviderModule
 import com.delphix.titan.exception.NoSuchObjectException
 import com.delphix.titan.exception.ObjectExistsException
-import com.delphix.titan.models.Remote
-import com.delphix.titan.models.RemoteParameters
+import io.titandata.models.Remote
+import io.titandata.models.RemoteParameters
 import io.ktor.application.ApplicationCall
 import io.ktor.application.call
 import io.ktor.http.HttpStatusCode

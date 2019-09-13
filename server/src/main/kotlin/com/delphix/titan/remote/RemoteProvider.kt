@@ -4,10 +4,10 @@
 
 package com.delphix.titan.remote
 
-import com.delphix.titan.models.Commit
-import com.delphix.titan.models.Operation
-import com.delphix.titan.models.Remote
-import com.delphix.titan.models.RemoteParameters
+import io.titandata.models.Commit
+import io.titandata.models.Operation
+import io.titandata.models.Remote
+import io.titandata.models.RemoteParameters
 import com.delphix.titan.operation.OperationExecutor
 
 interface RemoteProvider {

@@ -6,7 +6,7 @@ package com.delphix.titan.sync
 
 import com.delphix.titan.exception.CommandException
 import com.delphix.titan.exception.InvalidStateException
-import com.delphix.titan.models.ProgressEntry
+import io.titandata.models.ProgressEntry
 import com.delphix.titan.operation.OperationExecutor
 import com.delphix.titan.util.CommandExecutor
 import java.io.File

@@ -7,7 +7,7 @@ package com.delphix.titan.storage.zfs
 import com.delphix.titan.exception.CommandException
 import com.delphix.titan.exception.NoSuchObjectException
 import com.delphix.titan.exception.ObjectExistsException
-import com.delphix.titan.models.Commit
+import io.titandata.models.Commit
 import com.delphix.titan.util.CommandExecutor
 import com.delphix.titan.util.GuidGenerator
 import io.kotlintest.TestCase

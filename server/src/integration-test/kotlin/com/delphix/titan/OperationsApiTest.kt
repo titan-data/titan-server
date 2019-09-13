@@ -4,10 +4,10 @@
 
 package com.delphix.titan
 
-import com.delphix.titan.models.Error
-import com.delphix.titan.models.NopParameters
-import com.delphix.titan.models.Operation
-import com.delphix.titan.serialization.ModelTypeAdapters
+import io.titandata.models.Error
+import io.titandata.models.NopParameters
+import io.titandata.models.Operation
+import io.titandata.serialization.ModelTypeAdapters
 import com.delphix.titan.storage.OperationData
 import com.delphix.titan.storage.zfs.ZfsStorageProvider
 import com.delphix.titan.util.CommandExecutor

@@ -6,16 +6,16 @@ package com.delphix.titan.remote
 
 import com.delphix.titan.exception.NoSuchObjectException
 import com.delphix.titan.exception.ObjectExistsException
-import com.delphix.titan.models.Operation
-import com.delphix.titan.models.Remote
-import com.delphix.titan.models.RemoteParameters
+import io.titandata.models.Operation
+import io.titandata.models.Remote
+import io.titandata.models.RemoteParameters
 
 abstract class BaseRemoteProvider : RemoteProvider {
     override fun validateOperation(
-        remote: Remote,
-        commitId: String,
-        opType: Operation.Type,
-        params: RemoteParameters
+            remote: Remote,
+            commitId: String,
+            opType: Operation.Type,
+            params: RemoteParameters
     ) {
         if (opType == Operation.Type.PULL) {
             getCommit(remote, commitId, params)

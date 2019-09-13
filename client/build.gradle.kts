@@ -4,9 +4,14 @@ plugins {
 }
 
 val titanVersion: String by rootProject.extra
+val mavenBucket = when(project.hasProperty("mavenBucket")) {
+    true -> project.property("mavenBucket")
+    false -> "titan-data-maven-tmp"
+}
 
 group = "io.titan-data.client"
 version = titanVersion
+
 
 java {
     sourceCompatibility = JavaVersion.VERSION_1_8
@@ -28,6 +33,16 @@ publishing {
             artifactId = "titan-client"
 
             from(components["java"])
+        }
+    }
+
+    repositories {
+        maven {
+            name = "titan"
+            url = uri("s3://$mavenBucket")
+            authentication {
+                create<AwsImAuthentication>("awsIm")
+            }
         }
     }
 }

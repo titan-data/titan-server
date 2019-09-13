@@ -46,6 +46,9 @@ jobs:
           script: ./gradlew publishDockerVersion publishDockerLatest -PserverImageName=$DOCKER_IMAGE -PtitanVersion=$TRAVIS_TAG
           on:
             tags: true
+        - provider :script
+          skip_cleanup: true
+          script: ./gradlew :client:publish
         - provider: releases
           skip_cleanup: true
           api_key: $GITHUB_TOKEN

@@ -48,7 +48,7 @@ jobs:
             tags: true
         - provider: script
           skip_cleanup: true
-          script: ./gradlew :client:publish
+          script: ./gradlew :client:publish -PtitanVersion=$TRAVIS_TAG
           on:
             tags: true
         - provider: releases

@@ -8,7 +8,7 @@ plugins {
 }
 
 val titanVersion: String by rootProject.extra
-group = "io.titan-data"
+group = "io.titandata"
 version = titanVersion
 
 repositories {

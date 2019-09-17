@@ -9,7 +9,7 @@ val mavenBucket = when(project.hasProperty("mavenBucket")) {
     false -> "titan-data-maven-tmp"
 }
 
-group = "io.titan-data.client"
+group = "io.titandata"
 version = titanVersion
 
 
@@ -29,7 +29,7 @@ val jar by tasks.getting(Jar::class) {
 publishing {
     publications {
         create<MavenPublication>("maven") {
-            groupId = "io.titan-data"
+            groupId = "io.titandata"
             artifactId = "titan-client"
 
             from(components["java"])

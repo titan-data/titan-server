@@ -154,7 +154,7 @@ class S3WorkflowTest : EndToEndTest() {
             remoteApi.createRemote("foo", remote)
         }
 
-        "list remote commits returns an empthy list" {
+        "list remote commits returns an empty list" {
             val result = remoteApi.listRemoteCommits("foo", "origin", S3Parameters())
             result.size shouldBe 0
         }
@@ -178,8 +178,25 @@ class S3WorkflowTest : EndToEndTest() {
             exception.code shouldBe "ObjectExistsException"
         }
 
-        "delete local commit succeeds" {
+        "create second commit succeeds" {
+            commitApi.createCommit("foo", Commit(id = "id2", properties = mapOf()))
+        }
+
+        "push second commit succeeds" {
+            val op = operationApi.push("foo", "origin", "id2", S3Parameters())
+            waitForOperation(op.id)
+        }
+
+        "list remote commits records two commits" {
+            val commits = remoteApi.listRemoteCommits("foo", "origin", S3Parameters())
+            commits.size shouldBe 2
+            commits[0].id shouldBe "id"
+            commits[1].id shouldBe "id2"
+        }
+
+        "delete local commits succeeds" {
             commitApi.deleteCommit("foo", "id")
+            commitApi.deleteCommit("foo", "id2")
         }
 
         "list local commits is empty" {
@@ -223,9 +240,9 @@ class S3WorkflowTest : EndToEndTest() {
             val remote = getRemote()
             val commits = remoteApi.listRemoteCommits("foo", "origin", S3Parameters(accessKey = remote.accessKey,
                     secretKey = remote.secretKey, region = remote.region))
-            commits.size shouldBe 1
+            commits.size shouldBe 2
             commits[0].id shouldBe "id"
-            commits[0].properties["a"] shouldBe "b"
+            commits[1].id shouldBe "id2"
         }
 
         "list commits without keys fails" {

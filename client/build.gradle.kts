@@ -6,7 +6,7 @@ plugins {
 val titanVersion: String by rootProject.extra
 val mavenBucket = when(project.hasProperty("mavenBucket")) {
     true -> project.property("mavenBucket")
-    false -> "titan-data-maven-tmp"
+    false -> "titan-data-maven"
 }
 
 group = "io.titandata"

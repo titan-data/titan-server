@@ -5,17 +5,139 @@ For general information about contributing changes, see the
 
 ## How it Works
 
-Describe the internal mechanisms necessary for developers to understand how
-to get started making changes.
+There are a few key components of the overall architecture:
+
+  * `titan-server` - A kotlin web server that provides an API for the titan CLI as well as the 
+     docker volume API.
+  * `titan-client` - A JAR providing a HTTP client for use with `titan-server`, used by the CLI to
+     make API requests to the server, and manage remotes.
+  * `titan` - A Docker image that provides a runtime environment for `titan-server`, as well as
+     the means to execute ZFS commands within that container.
+      
+Of these, the docker image is by far the most complicated, as we have to go through several
+different hoops to get ZFS usable within containers on arbitrary host systems.
+
+### Titan server and client
+
+The titan server is built from `server/src`. It is a web server wrapped around a storage
+persistence layer, and remote executor framework. The important parts of the server can be
+found at:
+
+  * `io.titandata.apis.*` - Entry points for the remote APIs. Very thin layer that translates
+    from JSON into native models and then invokes the appropriate backend model.
+  * `io.titandata.storage.*` - Provider for storage and metadata persistence. While there is
+    an abstraction layer, there is only one provider for ZFS. See `ZfsStorageProvider` for more
+    information.
+  * `io.titandata.operation.*` - Handlers for asynchronous push and pull operations. The actual
+    operations are run through the remote providers, but the generic operations framework handles
+    starting and stopping operations, reporting back to the APIs, etc. For more information,
+    see `OperationProvider`
+  * `io.titandata.remote.*` - Per-remote handlers for push and pull operations. These handle the
+    work of pushing and pulling, within the context set up by the operations provider.
+  * `io.titandata.sync.*` - Common mechanisms for syncing data between hosts, such as `rsync`.
+  
+The titan client is built from `client/src`, and creates a separate JAR that is then published
+to an artifact repository for the CLI to use. It is not much more than a framework to marshall
+data between the JAVA and JSON representation, though it does contain a few additional helper
+routines, such as converting from a URI string to a remote object. The server references this
+client as well so that it is sure to use the same data models.
+
+### Container architecture
+
+The underlying architecture can be a bit complex due to the intricacies of docker and ZFS. Our goal is
+to be able to spin up a container that acts as docker volume plugin and has ZFS access to the docker host
+VM (typically running inside of Windows or MacOS). Actually instructing users on how to install and
+manage ZFS within this hidden VM is a non-starter, so we use a shell (`titan-launch`) container that
+is responsible for setting up and configuring ZFS, only to then launch the server itself
+(`titan-server`), such that the server can access the pool and ZFS commands without having to worry
+about how that is made possible.
+
+To do this, we have to accomplish a few key things:
+
+  1. Install and configure ZFS to be able to run on the underlying VM kernel.
+  2. Create a storage pool that we can use for storing data and metadata, one that will survive
+     across Docker upgrades that instantiate a new underlying VM. For more information on how repositories are
+     organized and metadata is tracked, see the `Zfs*Provider` classes, such as `ZfsOperationProvider.kt`.
+  3. Configure the system such that mounts created within the `titan-server` container will
+     correctly propagate to the host VM and then to other containers.
+    
+The first of these is covered extensively in the the comments to the
+[launch script](server/src/scripts/launch), where we try to either leverage existing ZFS modules,
+install pre-built ones, or build new ones on the fly. We first try to pull precompiled kernel binaries from
+[zfs-releases](https://github.com/titan-data/zfs-releases), and fall back to using
+[zfs-builder](https://github.com/titan-data/zfs-builder) to build custom modules if no
+precompiled binaries can be found.
+
+The second piece requires that we leverage an external volume (`titan-data`) to store any ZFS
+storage pool or other data that we need to persist beyond the lifetime of the Docker VM. This
+volume is created by the CLI and mounted at `/var/lib/titan/data`. We then create the following
+directories:
+
+   * `/var/lib/titan/data/pool` - The underlying file backing the storage pool we create
+   * `/var/lib/titan/mnt` - Root mountpoint for all filesystems created in the pool. This must
+     exist on the root VM and not within the `titan-data` volume in order for bind mounts to 
+     work properly.
+   * `/var/lib/titan/data/modules` - Stash of ZFS modules (built or installed) to match the current
+     kernel.
+
+The third piece is a nuance of how Linux filesystems work in container namespaces. For more
+information, see the `bind_mounts()` function in the [titan.sh](server/src/scripts/titan.sh)
+utility file.
+
+To keep the packaging simple, we leverage the same image for both the launcher and the server,
+just executed with different entry points ([launch](server/src/scripts/launch)
+and [run](server/src/scripts/run)) to invoke the different capabilities. We also provide a third
+entry point, [teardown](server/src/scripts/teardown), that will destroy the ZFS pool and unload
+ZFS modules if they were installed by the launcher.
+
 
 ## Building
 
-Describe how to build the project.
+There are two separate projects, a server project and a client project. The former is the bulk of
+the implementation, the latter is a wrapper around the APIs to make it easy to work with the
+server.
+
+```
+./gradlew build
+```
+
+This will build the server and client, run style checks, as well as unit tests and integration tests. It will
+then package the server into the titan docker image. If you run into lint or style errors, you can run
+`./gradlew ktlintFormat` to automatically format the code.
+
+There is a third test target,
+`endtoendTest`, that is not run automatically as part of `check` given how much longer it
+can take. This should be run separately to perform the full barrage of tests, but will require
+running the container, potentially connecting to external resources, etc. If you want to run the
+end-to-end tests, you will need to specify the information required to connect to the appropriate
+resources, such as:
+
+```
+./gradlew endtoendTest -P s3.location=bucket/path
+```
 
 ## Testing
 
-Describe how to test the project.
+There are three types of tests:
+
+  * Unit tests - These tests are designed to test a fragment of code, and can be run entirely within the IDE. These
+    tests live under the `src/test` directory and are run through `./gradlew test`. They should be very fast and
+    are run as part of each pull request.
+  * Integration tests - These tests validate the whole titan server program, but still runs within the IDE and
+    hence mock out operating system dependencies (such as ZFS). These tests live under `src/integrationTest` and
+    can be run as part of `./gradlew integrationTest`. They should be fast and are run as part of each pull
+    request.
+  * End to end tests - These tests run against the complete docker container, and hence are able to test the full
+    stack, including ZFS. These tests live under `src/endtoendTest` and can be run as part of
+    `./gradlew endtoendTest`. These tests may be slow, may depend on external resources (like S3 buckets), but
+    should remain runnable through CI/CD automation during the release process.
+    
+These tests do generate coverage reports, but test coverage is not yet rigorously integrated into the development
+process.
 
 ## Releasing
 
-Describe how to generate new releases.
+Releases are triggered via Travis when a new tag is pushed to the `master` branch. This will invoke `./gradlew publish`, 
+which will publish the docker image to dockerhub, as well as the client JAR to the community maven S3 bucket for
+use by the CLI.
+

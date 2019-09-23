@@ -13,13 +13,12 @@ import io.kotlintest.shouldThrow
 import io.kotlintest.specs.StringSpec
 import io.mockk.MockKAnnotations
 import io.mockk.clearAllMocks
-import io.mockk.confirmVerified
 import io.mockk.every
 import io.mockk.impl.annotations.InjectMockKs
 import io.mockk.impl.annotations.MockK
 import io.mockk.impl.annotations.OverrideMockKs
+import io.mockk.mockk
 import io.mockk.verify
-import io.mockk.verifySequence
 import io.titandata.exception.CommandException
 import io.titandata.exception.NoSuchObjectException
 import io.titandata.models.Commit
@@ -124,19 +123,19 @@ class ZfsOperationTest : StringSpec() {
             val json = "{\"operation\":{\"id\":\"id\"," +
                     "\"type\":\"PUSH\",\"state\":\"RUNNING\",\"remote\":\"remote\"," +
                     "\"commitId\":\"commit\"},\"params\":{\"provider\":\"nop\",\"delay\":0}}"
-            every { executor.exec("zfs", "set", "io.titan-data:operation=$json", "test/repo/foo/id") } returns ""
+            every { executor.start(*anyVararg()) } returns mockk()
+            every { executor.exec(any<Process>(), any()) } returns ""
             provider.createOperation("foo", op, "hash")
 
-            verifySequence {
+            verify {
                 executor.exec("zfs", "list", "-Ho", "name,defer_destroy", "-t", "snapshot",
                         "-d", "2", "test/repo/foo")
                 executor.exec("zfs", "list", "-rHo", "name,io.titan-data:metadata", "test/repo/foo/guid")
                 executor.exec("zfs", "create", "test/repo/foo/id")
                 executor.exec("zfs", "clone", "-o", "io.titan-data:metadata={}", "test/repo/foo/guid/v0@hash", "test/repo/foo/id/v0")
                 executor.exec("zfs", "clone", "-o", "io.titan-data:metadata={}", "test/repo/foo/guid/v1@hash", "test/repo/foo/id/v1")
-                executor.exec("zfs", "set", "io.titan-data:operation=$json", "test/repo/foo/id")
+                executor.start("zfs", "set", "io.titan-data:operation=$json", "test/repo/foo/id")
             }
-            confirmVerified()
         }
 
         "list operations returns an empty list" {
@@ -275,13 +274,13 @@ class ZfsOperationTest : StringSpec() {
             val newJson = "{\"operation\":{\"id\":\"id\"," +
                     "\"type\":\"PUSH\",\"state\":\"COMPLETE\",\"remote\":\"remote\"," +
                     "\"commitId\":\"commit\"},\"params\":{\"provider\":\"nop\",\"delay\":0}}"
-            every { executor.exec("zfs", "set", "io.titan-data:operation=$newJson",
-                    "test/repo/foo/id") } returns ""
+            every { executor.start(*anyVararg()) } returns mockk()
+            every { executor.exec(any<Process>(), any()) } returns ""
 
             provider.updateOperationState("foo", "id", Operation.State.COMPLETE)
 
             verify {
-                executor.exec("zfs", "set", "io.titan-data:operation=$newJson",
+                executor.start("zfs", "set", "io.titan-data:operation=$newJson",
                         "test/repo/foo/id")
             }
         }

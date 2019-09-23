@@ -213,7 +213,7 @@ class ZfsRepositoryManager(val provider: ZfsStorageProvider) {
         provider.validateRepositoryName(repo)
         try {
             val json = provider.gson.toJson(remotes)
-            provider.executor.exec("zfs", "set", "$REMOTES_PROP=$json", "$poolName/repo/$repo")
+            provider.secureZfsSet(REMOTES_PROP, json, "$poolName/repo/$repo")
         } catch (e: CommandException) {
             provider.checkNoSuchRepository(e, repo)
             throw e

@@ -26,6 +26,7 @@ import io.mockk.every
 import io.mockk.impl.annotations.InjectMockKs
 import io.mockk.impl.annotations.MockK
 import io.mockk.impl.annotations.OverrideMockKs
+import io.mockk.mockk
 import io.mockk.verify
 import io.titandata.remote.engine.EngineRemoteProvider
 import io.titandata.storage.zfs.ZfsStorageProvider
@@ -101,6 +102,8 @@ class RemotesApiTest : StringSpec() {
         }
 
         "create remote succeeds" {
+            every { executor.start(*anyVararg()) } returns mockk()
+            every { executor.exec(any<Process>(), any()) } returns ""
             every { executor.exec(*anyVararg()) } returns "-"
             with(engine.handleRequest(HttpMethod.Post, "/v1/repositories/repo/remotes") {
                 addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
@@ -110,7 +113,7 @@ class RemotesApiTest : StringSpec() {
                 response.content shouldBe "{\"provider\":\"nop\",\"name\":\"a\"}"
 
                 verify {
-                    executor.exec("zfs", "set",
+                    executor.start("zfs", "set",
                             "io.titan-data:remotes=[{\"provider\":\"nop\",\"name\":\"a\"}]",
                             "test/repo/repo")
                 }
@@ -118,6 +121,8 @@ class RemotesApiTest : StringSpec() {
         }
 
         "add remote succeeds" {
+            every { executor.start(*anyVararg()) } returns mockk()
+            every { executor.exec(any<Process>(), any()) } returns ""
             every { executor.exec(*anyVararg()) } returns "[{\"provider\":\"nop\",\"name\":\"a\"}]"
             with(engine.handleRequest(HttpMethod.Post, "/v1/repositories/repo/remotes") {
                 addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
@@ -127,7 +132,7 @@ class RemotesApiTest : StringSpec() {
                 response.status() shouldBe HttpStatusCode.Created
 
                 verify {
-                    executor.exec("zfs", "set",
+                    executor.start("zfs", "set",
                             "io.titan-data:remotes=[{\"provider\":\"nop\",\"name\":\"a\"}," +
                                     "{\"provider\":\"engine\",\"name\":\"bar\",\"address\":\"a\"," +
                                     "\"username\":\"u\",\"password\":\"p\"}]",
@@ -157,6 +162,8 @@ class RemotesApiTest : StringSpec() {
         }
 
         "update remote succeeds" {
+            every { executor.start(*anyVararg()) } returns mockk()
+            every { executor.exec(any<Process>(), any()) } returns ""
             every { executor.exec(*anyVararg()) } returns
                     "[{\"provider\":\"nop\",\"name\":\"foo\"}," +
                     "{\"provider\":\"engine\",\"name\":\"bar\",\"address\":\"a\"," +
@@ -170,7 +177,7 @@ class RemotesApiTest : StringSpec() {
                 response.content shouldBe "{\"provider\":\"engine\",\"name\":\"bar\",\"address\":\"b\"," +
                         "\"username\":\"u\",\"password\":\"p\"}"
                 verify {
-                    executor.exec("zfs", "set",
+                    executor.start("zfs", "set",
                             "io.titan-data:remotes=[{\"provider\":\"nop\",\"name\":\"foo\"}," +
                                     "{\"provider\":\"engine\",\"name\":\"bar\",\"address\":\"b\"," +
                                     "\"username\":\"u\",\"password\":\"p\"}]",
@@ -180,6 +187,8 @@ class RemotesApiTest : StringSpec() {
         }
 
         "rename remote succeeds" {
+            every { executor.start(*anyVararg()) } returns mockk()
+            every { executor.exec(any<Process>(), any()) } returns ""
             every { executor.exec(*anyVararg()) } returns
                     "[{\"provider\":\"nop\",\"name\":\"foo\"}," +
                     "{\"provider\":\"engine\",\"name\":\"bar\",\"address\":\"a\"," +
@@ -191,7 +200,7 @@ class RemotesApiTest : StringSpec() {
             }) {
                 response.status() shouldBe HttpStatusCode.OK
                 verify {
-                    executor.exec("zfs", "set",
+                    executor.start("zfs", "set",
                             "io.titan-data:remotes=[{\"provider\":\"nop\",\"name\":\"foo\"}," +
                                     "{\"provider\":\"engine\",\"name\":\"baz\",\"address\":\"b\"," +
                                     "\"username\":\"u\",\"password\":\"p\"}]",
@@ -215,6 +224,8 @@ class RemotesApiTest : StringSpec() {
         }
 
         "delete remote succeeds" {
+            every { executor.start(*anyVararg()) } returns mockk()
+            every { executor.exec(any<Process>(), any()) } returns ""
             every { executor.exec(*anyVararg()) } returns
                     "[{\"provider\":\"nop\",\"name\":\"foo\"}," +
                     "{\"provider\":\"engine\",\"name\":\"bar\",\"address\":\"a\"," +
@@ -223,7 +234,7 @@ class RemotesApiTest : StringSpec() {
                 response.status() shouldBe HttpStatusCode.NoContent
 
                 verify {
-                    executor.exec("zfs", "set",
+                    executor.start("zfs", "set",
                             "io.titan-data:remotes=[{\"provider\":\"nop\",\"name\":\"foo\"}]",
                             "test/repo/repo")
                 }

@@ -1,8 +1,11 @@
+/*
+ * Copyright The Titan Project Contributors.
+ */
+
 package io.titandata.client.apis
 
 import io.titandata.client.infrastructure.ApiClient
 import io.titandata.client.infrastructure.ClientException
-import io.titandata.client.infrastructure.MultiValueMap
 import io.titandata.client.infrastructure.RequestConfig
 import io.titandata.client.infrastructure.RequestMethod
 import io.titandata.client.infrastructure.ResponseType
@@ -16,7 +19,7 @@ class OperationsApi(basePath: String = "http://localhost:5001") : ApiClient(base
 
     fun deleteOperation(repositoryName: String, operationId: String) {
         val localVariableBody: Any? = null
-        val localVariableQuery: MultiValueMap = mapOf()
+        val localVariableQuery: Map<String,List<String>> = mapOf()
         val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
         val localVariableConfig = RequestConfig(
                 RequestMethod.DELETE,
@@ -40,7 +43,7 @@ class OperationsApi(basePath: String = "http://localhost:5001") : ApiClient(base
     @Suppress("UNCHECKED_CAST")
     fun getOperation(repositoryName: String, operationId: String) : Operation {
         val localVariableBody: Any? = null
-        val localVariableQuery: MultiValueMap = mapOf()
+        val localVariableQuery: Map<String,List<String>> = mapOf()
         val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
         val localVariableConfig = RequestConfig(
                 RequestMethod.GET,
@@ -64,7 +67,7 @@ class OperationsApi(basePath: String = "http://localhost:5001") : ApiClient(base
     @Suppress("UNCHECKED_CAST")
     fun getProgress(repositoryName: String, operationId: String) : Array<ProgressEntry> {
         val localVariableBody: Any? = null
-        val localVariableQuery: MultiValueMap = mapOf()
+        val localVariableQuery: Map<String,List<String>> = mapOf()
         val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
         val localVariableConfig = RequestConfig(
                 RequestMethod.GET,
@@ -88,7 +91,7 @@ class OperationsApi(basePath: String = "http://localhost:5001") : ApiClient(base
     @Suppress("UNCHECKED_CAST")
     fun listOperations(repositoryName: String) : Array<Operation> {
         val localVariableBody: Any? = null
-        val localVariableQuery: MultiValueMap = mapOf()
+        val localVariableQuery: Map<String,List<String>> = mapOf()
         val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
         val localVariableConfig = RequestConfig(
                 RequestMethod.GET,
@@ -112,7 +115,7 @@ class OperationsApi(basePath: String = "http://localhost:5001") : ApiClient(base
     @Suppress("UNCHECKED_CAST")
     fun pull(repositoryName: String, remoteName: String, commitId: String, request: RemoteParameters) : Operation {
         val localVariableBody: Any? = request
-        val localVariableQuery: MultiValueMap = mapOf()
+        val localVariableQuery: Map<String,List<String>> = mapOf()
         val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
         val localVariableConfig = RequestConfig(
                 RequestMethod.POST,
@@ -136,7 +139,7 @@ class OperationsApi(basePath: String = "http://localhost:5001") : ApiClient(base
     @Suppress("UNCHECKED_CAST")
     fun push(repositoryName: String, remoteName: String, commitId: String, anyRequest: RemoteParameters?) : Operation {
         val localVariableBody: Any? = anyRequest
-        val localVariableQuery: MultiValueMap = mapOf()
+        val localVariableQuery: Map<String,List<String>> = mapOf()
         val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
         val localVariableConfig = RequestConfig(
                 RequestMethod.POST,

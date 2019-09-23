@@ -1,3 +1,7 @@
+/*
+ * Copyright The Titan Project Contributors.
+ */
+
 package io.titandata
 
 import com.google.gson.Gson

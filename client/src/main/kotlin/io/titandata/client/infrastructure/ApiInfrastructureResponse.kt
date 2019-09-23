@@ -1,3 +1,7 @@
+/*
+ * Copyright The Titan Project Contributors.
+ */
+
 package io.titandata.client.infrastructure
 
 enum class ResponseType {

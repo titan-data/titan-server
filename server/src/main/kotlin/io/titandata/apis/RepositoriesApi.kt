@@ -1,6 +1,7 @@
 /*
- * Copyright (c) 2019 by Delphix. All rights reserved.
+ * Copyright The Titan Project Contributors.
  */
+
 package io.titandata.apis
 
 import io.ktor.application.call

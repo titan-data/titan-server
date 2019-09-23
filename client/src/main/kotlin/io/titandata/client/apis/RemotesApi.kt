@@ -1,8 +1,11 @@
+/*
+ * Copyright The Titan Project Contributors.
+ */
+
 package io.titandata.client.apis
 
 import io.titandata.client.infrastructure.ApiClient
 import io.titandata.client.infrastructure.ClientException
-import io.titandata.client.infrastructure.MultiValueMap
 import io.titandata.client.infrastructure.RequestConfig
 import io.titandata.client.infrastructure.RequestMethod
 import io.titandata.client.infrastructure.ResponseType
@@ -16,7 +19,7 @@ class RemotesApi(basePath: String = "http://localhost:5001") : ApiClient(basePat
 
     fun deleteRemote(repositoryName: String, remoteName: String ) {
         val localVariableBody: Any? = null
-        val localVariableQuery: MultiValueMap = mapOf()
+        val localVariableQuery: Map<String,List<String>> = mapOf()
         val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
         val localVariableConfig = RequestConfig(
                 RequestMethod.DELETE,
@@ -40,7 +43,7 @@ class RemotesApi(basePath: String = "http://localhost:5001") : ApiClient(basePat
     @Suppress("UNCHECKED_CAST")
     fun getRemote(repositoryName: String, remoteName: String) : Remote {
         val localVariableBody: Any? = null
-        val localVariableQuery: MultiValueMap = mapOf()
+        val localVariableQuery: Map<String,List<String>> = mapOf()
         val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
         val localVariableConfig = RequestConfig(
                 RequestMethod.GET,
@@ -64,7 +67,7 @@ class RemotesApi(basePath: String = "http://localhost:5001") : ApiClient(basePat
     @Suppress("UNCHECKED_CAST")
     fun getRemoteCommit(repositoryName: String, remoteName: String, commitId: String, params: RemoteParameters) : Commit {
         val localVariableBody: Any? = null
-        val localVariableQuery: MultiValueMap = mapOf()
+        val localVariableQuery: Map<String,List<String>> = mapOf()
         val localVariableHeaders: MutableMap<String, String> = mutableMapOf(
                 "titan-remote-parameters" to gson.toJson(params)
         )
@@ -90,7 +93,7 @@ class RemotesApi(basePath: String = "http://localhost:5001") : ApiClient(basePat
     @Suppress("UNCHECKED_CAST")
     fun listRemoteCommits(repositoryName: String, remoteName: String, params: RemoteParameters) : Array<Commit> {
         val localVariableBody: Any? = null
-        val localVariableQuery: MultiValueMap = mapOf()
+        val localVariableQuery: Map<String,List<String>> = mapOf()
         val localVariableHeaders: MutableMap<String, String> = mutableMapOf(
             "titan-remote-parameters" to gson.toJson(params)
         )
@@ -116,7 +119,7 @@ class RemotesApi(basePath: String = "http://localhost:5001") : ApiClient(basePat
     @Suppress("UNCHECKED_CAST")
     fun listRemotes(repositoryName: String) : Array<Remote> {
         val localVariableBody: Any? = null
-        val localVariableQuery: MultiValueMap = mapOf()
+        val localVariableQuery: Map<String,List<String>> = mapOf()
         val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
         val localVariableConfig = RequestConfig(
                 RequestMethod.GET,
@@ -140,7 +143,7 @@ class RemotesApi(basePath: String = "http://localhost:5001") : ApiClient(basePat
     @Suppress("UNCHECKED_CAST")
     fun createRemote(repositoryName: String, anyRemote: Remote) : Remote {
         val localVariableBody: Any? = anyRemote
-        val localVariableQuery: MultiValueMap = mapOf()
+        val localVariableQuery: Map<String,List<String>> = mapOf()
         val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
         val localVariableConfig = RequestConfig(
                 RequestMethod.POST,
@@ -164,7 +167,7 @@ class RemotesApi(basePath: String = "http://localhost:5001") : ApiClient(basePat
     @Suppress("UNCHECKED_CAST")
     fun updateRemote(repositoryName: String, remoteName: String, anyRemote: Remote) : Remote {
         val localVariableBody: Any? = anyRemote
-        val localVariableQuery: MultiValueMap = mapOf()
+        val localVariableQuery: Map<String,List<String>> = mapOf()
         val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
         val localVariableConfig = RequestConfig(
                 RequestMethod.POST,

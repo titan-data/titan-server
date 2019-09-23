@@ -1,3 +1,7 @@
+/*
+ * Copyright The Titan Project Contributors.
+ */
+
 package io.titandata.remote.s3
 
 import com.amazonaws.auth.AWSStaticCredentialsProvider

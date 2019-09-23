@@ -1,8 +1,11 @@
+/*
+ * Copyright The Titan Project Contributors.
+ */
+
 package io.titandata.client.apis
 
 import io.titandata.client.infrastructure.ApiClient
 import io.titandata.client.infrastructure.ClientException
-import io.titandata.client.infrastructure.MultiValueMap
 import io.titandata.client.infrastructure.RequestConfig
 import io.titandata.client.infrastructure.RequestMethod
 import io.titandata.client.infrastructure.ResponseType
@@ -14,7 +17,7 @@ class CommitsApi(basePath: String = "http://localhost:5001") : ApiClient(basePat
 
     fun checkoutCommit(repositoryName: String, commitId: String) {
         val localVariableBody: Any? = null
-        val localVariableQuery: MultiValueMap = mapOf()
+        val localVariableQuery: Map<String,List<String>> = mapOf()
         val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
         val localVariableConfig = RequestConfig(
                 RequestMethod.POST,
@@ -38,7 +41,7 @@ class CommitsApi(basePath: String = "http://localhost:5001") : ApiClient(basePat
     @Suppress("UNCHECKED_CAST")
     fun createCommit(repositoryName: String, commit: Commit) : Commit {
         val localVariableBody: Any? = commit
-        val localVariableQuery: MultiValueMap = mapOf()
+        val localVariableQuery: Map<String,List<String>> = mapOf()
         val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
         val localVariableConfig = RequestConfig(
                 RequestMethod.POST,
@@ -61,7 +64,7 @@ class CommitsApi(basePath: String = "http://localhost:5001") : ApiClient(basePat
 
     fun deleteCommit(repositoryName: String, commitId: String) {
         val localVariableBody: Any? = null
-        val localVariableQuery: MultiValueMap = mapOf()
+        val localVariableQuery: Map<String,List<String>> = mapOf()
         val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
         val localVariableConfig = RequestConfig(
                 RequestMethod.DELETE,
@@ -85,7 +88,7 @@ class CommitsApi(basePath: String = "http://localhost:5001") : ApiClient(basePat
     @Suppress("UNCHECKED_CAST")
     fun getCommit(repositoryName: String, commitId: String) : Commit {
         val localVariableBody: Any? = null
-        val localVariableQuery: MultiValueMap = mapOf()
+        val localVariableQuery: Map<String,List<String>> = mapOf()
         val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
         val localVariableConfig = RequestConfig(
                 RequestMethod.GET,
@@ -109,7 +112,7 @@ class CommitsApi(basePath: String = "http://localhost:5001") : ApiClient(basePat
     @Suppress("UNCHECKED_CAST")
     fun listCommits(repositoryName: String) : Array<Commit> {
         val localVariableBody: Any? = null
-        val localVariableQuery: MultiValueMap = mapOf()
+        val localVariableQuery: Map<String,List<String>> = mapOf()
         val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
         val localVariableConfig = RequestConfig(
                 RequestMethod.GET,

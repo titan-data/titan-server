@@ -1,8 +1,11 @@
+/*
+ * Copyright The Titan Project Contributors.
+ */
+
 package io.titandata.client.apis
 
 import io.titandata.client.infrastructure.ApiClient
 import io.titandata.client.infrastructure.ClientException
-import io.titandata.client.infrastructure.MultiValueMap
 import io.titandata.client.infrastructure.RequestConfig
 import io.titandata.client.infrastructure.RequestMethod
 import io.titandata.client.infrastructure.ResponseType
@@ -15,7 +18,7 @@ class RepositoriesApi(basePath: String = "http://localhost:5001") : ApiClient(ba
     @Suppress("UNCHECKED_CAST")
     fun createRepository(repository: Repository) : Repository {
         val localVariableBody: Any? = repository
-        val localVariableQuery: MultiValueMap = mapOf()
+        val localVariableQuery: Map<String,List<String>> = mapOf()
         val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
         val localVariableConfig = RequestConfig(
                 RequestMethod.POST,
@@ -38,7 +41,7 @@ class RepositoriesApi(basePath: String = "http://localhost:5001") : ApiClient(ba
 
     fun deleteRepository(repositoryName: String) {
         val localVariableBody: Any? = null
-        val localVariableQuery: MultiValueMap = mapOf()
+        val localVariableQuery: Map<String,List<String>> = mapOf()
         val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
         val localVariableConfig = RequestConfig(
                 RequestMethod.DELETE,
@@ -62,7 +65,7 @@ class RepositoriesApi(basePath: String = "http://localhost:5001") : ApiClient(ba
     @Suppress("UNCHECKED_CAST")
     fun getRepository(repositoryName: String) : Repository {
         val localVariableBody: Any? = null
-        val localVariableQuery: MultiValueMap = mapOf()
+        val localVariableQuery: Map<String,List<String>> = mapOf()
         val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
         val localVariableConfig = RequestConfig(
                 RequestMethod.GET,
@@ -86,7 +89,7 @@ class RepositoriesApi(basePath: String = "http://localhost:5001") : ApiClient(ba
     @Suppress("UNCHECKED_CAST")
     fun listRepositories() : Array<Repository> {
         val localVariableBody: Any? = null
-        val localVariableQuery: MultiValueMap = mapOf()
+        val localVariableQuery: Map<String,List<String>> = mapOf()
         val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
         val localVariableConfig = RequestConfig(
                 RequestMethod.GET,
@@ -110,7 +113,7 @@ class RepositoriesApi(basePath: String = "http://localhost:5001") : ApiClient(ba
     @Suppress("UNCHECKED_CAST")
     fun updateRepository(repositoryName: String, repository: Repository) : Repository {
         val localVariableBody: Any? = repository
-        val localVariableQuery: MultiValueMap = mapOf()
+        val localVariableQuery: Map<String,List<String>> = mapOf()
         val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
         val localVariableConfig = RequestConfig(
                 RequestMethod.POST,

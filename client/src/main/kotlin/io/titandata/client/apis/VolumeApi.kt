@@ -1,8 +1,11 @@
+/*
+ * Copyright The Titan Project Contributors.
+ */
+
 package io.titandata.client.apis
 
 import io.titandata.client.infrastructure.ApiClient
 import io.titandata.client.infrastructure.ClientException
-import io.titandata.client.infrastructure.MultiValueMap
 import io.titandata.client.infrastructure.RequestConfig
 import io.titandata.client.infrastructure.RequestMethod
 import io.titandata.client.infrastructure.ResponseType
@@ -23,7 +26,7 @@ class VolumeApi(basePath: String = "http://localhost:5001") : ApiClient(basePath
     @Suppress("UNCHECKED_CAST")
     fun createVolume(volumeCreateRequest: VolumeCreateRequest) : VolumeResponse {
         val localVariableBody: Any? = volumeCreateRequest
-        val localVariableQuery: MultiValueMap = mapOf()
+        val localVariableQuery: Map<String,List<String>> = mapOf()
         val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
         val localVariableConfig = RequestConfig(
                 RequestMethod.POST,
@@ -47,7 +50,7 @@ class VolumeApi(basePath: String = "http://localhost:5001") : ApiClient(basePath
     @Suppress("UNCHECKED_CAST")
     fun getCapabilities() : VolumeCapabilitiesResponse {
         val localVariableBody: Any? = null
-        val localVariableQuery: MultiValueMap = mapOf()
+        val localVariableQuery: Map<String,List<String>> = mapOf()
         val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
         val localVariableConfig = RequestConfig(
                 RequestMethod.POST,
@@ -71,7 +74,7 @@ class VolumeApi(basePath: String = "http://localhost:5001") : ApiClient(basePath
     @Suppress("UNCHECKED_CAST")
     fun pluginActivate() : PluginDescription {
         val localVariableBody: Any? = null
-        val localVariableQuery: MultiValueMap = mapOf()
+        val localVariableQuery: Map<String,List<String>> = mapOf()
         val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
         val localVariableConfig = RequestConfig(
                 RequestMethod.POST,
@@ -95,7 +98,7 @@ class VolumeApi(basePath: String = "http://localhost:5001") : ApiClient(basePath
     @Suppress("UNCHECKED_CAST")
     fun getVolume(volumeRequest: VolumeRequest) : VolumeGetResponse {
         val localVariableBody: Any? = volumeRequest
-        val localVariableQuery: MultiValueMap = mapOf()
+        val localVariableQuery: Map<String,List<String>> = mapOf()
         val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
         val localVariableConfig = RequestConfig(
                 RequestMethod.POST,
@@ -119,7 +122,7 @@ class VolumeApi(basePath: String = "http://localhost:5001") : ApiClient(basePath
     @Suppress("UNCHECKED_CAST")
     fun getVolumePath(volumeRequest: VolumeRequest) : VolumePathResponse {
         val localVariableBody: Any? = volumeRequest
-        val localVariableQuery: MultiValueMap = mapOf()
+        val localVariableQuery: Map<String,List<String>> = mapOf()
         val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
         val localVariableConfig = RequestConfig(
                 RequestMethod.POST,
@@ -143,7 +146,7 @@ class VolumeApi(basePath: String = "http://localhost:5001") : ApiClient(basePath
     @Suppress("UNCHECKED_CAST")
     fun listVolumes() : VolumeListResponse {
         val localVariableBody: Any? = null
-        val localVariableQuery: MultiValueMap = mapOf()
+        val localVariableQuery: Map<String,List<String>> = mapOf()
         val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
         val localVariableConfig = RequestConfig(
                 RequestMethod.POST,
@@ -167,7 +170,7 @@ class VolumeApi(basePath: String = "http://localhost:5001") : ApiClient(basePath
     @Suppress("UNCHECKED_CAST")
     fun mountVolume(volumeMountRequest: VolumeMountRequest) : VolumePathResponse {
         val localVariableBody: Any? = volumeMountRequest
-        val localVariableQuery: MultiValueMap = mapOf()
+        val localVariableQuery: Map<String,List<String>> = mapOf()
         val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
         val localVariableConfig = RequestConfig(
                 RequestMethod.POST,
@@ -191,7 +194,7 @@ class VolumeApi(basePath: String = "http://localhost:5001") : ApiClient(basePath
     @Suppress("UNCHECKED_CAST")
     fun removeVolume(volumeRequest: VolumeRequest) : VolumeResponse {
         val localVariableBody: Any? = volumeRequest
-        val localVariableQuery: MultiValueMap = mapOf()
+        val localVariableQuery: Map<String,List<String>> = mapOf()
         val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
         val localVariableConfig = RequestConfig(
                 RequestMethod.POST,
@@ -215,7 +218,7 @@ class VolumeApi(basePath: String = "http://localhost:5001") : ApiClient(basePath
     @Suppress("UNCHECKED_CAST")
     fun unmountVolume(volumeMountRequest: VolumeMountRequest) : VolumeResponse {
         val localVariableBody: Any? = volumeMountRequest
-        val localVariableQuery: MultiValueMap = mapOf()
+        val localVariableQuery: Map<String,List<String>> = mapOf()
         val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
         val localVariableConfig = RequestConfig(
                 RequestMethod.POST,

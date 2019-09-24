@@ -19,6 +19,7 @@ import io.mockk.every
 import io.mockk.impl.annotations.InjectMockKs
 import io.mockk.impl.annotations.MockK
 import io.mockk.impl.annotations.OverrideMockKs
+import io.mockk.mockk
 import io.mockk.verify
 import io.mockk.verifySequence
 import io.titandata.exception.CommandException
@@ -294,14 +295,15 @@ class ZfsRepositoryTest : StringSpec() {
         }
 
         "update remotes succeeds" {
+            every { executor.start(*anyVararg()) } returns mockk()
+            every { executor.exec(any<Process>(), any()) } returns ""
             every { executor.exec(*anyVararg()) } returns ""
             provider.updateRemotes("repo", listOf(NopRemote(name = "foo")))
-            verifySequence {
-                executor.exec("zfs", "set",
+            verify {
+                executor.start("zfs", "set",
                         "io.titan-data:remotes=[{\"provider\":\"nop\",\"name\":\"foo\"}]",
                         "test/repo/repo")
             }
-            confirmVerified()
         }
     }
 }

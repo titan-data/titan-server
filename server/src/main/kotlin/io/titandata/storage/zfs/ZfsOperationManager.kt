@@ -48,8 +48,7 @@ class ZfsOperationManager(val provider: ZfsStorageProvider) {
         val id = data.operation.id
         provider.cloneCommit(repo, guid, commit, id)
         val json = provider.gson.toJson(data)
-        provider.executor.exec("zfs", "set", "$OPERATION_PROP=$json",
-                "$poolName/repo/$repo/$id")
+        provider.secureZfsSet(OPERATION_PROP, json, "$poolName/repo/$repo/$id")
     }
 
     /**
@@ -142,7 +141,7 @@ class ZfsOperationManager(val provider: ZfsStorageProvider) {
         op.operation.state = state
         val json = provider.gson.toJson(op)
 
-        provider.executor.exec("zfs", "set", "$OPERATION_PROP=$json", "$poolName/repo/$repo/$id")
+        provider.secureZfsSet(OPERATION_PROP, json, "$poolName/repo/$repo/$id")
     }
 
     /**

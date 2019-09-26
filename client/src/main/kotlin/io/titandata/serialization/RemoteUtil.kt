@@ -1,21 +1,17 @@
 /*
- * Copyright (c) 2019 by Delphix. All rights reserved.
+ * Copyright The Titan Project Contributors.
  */
 
 package io.titandata.serialization
 
-import io.titandata.models.EngineRemote
-import io.titandata.models.NopRemote
 import io.titandata.models.Remote
 import io.titandata.models.RemoteParameters
-import io.titandata.models.SshRemote
 import io.titandata.serialization.remote.EngineRemoteUtil
 import io.titandata.serialization.remote.NopRemoteUtil
 import io.titandata.serialization.remote.S3RemoteUtil
 import io.titandata.serialization.remote.SshRemoteUtil
 import java.net.URI
 import java.net.URISyntaxException
-
 
 class RemoteUtil {
 

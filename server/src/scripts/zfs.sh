@@ -42,7 +42,7 @@ function zfs_version_compatible() {
 #
 function get_asset_url() {
   local asset_name=$1
-  echo "https://titandata.s3-us-west-2.amazonaws.com/zfs-releases/$asset_name"
+  echo "https://download.titan-data.io/zfs-releases/$asset_name"
 }
 
 #

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019 by Delphix. All rights reserved.
+ * Copyright The Titan Project Contributors.
  */
 
 package io.titandata.storage.zfs
@@ -240,6 +240,18 @@ class ZfsStorageProvider(
             }
             throw e
         }
+    }
+
+    /**
+     * This is a helper function that is used for "zfs set" operations that can contain sensitive information
+     * (such as credentials in remotes or remote parameters). We apply a large hammer here and just blank out
+     * the whole value. If this proves problematic, then we can implement a more fine-grained scheme that pulls in
+     * more of the remote-specific context to only blank out sensitive fields.
+     */
+    fun secureZfsSet(property: String, value: String, target: String): String {
+        val process = executor.start("zfs", "set", "$property=$value", target)
+        val argString = "zfs, set, $property=*****, $target"
+        return executor.exec(process, argString)
     }
 
     /*

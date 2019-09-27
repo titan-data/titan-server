@@ -6,13 +6,7 @@ package io.titandata.client.infrastructure
 
 import io.titandata.serialization.ModelTypeAdapters
 import com.google.gson.GsonBuilder
-import okhttp3.FormBody
-import okhttp3.HttpUrl
-import okhttp3.MediaType
-import okhttp3.OkHttpClient
-import okhttp3.Request
-import okhttp3.RequestBody
-import okhttp3.ResponseBody
+import okhttp3.*
 import java.io.File
 
 open class ApiClient(val baseUrl: String) {
@@ -32,7 +26,7 @@ open class ApiClient(val baseUrl: String) {
         }
 
         @JvmStatic
-        val builder: OkHttpClient.Builder = OkHttpClient.Builder()
+        val builder: OkHttpClient.Builder = OkHttpClient.Builder().connectionSpecs(listOf(ConnectionSpec.CLEARTEXT))
     }
 
     protected inline fun <reified T> requestBody(content: T, mediaType: String = JsonMediaType): RequestBody =

@@ -1,0 +1,42 @@
+#
+# On release, we perform the same actions as the push handler, but with a
+# specific tagged version. We then:
+#
+#   * Publish the docker image to the GitHub docker package registry
+#   * Publish the client jar to the GitHub
+#   * Publish a GitHub release with the set of changes
+#
+name: Push
+
+on: create
+
+jobs:
+  publish:
+    name: Test and publish
+    runs-on: ubuntu-18.04
+    steps:
+      - uses: actions/checkout@v1
+      - uses: actions/setup-java@v1
+        with:
+          java-version: '8.0.212'
+      - name: Build and test
+        run: ./gradlew build -PserverImageName=docker.pkg.github.com/$GITHUB_REPOSITORY/titan -PtitanVersion=${GITHUB_REF#refs/tags/}
+      #
+      # GITHUB_TOKEN cannot currently be used for pushing docker images, so we
+      # have to use a hard-coded secret instead.
+      #
+      - name: Publish docker image
+        run: |
+          docker login -u ${{ secrets.DOCKER_USER }} -p ${{ secrets.DOCKER_PASSWORD }} docker.pkg.github.com
+          ./gradlew publishDockerVersion publishDockerLatest -PserverImageName=docker.pkg.github.com/$GITHUB_REPOSITORY/titan -PtitanVersion=${GITHUB_REF#refs/tags/}
+      - name: Publish client jar
+        run: >
+          ./gradlew :client:publish -PmavenUrl=https://maven.pkg.github.com/$GITHUB_REPOSITORY
+          -PmavenUser=x-access-token -PmavenPassword=${{ secrets.GITHUB_TOKEN }}
+          -PtitanVersion=${GITHUB_REF#refs/tags/}
+      - name: Create release
+        uses: elgohr/Github-Release-Action@v2.0
+        with:
+          args: ${GITHUB_REF#refs/tags/}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -1,20 +1,16 @@
 #
-# On each push, we:
-#
-#   Do a full build
-#   Run end to end tests (TBD)
-#   Publish artifacts under the "latest" tag
+# On each push, we do a full build and run a more complex set of end to end
+# tests that take longer to run (and may require secrets like S3 credentials).
+# End to end tests are still TBD, so for now this is just a full build
+# (including the docker build, which is not done in PR context).
 #
 name: Push
 
-on:
-  push:
-    branches:
-      - feature/actions
+on: push
 
 jobs:
-  publish:
-    name: Test and publish
+  build:
+    name: Build and test
     runs-on: ubuntu-18.04
     steps:
       - uses: actions/checkout@v1
@@ -22,14 +18,4 @@ jobs:
         with:
           java-version: '8.0.212'
       - name: Build and test
-        run: ./gradlew build -PserverImageName=docker.pkg.github.com/$GITHUB_REPOSITORY/titan
-        #
-        # GITHUB_TOKEN cannot currently be used for pushing docker images, so we
-        # have to use a hard-coded secret instead.
-        #
-      - name: Publish docker image
-        run: |
-          docker login -u ${{ secrets.DOCKER_USER }} -p ${{ secrets.DOCKER_PASSWORD }} docker.pkg.github.com
-          ./gradlew publishDockerLatest -PserverImageName=docker.pkg.github.com/$GITHUB_REPOSITORY/titan
-      - name: Publish client jar
-        run: ./gradlew :client:publish -PmavenUrl=https://maven.pkg.github.com/$GITHUB_REPOSITORY -PmavenUser=x-access-token -PmavenPassword=${{ secrets.GITHUB_TOKEN }}
+        run: ./gradlew build

@@ -1,3 +1,8 @@
+#
+# We only build the java artifacts during pull request, because building the
+# full docker image takes much longer. That is only run after code has been
+# merged or as part of a release.
+#
 name: Pull Request
 
 on:
@@ -5,11 +10,6 @@ on:
     types: [opened, synchronize, reopened]
 
 jobs:
-  #
-  # We only build the java artifacts during pull request, because building the
-  # full docker image takes much longer. That is only run after code has been
-  # merged or as part of a release.
-  #
   buildandtest:
     name: Assemble and test
     runs-on: ubuntu-18.04
@@ -19,7 +19,7 @@ jobs:
         with:
           java-version: '8.0.212'
       - name: Build and test
-        run: ./gradlew assemble test integrationTest
+        run: ./gradlew shadowJar test integrationTest
   style:
     name: Check code style
     runs-on: ubuntu-18.04

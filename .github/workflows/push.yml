@@ -1,0 +1,35 @@
+#
+# On each push, we:
+#
+#   Do a full build
+#   Run end to end tests (TBD)
+#   Publish artifacts under the "latest" tag
+#
+name: Continuous Build
+
+on:
+  push:
+    branches:
+      - feature/actions
+
+jobs:
+  publish:
+    name: Test and publish
+    runs-on: ubuntu-18.04
+    steps:
+      - uses: actions/checkout@v1
+      - uses: actions/setup-java@v1
+        with:
+          java-version: '8.0.212'
+      - name: Build and test
+        run: ./gradlew build -PserverImageName=docker.pkg.github.com/$GITHUB_REPOSITORY/titan
+        #
+        # GITHUB_TOKEN cannot currently be used for pushing docker images, so we
+        # have to use a hard-coded secret instead.
+        #
+      - name: Publish docker image
+        run: |
+          docker login -u ${{ secrets.DOCKER_USER }} -p ${{ secrets.DOCKER_PASSWORD }}
+          ./gradlew publishDockerLatest -PserverImageName=docker.pkg.github.com/$GITHUB_REPOSITORY/titan
+      - name: Publish client jar
+        run: ./gradlew :client:publish -PmavenUrl=https://maven.pkg.github.com/$GITHUB_REPOSITORY -PmavenUser=x-access-token -PmavenPassword=${{ secrets.GITHUB_TOKEN }}

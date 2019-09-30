@@ -5,7 +5,7 @@
 #   Run end to end tests (TBD)
 #   Publish artifacts under the "latest" tag
 #
-name: Continuous Build
+name: Push
 
 on:
   push:
@@ -29,7 +29,7 @@ jobs:
         #
       - name: Publish docker image
         run: |
-          docker login -u ${{ secrets.DOCKER_USER }} -p ${{ secrets.DOCKER_PASSWORD }}
+          docker login -u ${{ secrets.DOCKER_USER }} -p ${{ secrets.DOCKER_PASSWORD }} docker.pkg.github.com
           ./gradlew publishDockerLatest -PserverImageName=docker.pkg.github.com/$GITHUB_REPOSITORY/titan
       - name: Publish client jar
         run: ./gradlew :client:publish -PmavenUrl=https://maven.pkg.github.com/$GITHUB_REPOSITORY -PmavenUser=x-access-token -PmavenPassword=${{ secrets.GITHUB_TOKEN }}

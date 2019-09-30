@@ -6,7 +6,7 @@
 #   * Publish the client jar to the GitHub
 #   * Publish a GitHub release with the set of changes
 #
-name: Push
+name: Release
 
 on: create
 
@@ -35,7 +35,7 @@ jobs:
           -PmavenUser=x-access-token -PmavenPassword=${{ secrets.GITHUB_TOKEN }}
           -PtitanVersion=${GITHUB_REF#refs/tags/}
       - name: Create release
-        uses: elgohr/Github-Release-Action@v2.0
+        uses: elgohr/Github-Release-Action@2.0
         with:
           args: ${GITHUB_REF#refs/tags/}
         env:

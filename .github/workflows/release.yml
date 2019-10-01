@@ -19,8 +19,6 @@ jobs:
 #      - uses: actions/setup-java@v1
 #        with:
 #          java-version: '8.0.212'
-      - name: Install hub
-        run: sudo snap install --classic hub
 #      - name: Build and test
 #        run: ./gradlew build -PserverImageName=docker.pkg.github.com/$GITHUB_REPOSITORY/titan -PtitanVersion=${GITHUB_REF#refs/tags/}
 #      #
@@ -37,7 +35,6 @@ jobs:
 #          -PmavenUser=x-access-token -PmavenPassword=${{ secrets.GITHUB_TOKEN }}
 #          -PtitanVersion=${GITHUB_REF#refs/tags/}
       - name: Create release
+            run: ./.github/scripts/draft-release.sh
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run:
-          hub release create -m ${GITHUB_REF#refs/tags/} ${GITHUB_REF#refs/tags/}

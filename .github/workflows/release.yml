@@ -22,6 +22,10 @@ jobs:
           java-version: '8.0.212'
       - name: Build and test
         run: ./gradlew build -PserverImageName=docker.pkg.github.com/$GITHUB_REPOSITORY/titan -PtitanVersion=${GITHUB_REF#refs/tags/}
+      - name: End to End tests
+        run: |
+          uname -a
+          ./gradlew endtoendTest --tests *LocalWorkflowTest*
       #
       # GITHUB_TOKEN cannot currently be used for pushing docker images, so we
       # have to use a hard-coded secret instead.

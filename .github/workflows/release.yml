@@ -4,7 +4,7 @@
 #
 #   * Publish the docker image to the GitHub docker package registry
 #   * Publish the client jar to the GitHub
-#   * Publish a GitHub release with the set of changes
+#   * Publish a draft GitHub release
 #
 name: Release
 

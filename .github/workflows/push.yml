@@ -6,7 +6,11 @@
 #
 name: Push
 
-on: push
+on:
+  push:
+    # Pushing to a tag is handled by the release workflow, no need to run this
+    tags-ignore:
+      - refs/tags/**
 
 jobs:
   build:

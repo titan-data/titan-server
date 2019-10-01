@@ -19,3 +19,7 @@ jobs:
           java-version: '8.0.212'
       - name: Build and test
         run: ./gradlew build
+      - name: Display uname
+        run: uname -a
+      - name: End to End tests
+        run: ./gradlew endtoendTest --tests *LocalWorkflowTest*

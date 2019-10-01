@@ -8,10 +8,7 @@
 #
 name: Release
 
-on:
-  push:
-    tags:
-      - refs/tags/**
+on: create
 
 jobs:
   publish:

@@ -11,6 +11,7 @@ on: push
 jobs:
   build:
     name: Build and test
+    if: github.ref == ''
     runs-on: ubuntu-18.04
     steps:
       - uses: actions/checkout@v1

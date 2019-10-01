@@ -41,7 +41,6 @@ class DockerUtil(
         val log = LoggerFactory.getLogger(CommandExecutor::class.java)
     }
 
-
     fun startTitan(entryPoint: String, daemon: Boolean): String {
         val args = mutableListOf("docker", "run", "--privileged", "--pid=host", "--network=host",
                 "-v", "/var/lib:/var/lib", "-v", "/run/docker:/run/docker")

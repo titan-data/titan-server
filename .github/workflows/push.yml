@@ -1,0 +1,21 @@
+#
+# On each push, we do a full build and run a more complex set of end to end
+# tests that take longer to run (and may require secrets like S3 credentials).
+# End to end tests are still TBD, so for now this is just a full build
+# (including the docker build, which is not done in PR context).
+#
+name: Push
+
+on: push
+
+jobs:
+  build:
+    name: Build and test
+    runs-on: ubuntu-18.04
+    steps:
+      - uses: actions/checkout@v1
+      - uses: actions/setup-java@v1
+        with:
+          java-version: '8.0.212'
+      - name: Build and test
+        run: ./gradlew build

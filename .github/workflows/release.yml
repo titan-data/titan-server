@@ -35,6 +35,6 @@ jobs:
 #          -PmavenUser=x-access-token -PmavenPassword=${{ secrets.GITHUB_TOKEN }}
 #          -PtitanVersion=${GITHUB_REF#refs/tags/}
       - name: Create release
-            run: ./.github/scripts/draft-release.sh
+        run: ./.github/scripts/draft-release.sh
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

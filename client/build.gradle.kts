@@ -4,17 +4,9 @@ plugins {
 }
 
 val titanVersion: String by rootProject.extra
-val mavenUrl = when(project.hasProperty("mavenUrl")) {
-    true -> project.property("mavenUrl")
-    false -> "https://maven.pkg.github.com/titan-data"
-}
-val mavenUser = when(project.hasProperty("mavenUser")) {
-    true -> project.property("mavenUser").toString()
-    false -> null
-}
-val mavenPassword = when(project.hasProperty("mavenPassword")) {
-    true -> project.property("mavenPassword").toString()
-    false -> null
+val mavenBucket = when(project.hasProperty("mavenBucket")) {
+    true -> project.property("mavenBucket")
+    false -> "titan-data-maven"
 }
 
 group = "io.titandata"
@@ -47,10 +39,9 @@ publishing {
     repositories {
         maven {
             name = "titan"
-            url = uri("$mavenUrl")
-            credentials {
-                username = mavenUser
-                password = mavenPassword
+            url = uri("s3://$mavenBucket")
+            authentication {
+                create<AwsImAuthentication>("awsIm")
             }
         }
     }

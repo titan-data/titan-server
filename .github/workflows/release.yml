@@ -21,7 +21,7 @@ jobs:
         with:
           java-version: '8.0.212'
       - name: Build and test
-        run: ./gradlew build -PserverImageName=titandata/titan -PtitanVersion=${GITHUB_REF#refs/tags/}
+        run: ./gradlew build -PserverImageName=eschrock/titan -PtitanVersion=${GITHUB_REF#refs/tags/}
       - name: End to End tests
         run: |
           uname -a

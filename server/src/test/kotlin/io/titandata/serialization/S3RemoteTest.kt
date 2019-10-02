@@ -209,7 +209,6 @@ class S3RemoteTest : StringSpec() {
                 params.secretKey shouldBe "secretKey"
                 params.sessionToken shouldBe "sessionToken"
                 params.region shouldBe "us-west-2"
-
             }
         }
     }

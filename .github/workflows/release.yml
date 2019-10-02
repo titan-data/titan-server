@@ -21,7 +21,7 @@ jobs:
         with:
           java-version: '8.0.212'
       - name: Build and test
-        run: ./gradlew build -PserverImageName=eschrock/titan -PtitanVersion=${GITHUB_REF#refs/tags/}
+        run: ./gradlew build -PserverImageName=titandata/titan -PtitanVersion=${GITHUB_REF#refs/tags/}
       - name: End to End tests
         run: |
           uname -a
@@ -33,7 +33,7 @@ jobs:
       - name: Publish docker image
         run: |
           docker login -u ${{ secrets.DOCKER_USER }} -p ${{ secrets.DOCKER_PASSWORD }}
-          ./gradlew publishDockerVersion publishDockerLatest -PserverImageName=eschrock/titan -PtitanVersion=${GITHUB_REF#refs/tags/}
+          ./gradlew publishDockerVersion publishDockerLatest -PserverImageName=titandata/titan -PtitanVersion=${GITHUB_REF#refs/tags/}
       - name: Publish client jar
         run: >
           ./gradlew :client:publish -PmavenBucket=${{ secrets.MAVEN_BUCKET }}

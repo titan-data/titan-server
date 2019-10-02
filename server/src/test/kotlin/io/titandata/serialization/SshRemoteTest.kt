@@ -7,6 +7,7 @@ package io.titandata.serialization
 import com.google.gson.GsonBuilder
 import io.kotlintest.TestCase
 import io.kotlintest.TestResult
+import io.kotlintest.extensions.system.withEnvironment
 import io.kotlintest.matchers.types.shouldBeInstanceOf
 import io.kotlintest.shouldBe
 import io.kotlintest.shouldThrow

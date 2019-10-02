@@ -35,7 +35,7 @@ dependencies {
 
     testCompile("com.squareup.okhttp3:okhttp:3.14.2")
     testCompile("io.ktor:ktor-server-test-host:$ktorVersion")
-    testImplementation("io.kotlintest:kotlintest-runner-junit5:3.4.0")
+    testImplementation("io.kotlintest:kotlintest-runner-junit5:3.4.2")
     testImplementation("io.mockk:mockk:1.9.3")
     testImplementation("org.apache.commons:commons-text:1.7")
 }

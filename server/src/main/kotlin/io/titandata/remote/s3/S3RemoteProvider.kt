@@ -6,6 +6,7 @@ package io.titandata.remote.s3
 
 import com.amazonaws.auth.AWSStaticCredentialsProvider
 import com.amazonaws.auth.BasicAWSCredentials
+import com.amazonaws.auth.BasicSessionCredentials
 import com.amazonaws.services.s3.AmazonS3
 import com.amazonaws.services.s3.AmazonS3ClientBuilder
 import com.amazonaws.services.s3.model.AmazonS3Exception
@@ -48,7 +49,10 @@ class S3RemoteProvider(val providers: ProviderModule) : BaseRemoteProvider() {
         val region = params.region ?: remote.region
             ?: throw IllegalArgumentException("missing region")
 
-        val creds = BasicAWSCredentials(accessKey, secretKey)
+        val creds = when (params.sessionToken) {
+            null -> BasicAWSCredentials(accessKey, secretKey)
+            else -> BasicSessionCredentials(accessKey, secretKey, params.sessionToken)
+        }
         val provider = AWSStaticCredentialsProvider(creds)
 
         return AmazonS3ClientBuilder.standard().withCredentials(provider).withRegion(region).build()!!

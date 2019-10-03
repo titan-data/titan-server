@@ -103,6 +103,7 @@ class SshRemoteProvider(val providers: ProviderModule) : BaseRemoteProvider() {
         }
 
         args.addAll(arrayOf("-o", "StrictHostKeyChecking=no"))
+        args.addAll(arrayOf("-o", "UserKnownHostsFile=/dev/null"))
         if (includeAddress) {
             args.add("${remote.username}@${remote.address}")
         }

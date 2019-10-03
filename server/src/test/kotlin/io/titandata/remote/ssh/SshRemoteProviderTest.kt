@@ -89,11 +89,11 @@ class SshRemoteProviderTest : StringSpec() {
 
         "list commits returns correct metadata" {
             every { executor.exec("sshpass", "-f", any(), "ssh", "-o", "StrictHostKeyChecking=no",
-                    "root@localhost", "ls", "-1", "/var/tmp") } returns "a\nb\n"
+                    "-o", "UserKnownHostsFile=/dev/null", "root@localhost", "ls", "-1", "/var/tmp") } returns "a\nb\n"
             every { executor.exec("sshpass", "-f", any(), "ssh", "-o", "StrictHostKeyChecking=no",
-                    "root@localhost", "cat", "/var/tmp/a/metadata.json") } returns "{\"id\":\"a\",\"properties\":{}}"
+                    "-o", "UserKnownHostsFile=/dev/null", "root@localhost", "cat", "/var/tmp/a/metadata.json") } returns "{\"id\":\"a\",\"properties\":{}}"
             every { executor.exec("sshpass", "-f", any(), "ssh", "-o", "StrictHostKeyChecking=no",
-                    "root@localhost", "cat", "/var/tmp/b/metadata.json") } returns "{\"id\":\"b\",\"properties\":{}}"
+                    "-o", "UserKnownHostsFile=/dev/null", "root@localhost", "cat", "/var/tmp/b/metadata.json") } returns "{\"id\":\"b\",\"properties\":{}}"
             val result = provider.listCommits(getRemote(), SshParameters())
             result.size shouldBe 2
             result[0].id shouldBe "a"
@@ -102,9 +102,9 @@ class SshRemoteProviderTest : StringSpec() {
 
         "list commits ignores missing file" {
             every { executor.exec("sshpass", "-f", any(), "ssh", "-o", "StrictHostKeyChecking=no",
-                    "root@localhost", "ls", "-1", "/var/tmp") } returns "a\n"
+                    "-o", "UserKnownHostsFile=/dev/null", "root@localhost", "ls", "-1", "/var/tmp") } returns "a\n"
             every { executor.exec("sshpass", "-f", any(), "ssh", "-o", "StrictHostKeyChecking=no",
-                    "root@localhost", "cat", "/var/tmp/a/metadata.json") } throws CommandException("", 1,
+                    "-o", "UserKnownHostsFile=/dev/null", "root@localhost", "cat", "/var/tmp/a/metadata.json") } throws CommandException("", 1,
                     "No such file or directory")
 
             val result = provider.listCommits(getRemote(), SshParameters())
@@ -113,7 +113,7 @@ class SshRemoteProviderTest : StringSpec() {
 
         "get commit returns failure if file doesn't exist" {
             every { executor.exec("sshpass", "-f", any(), "ssh", "-o", "StrictHostKeyChecking=no",
-                    "root@localhost", "cat", "/var/tmp/a/metadata.json") } throws CommandException("", 1,
+                    "-o", "UserKnownHostsFile=/dev/null", "root@localhost", "cat", "/var/tmp/a/metadata.json") } throws CommandException("", 1,
                     "No such file or directory")
             shouldThrow<NoSuchObjectException> {
                 provider.getCommit(getRemote(), "a", SshParameters())
@@ -122,7 +122,7 @@ class SshRemoteProviderTest : StringSpec() {
 
         "get commit returns correct metadata" {
             every { executor.exec("sshpass", "-f", any(), "ssh", "-o", "StrictHostKeyChecking=no",
-                    "root@localhost", "cat", "/var/tmp/a/metadata.json") } returns "{\"id\":\"a\",\"properties\":{\"b\":\"c\"}}"
+                    "-o", "UserKnownHostsFile=/dev/null", "root@localhost", "cat", "/var/tmp/a/metadata.json") } returns "{\"id\":\"a\",\"properties\":{\"b\":\"c\"}}"
             val commit = provider.getCommit(getRemote(), "a", SshParameters())
             commit.id shouldBe "a"
             commit.properties["b"] shouldBe "c"
@@ -131,7 +131,7 @@ class SshRemoteProviderTest : StringSpec() {
         "temporary password file is correctly removed" {
             val slot = slot<String>()
             every { executor.exec("sshpass", "-f", capture(slot), "ssh", "-o", "StrictHostKeyChecking=no",
-                    "root@localhost", "cat", "/var/tmp/a/metadata.json") } returns "{\"id\":\"a\",\"properties\":{\"b\":\"c\"}}"
+                    "-o", "UserKnownHostsFile=/dev/null", "root@localhost", "cat", "/var/tmp/a/metadata.json") } returns "{\"id\":\"a\",\"properties\":{\"b\":\"c\"}}"
             provider.getCommit(getRemote(), "a", SshParameters())
             val file = File(slot.captured)
             file.exists() shouldBe false
@@ -139,14 +139,14 @@ class SshRemoteProviderTest : StringSpec() {
 
         "validate pull operation succeeds if remote commit exists" {
             every { executor.exec("sshpass", "-f", any(), "ssh", "-o", "StrictHostKeyChecking=no",
-                    "root@localhost", "cat", "/var/tmp/a/metadata.json") } returns "{\"id\":\"a\",\"properties\":{}}"
+                    "-o", "UserKnownHostsFile=/dev/null", "root@localhost", "cat", "/var/tmp/a/metadata.json") } returns "{\"id\":\"a\",\"properties\":{}}"
             provider.validateOperation(getRemote(), "a", Operation.Type.PULL, SshParameters())
         }
 
         "validate pull operation fails if remote commit does not exist" {
             every {
                 executor.exec("sshpass", "-f", any(), "ssh", "-o", "StrictHostKeyChecking=no",
-                        "root@localhost", "cat", "/var/tmp/a/metadata.json")
+                        "-o", "UserKnownHostsFile=/dev/null", "root@localhost", "cat", "/var/tmp/a/metadata.json")
             } throws CommandException("", 1, "No such file or directory")
             shouldThrow<NoSuchObjectException> {
                 provider.validateOperation(getRemote(), "a", Operation.Type.PULL, SshParameters())
@@ -155,13 +155,13 @@ class SshRemoteProviderTest : StringSpec() {
 
         "validate push operation succeeds if remote commit does not exists" {
             every { executor.exec("sshpass", "-f", any(), "ssh", "-o", "StrictHostKeyChecking=no",
-                    "root@localhost", "cat", "/var/tmp/a/metadata.json") } throws CommandException("", 1, "No such file or directory")
+                    "-o", "UserKnownHostsFile=/dev/null", "root@localhost", "cat", "/var/tmp/a/metadata.json") } throws CommandException("", 1, "No such file or directory")
             provider.validateOperation(getRemote(), "a", Operation.Type.PUSH, SshParameters())
         }
 
         "validate pull operation fails if remote commit exists" {
             every { executor.exec("sshpass", "-f", any(), "ssh", "-o", "StrictHostKeyChecking=no",
-                    "root@localhost", "cat", "/var/tmp/a/metadata.json") } returns "{\"id\":\"a\",\"properties\":{}}"
+                    "-o", "UserKnownHostsFile=/dev/null", "root@localhost", "cat", "/var/tmp/a/metadata.json") } returns "{\"id\":\"a\",\"properties\":{}}"
             shouldThrow<ObjectExistsException> {
                 provider.validateOperation(getRemote(), "a", Operation.Type.PUSH, SshParameters())
             }

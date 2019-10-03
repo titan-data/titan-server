@@ -155,7 +155,7 @@ function create_pool() {
   local mountpoint=$3
   local cachefile=$4
   zpool create -m $mountpoint -o cachefile=$cachefile $pool $data
-  zfs create -o mountpoint=none $pool/repo
+  zfs create -o mountpoint=none -o compression=lz4 $pool/repo
   zfs create -o mountpoint=none $pool/deathrow
 }
 

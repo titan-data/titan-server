@@ -12,6 +12,7 @@ import io.titandata.client.infrastructure.ResponseType
 import io.titandata.client.infrastructure.ServerException
 import io.titandata.client.infrastructure.Success
 import io.titandata.models.Commit
+import io.titandata.models.CommitStatus
 
 class CommitsApi(basePath: String = "http://localhost:5001") : ApiClient(basePath) {
 
@@ -103,6 +104,30 @@ class CommitsApi(basePath: String = "http://localhost:5001") : ApiClient(basePat
 
         return when (response.responseType) {
             ResponseType.Success -> (response as Success<*>).data as Commit
+            ResponseType.ClientError -> throw ClientException.fromResponse(gson, response)
+            ResponseType.ServerError -> throw ServerException.fromResponse(gson, response)
+            else -> throw NotImplementedError(response.responseType.toString())
+        }
+    }
+
+    @Suppress("UNCHECKED_CAST")
+    fun getCommitStatus(repositoryName: String, commitId: String) : CommitStatus {
+        val localVariableBody: Any? = null
+        val localVariableQuery: Map<String,List<String>> = mapOf()
+        val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
+        val localVariableConfig = RequestConfig(
+                RequestMethod.GET,
+                "/v1/repositories/{repositoryName}/commits/{commitId}/status".replace("{" + "repositoryName" + "}", "$repositoryName").replace("{" + "commitId" + "}", "$commitId"),
+                query = localVariableQuery,
+                headers = localVariableHeaders
+        )
+        val response = request<CommitStatus>(
+                localVariableConfig,
+                localVariableBody
+        )
+
+        return when (response.responseType) {
+            ResponseType.Success -> (response as Success<*>).data as CommitStatus
             ResponseType.ClientError -> throw ClientException.fromResponse(gson, response)
             ResponseType.ServerError -> throw ServerException.fromResponse(gson, response)
             else -> throw NotImplementedError(response.responseType.toString())

@@ -50,6 +50,14 @@ fun Route.CommitsApi(providers: ProviderModule) {
         }
     }
 
+    route("/v1/repositories/{repositoryName}/commits/{commitId}/status") {
+        get {
+            val repo = call.parameters["repositoryName"] ?: throw IllegalArgumentException("missing repository name parameter")
+            val commit = call.parameters["commitId"] ?: throw IllegalArgumentException("missing commit id parameter")
+            call.respond(providers.storage.getCommitStatus(repo, commit))
+        }
+    }
+
     route("/v1/repositories/{repositoryName}/commits/{commitId}/checkout") {
         post {
             val repo = call.parameters["repositoryName"] ?: throw IllegalArgumentException("missing repository name parameter")

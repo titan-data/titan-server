@@ -197,6 +197,25 @@ class ZfsCommitTest : StringSpec() {
             }
         }
 
+        "get commit status suceeds" {
+            every { executor.exec("zfs", "list", "-Ho", "name,defer_destroy", "-t", "snapshot",
+                    "-d", "2", "test/repo/foo") } returns "test/repo/foo/guid@hash\toff\n"
+            every { executor.exec("zfs", "list", "-Ho", "io.titan-data:metadata",
+                    "test/repo/foo/guid@hash") } returns "{\"a\":\"b\"}\n"
+            every { executor.exec("zfs", "list", "-Hpo", "name,logicalreferenced,referenced,used", "-t",
+                    "snapshot", "-r", "test/repo/foo/guid") } returns arrayOf(
+                    "test/repo/foo/guid@hash\t1\t1\t1",
+                    "test/repo/foo/guid/v0@hash\t1\t2\t3",
+                    "test/repo/foo/guid/v0@otherhash\t2\t2\t2",
+                    "test/repo/foo/guid/v1@hash\t2\t4\t6"
+            ).joinToString("\n")
+
+            val status = provider.getCommitStatus("foo", "hash")
+            status.logicalSize shouldBe 3L
+            status.actualSize shouldBe 6L
+            status.uniqueSize shouldBe 9L
+        }
+
         "commit info with tabs is parsed correctly" {
             val result = provider.commitManager.parseCommit("test/repo/repo/guid@hash\toff\t{\"a\": \"b\tc\"}\n")
             result shouldNotBe null

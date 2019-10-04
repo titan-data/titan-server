@@ -170,6 +170,13 @@ class LocalWorkflowTest : EndToEndTest() {
             exception.code shouldBe "NoSuchObjectException"
         }
 
+        "get commit status succeeds" {
+            val status = commitApi.getCommitStatus("foo", "id")
+            status.logicalSize shouldNotBe 0
+            status.actualSize shouldNotBe 0
+            status.uniqueSize shouldBe 0
+        }
+
         "commit shows up in list" {
             val commits = commitApi.listCommits("foo")
             commits.size shouldBe 1

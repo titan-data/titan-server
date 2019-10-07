@@ -155,6 +155,10 @@ class ZfsRepositoryTest : StringSpec() {
             }
         }
 
+        "get repository status succeeds" {
+            provider.getRepositoryStatus("foo")
+        }
+
         "update fails with invalid name" {
             val repo = Repository(name = "not/a/name", properties = mapOf("a" to "b"))
             shouldThrow<IllegalArgumentException> {

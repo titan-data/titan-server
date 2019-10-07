@@ -172,21 +172,30 @@ class ZfsRepositoryManager(val provider: ZfsStorageProvider) {
         val latest = commits.getOrNull(0)?.id
         val guid = provider.getActive(name)
 
-        val fields = provider.executor.exec("zfs", "list", "-pHo", "origin,logicalused,used",
+        // Get the size from the dataset itself
+        val fields = provider.executor.exec("zfs", "list", "-pHo", "logicalused,used",
                 "$poolName/repo/$name/$guid").lines().get(0).split("\t")
-        val origin = fields[0]
-        val logicalSize = fields[1].toLong()
-        val actualSize = fields[2].toLong()
+        val logicalSize = fields[0].toLong()
+        val actualSize = fields[1].toLong()
 
-        val checkedOutFrom = when (origin) {
-            "-" -> null
-            else -> origin.substringAfter("@")
+        // List recursively all orgign datasets, as those will be present on volumes, not the repo dataset
+        val origins = provider.executor.exec("zfs", "list", "-Ho", "origin", "-r",
+                "$poolName/repo/$name/$guid")
+        var checkedOutFrom: String? = null
+        for (line in origins.lines()) {
+            if (line.contains("@")) {
+                val snapshot = line.trim().substringAfterLast("@")
+                if (snapshot != INITIAL_COMMIT) {
+                    checkedOutFrom = snapshot
+                    break
+                }
+            }
         }
 
         val volumes = mutableListOf<RepositoryVolumeStatus>()
         val volumeOutput = provider.executor.exec("zfs", "list", "-d", "1", "-pHo",
-                "name,logicalreferenced,referenced,$METADATA_PROP")
-        val regex = "^$poolName/repo/$name/[^/\t]+\t([^\t]+)\t([^\t]+)\t(.*)$".toRegex()
+                "name,logicalreferenced,referenced,$METADATA_PROP", "$poolName/repo/$name/$guid")
+        val regex = "^$poolName/repo/$name/$guid/([^/\t]+)\t([^\t]+)\t([^\t]+)\t(.*)$".toRegex()
         for (line in volumeOutput.lines()) {
             val result = regex.find(line)
             if (result != null) {

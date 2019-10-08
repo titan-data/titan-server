@@ -9,6 +9,7 @@ import io.titandata.models.CommitStatus
 import io.titandata.models.Operation
 import io.titandata.models.Remote
 import io.titandata.models.Repository
+import io.titandata.models.RepositoryStatus
 import io.titandata.models.Volume
 
 interface StorageProvider {
@@ -16,6 +17,7 @@ interface StorageProvider {
     fun createRepository(repo: Repository)
     fun listRepositories(): List<Repository>
     fun getRepository(name: String): Repository
+    fun getRepositoryStatus(name: String): RepositoryStatus
     fun updateRepository(name: String, repo: Repository)
     fun deleteRepository(name: String)
 

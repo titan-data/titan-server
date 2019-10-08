@@ -16,6 +16,7 @@ import io.titandata.models.CommitStatus
 import io.titandata.models.Operation
 import io.titandata.models.Remote
 import io.titandata.models.Repository
+import io.titandata.models.RepositoryStatus
 import io.titandata.models.Volume
 import io.titandata.serialization.ModelTypeAdapters
 import io.titandata.storage.OperationData
@@ -279,6 +280,11 @@ class ZfsStorageProvider(
     @Synchronized
     override fun getRepository(name: String): Repository {
         return repositoryManager.getRepository(name)
+    }
+
+    @Synchronized
+    override fun getRepositoryStatus(name: String): RepositoryStatus {
+        return repositoryManager.getRepositoryStatus(name)
     }
 
     @Synchronized

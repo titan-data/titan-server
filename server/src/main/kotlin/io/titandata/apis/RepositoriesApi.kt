@@ -48,4 +48,11 @@ fun Route.RepositoriesApi(providers: ProviderModule) {
             call.respond(HttpStatusCode.NoContent)
         }
     }
+
+    route("/v1/repositories/{repositoryName}/status") {
+        get {
+            val name = call.parameters["repositoryName"] ?: throw IllegalArgumentException("missing repositoryName parameter")
+            call.respond(providers.storage.getRepositoryStatus(name))
+        }
+    }
 }

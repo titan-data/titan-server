@@ -177,6 +177,18 @@ class LocalWorkflowTest : EndToEndTest() {
             status.uniqueSize shouldBe 0
         }
 
+        "get repository status succeeds" {
+            val status = repoApi.getRepositoryStatus("foo")
+            status.checkedOutFrom shouldBe null
+            status.lastCommit shouldBe "id"
+            status.logicalSize shouldNotBe 0
+            status.actualSize shouldNotBe 0
+            status.volumeStatus.size shouldBe 1
+            status.volumeStatus[0].name shouldBe "vol"
+            status.volumeStatus[0].actualSize shouldNotBe 0
+            status.volumeStatus[0].logicalSize shouldNotBe 0
+        }
+
         "commit shows up in list" {
             val commits = commitApi.listCommits("foo")
             commits.size shouldBe 1
@@ -202,6 +214,12 @@ class LocalWorkflowTest : EndToEndTest() {
             volumeApi.mountVolume(VolumeMountRequest(name = "foo/vol"))
             val result = dockerUtil.readFile("foo/vol", "testfile")
             result shouldBe "Hello\n"
+        }
+
+        "get repository status indicates source commit" {
+            val status = repoApi.getRepositoryStatus("foo")
+            status.checkedOutFrom shouldBe "id"
+            status.lastCommit shouldBe "id"
         }
 
         "add remote succeeds" {

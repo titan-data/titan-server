@@ -12,6 +12,7 @@ import io.titandata.client.infrastructure.ResponseType
 import io.titandata.client.infrastructure.ServerException
 import io.titandata.client.infrastructure.Success
 import io.titandata.models.Repository
+import io.titandata.models.RepositoryStatus
 
 class RepositoriesApi(basePath: String = "http://localhost:5001") : ApiClient(basePath) {
 
@@ -80,6 +81,30 @@ class RepositoriesApi(basePath: String = "http://localhost:5001") : ApiClient(ba
 
         return when (response.responseType) {
             ResponseType.Success -> (response as Success<*>).data as Repository
+            ResponseType.ClientError -> throw ClientException.fromResponse(gson, response)
+            ResponseType.ServerError -> throw ServerException.fromResponse(gson, response)
+            else -> throw NotImplementedError(response.responseType.toString())
+        }
+    }
+
+    @Suppress("UNCHECKED_CAST")
+    fun getRepositoryStatus(repositoryName: String) : RepositoryStatus {
+        val localVariableBody: Any? = null
+        val localVariableQuery: Map<String,List<String>> = mapOf()
+        val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
+        val localVariableConfig = RequestConfig(
+                RequestMethod.GET,
+                "/v1/repositories/{repositoryName}/status".replace("{" + "repositoryName" + "}", "$repositoryName"),
+                query = localVariableQuery,
+                headers = localVariableHeaders
+        )
+        val response = request<RepositoryStatus>(
+                localVariableConfig,
+                localVariableBody
+        )
+
+        return when (response.responseType) {
+            ResponseType.Success -> (response as Success<*>).data as RepositoryStatus
             ResponseType.ClientError -> throw ClientException.fromResponse(gson, response)
             ResponseType.ServerError -> throw ServerException.fromResponse(gson, response)
             else -> throw NotImplementedError(response.responseType.toString())

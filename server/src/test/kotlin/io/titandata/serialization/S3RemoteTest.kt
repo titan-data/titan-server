@@ -5,6 +5,7 @@
 package io.titandata.serialization
 
 import com.google.gson.GsonBuilder
+import io.kotlintest.extensions.system.OverrideMode
 import io.kotlintest.extensions.system.withEnvironment
 import io.kotlintest.matchers.types.shouldBeInstanceOf
 import io.kotlintest.shouldBe
@@ -197,7 +198,7 @@ class S3RemoteTest : StringSpec() {
 
         "getting credentials from environment succeeds" {
             withEnvironment(mapOf("AWS_ACCESS_KEY_ID" to "accessKey", "AWS_SECRET_ACCESS_KEY" to "secretKey",
-                    "AWS_REGION" to "us-west-2", "AWS_SESSION_TOKEN" to "sessionToken")) {
+                    "AWS_REGION" to "us-west-2", "AWS_SESSION_TOKEN" to "sessionToken"), OverrideMode.SetOrOverride) {
                 System.getenv("AWS_ACCESS_KEY_ID") shouldBe "accessKey"
                 System.getenv("AWS_SECRET_ACCESS_KEY") shouldBe "secretKey"
                 System.getenv("AWS_REGION") shouldBe "us-west-2"

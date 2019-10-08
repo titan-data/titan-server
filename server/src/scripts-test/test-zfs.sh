@@ -96,31 +96,38 @@ util_script=/test/src/scripts/util.sh
 
 @test "exact minimum zfs version is compatible" {
   source $zfs_script
-  run zfs_version_compatible "0.8"
+  run zfs_version_compatible "0.8.0"
   [ $status -eq 0 ]
 }
 
 @test "patch zfs version is ignored" {
   source $zfs_script
-  run zfs_version_compatible "0.8.3"
+  run zfs_version_compatible "0.8.1"
   [ $status -eq 0 ]
 }
 
 @test "zfs version qualifier is ignored" {
   source $zfs_script
-  run zfs_version_compatible "0.8.3-rc5"
+  run zfs_version_compatible "0.8.2-rc5"
   [ $status -eq 0 ]
 }
 
 @test "greater minor version is compatible" {
   source $zfs_script
-  run zfs_version_compatible "0.9.3-rc5"
+  run zfs_version_compatible "0.9.2-rc5"
   [ $status -eq 0 ]
 }
 
 @test "lesser minor version is incompatible" {
   source $zfs_script
   run zfs_version_compatible "0.7.1"
+  [ $status -eq 1 ]
+}
+
+@test "older patch version is incompatible" {
+  source $zfs_script
+  run zfs_version_compatible "0.8.8"
+  echo $output
   [ $status -eq 1 ]
 }
 
@@ -133,6 +140,18 @@ util_script=/test/src/scripts/util.sh
 @test "empty version is incompatible" {
   source $zfs_script
   run zfs_version_compatible ""
+  [ $status -eq 1 ]
+}
+
+@test "exact version matches" {
+  source $zfs_script
+  run zfs_version_matches "0.8.2-1"
+  [ $status -eq 0 ]
+}
+
+@test "exact version incompatible" {
+  source $zfs_script
+  run zfs_version_matches "0.8.1-1"
   [ $status -eq 1 ]
 }
 
@@ -204,6 +223,21 @@ util_script=/test/src/scripts/util.sh
   [[ "$output" == *"incompatible"* ]]
 }
 
+@test "load zfs fails if compiled version is incompatible" {
+  function docker() { /bin/true; }
+  function jq() { /bin/true; }
+
+  source $zfs_script
+  source $util_script
+  function depmod() { /bin/true; }
+  function modinfo() { echo "0.8.1"; }
+  export -f depmod modinfo
+  run load_zfs /system/lib compiled
+  [ $status -eq 1 ]
+  [[ "$output" == *"incompatible"* ]]
+}
+
+
 @test "load zfs fails if module fails to load" {
   function docker() { /bin/true; }
   function jq() { /bin/true; }
@@ -216,6 +250,7 @@ util_script=/test/src/scripts/util.sh
   export -f depmod modinfo modprobe
   run load_zfs /system/lib system
   [ $status -eq 1 ]
+  echo $output
   [[ "$output" == *"Failed to load"* ]]
 }
 

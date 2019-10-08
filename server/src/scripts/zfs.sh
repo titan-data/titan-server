@@ -10,7 +10,7 @@ min_zfs_version=0.8
 # Return the tag in the ZFS repository we should be using to build ZFS binaries.
 #
 function get_zfs_build_version() {
-  echo "0.8.1"
+  echo "0.8.2"
 }
 
 #

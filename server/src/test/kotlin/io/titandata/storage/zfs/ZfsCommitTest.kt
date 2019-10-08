@@ -278,6 +278,17 @@ class ZfsCommitTest : StringSpec() {
             result[0].properties["c"] shouldBe "d"
         }
 
+        "list commits sorts in reverse timestamp order" {
+            every { executor.exec(*anyVararg()) } returns arrayOf(
+                    "test/repo/foo/guid1@hash1\toff\t{\"timestamp\":\"2019-10-08T15:10:54Z\"}",
+                    "test/repo/foo/guid2@hash2\toff\t{\"timestamp\":\"2019-10-08T15:20:54Z\"}"
+            ).joinToString("\n")
+            val result = provider.listCommits("foo")
+            result.size shouldBe 2
+            result[0].id shouldBe "hash2"
+            result[1].id shouldBe "hash1"
+        }
+
         "list commits throws exception for non-existent repo" {
             every { executor.exec(*anyVararg()) } throws CommandException("", 1, "does not exist")
             shouldThrow<NoSuchObjectException> {

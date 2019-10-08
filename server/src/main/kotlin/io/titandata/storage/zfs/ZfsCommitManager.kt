@@ -10,6 +10,7 @@ import io.titandata.exception.ObjectExistsException
 import io.titandata.models.Commit
 import io.titandata.models.CommitStatus
 import java.time.Instant
+import java.time.OffsetDateTime
 import java.time.format.DateTimeFormatter
 
 /**
@@ -173,7 +174,11 @@ class ZfsCommitManager(val provider: ZfsStorageProvider) {
                     }
                 }
             }
-            return commits
+
+            // We always return commits in descending order so that the client doesn't have to
+            return commits.sortedByDescending { OffsetDateTime.parse(it.properties.get(timestampProperty)?.toString()
+                    ?: DateTimeFormatter.ISO_INSTANT.format(Instant.ofEpochSecond(0)),
+                    DateTimeFormatter.ISO_DATE_TIME) }
         } catch (e: CommandException) {
             provider.checkNoSuchRepository(e, repo)
             throw e

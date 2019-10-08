@@ -2,9 +2,9 @@
 
 #
 # Minimum ZFS version. Starting in version 0.8.0, the community is going to attempt to maintain
-# backwards compatability, such that older versions of the utilities will continue to run against
-# newer versions of the kernel modules.
-min_zfs_version=0.8
+# backwards compatability, such that newer versions of the utilities will continue to run against
+# older versions of the kernel modules.
+min_zfs_version=0.8.0
 
 #
 # Return the tag in the ZFS repository we should be using to build ZFS binaries.
@@ -27,14 +27,43 @@ function get_zfs_build_version() {
 # empty string as an incompatible version, to simplify callers that may get an empty version
 # when checking the running system or filesystem modules.
 #
+# While it may "just work", there is no guarantee that an older zfs userland will work on a newer
+# kernel, so we fail if the current kernel is newer (even with minor versions) than our
+# userland.
+#
 function zfs_version_compatible() {
-  [ -z "$1" ] && return 1
-  local min_components=(${min_zfs_version//./ })
-  local req_version=${1%.*}
-  local req_components=(${req_version//./ })
-  [ ${min_components[0]} -ne ${req_components[0]} ] && return 1
-  [ ${min_components[1]} -gt ${req_components[1]} ] && return 1
+  [[ -z "$1" ]] && return 1
+  local min_components=(${min_zfs_version//./ })  # Replace periods with spaces
+  local req_version=${1%-*}                       # Trim any trailing "-XYZ" modifier
+  local req_components=(${req_version//./ })      # Replace periods with spaces
+
+  # The major version (0.*) doesn't match, fail
+  [[ ${min_components[0]} -ne ${req_components[0]} ]] && return 1
+
+  # The current version is less than the minimum version, fail
+  [[ ${min_components[1]} -gt ${req_components[1]} ]] && return 1
+
+  local build_version=$(get_zfs_build_version)
+  local build_components=(${build_version//./ })
+
+  # The minor version is greater than current version, fail
+  [[ ${build_components[1]} -gt ${req_components[1]} ]] && return 1
+
+  # The patch version is greater than current version, fail
+  [[ ${build_components[1]} -eq ${req_components[1]} &&
+     ${build_components[2]} -lt ${req_components[2]} ]] && return 1
+
   return 0
+}
+
+#
+# Checks for an exact match against our build version, ignoring any patch levels (e.g. ZFS
+# versions typically have a "-1" appended).
+#
+function zfs_version_matches() {
+  local req_version=${1%-*}
+  local build_version=$(get_zfs_build_version)
+  [[ $req_version = $build_version ]]
 }
 
 #
@@ -183,7 +212,7 @@ function check_running_zfs() {
   if is_zfs_loaded; then
     local version=$(get_running_zfs_version)
     if ! zfs_version_compatible $version; then
-      log_error "System is running ZFS $version incompatible with $min_zfs_version, upgrade and retry"
+      log_error "System is running ZFS $version incompatible with $(get_zfs_build_version), upgrade and retry"
     fi
     echo "System is running ZFS version $version"
     retval=0
@@ -208,7 +237,17 @@ function load_zfs() {
 
   log_start "Checking if compatible $module_type ZFS is available"
   version=$(get_filesystem_zfs_version $module_dir)
-  if zfs_version_compatible $version; then
+  if [[ $module_type = "compiled" ]]; then
+    #
+    # If we're dealing with compiled modules, we want an exact match to get the latest and
+    # greatest, not just a compatible version.
+    #
+    zfs_version_matches $version
+  else
+    zfs_version_compatible $version
+  fi
+
+  if [[ $? -eq 0 ]]; then
     echo "Version $version compatible"
     if load_zfs_module $module_dir; then
       echo "ZFS loaded"
@@ -221,7 +260,7 @@ function load_zfs() {
     if [[ -z "$version" ]]; then
       echo "No ZFS module found"
     else
-      echo "Version $version incompatible with $min_zfs_version"
+      echo "Version $version incompatible with $(get_zfs_build_version)"
     fi
   fi
   log_end

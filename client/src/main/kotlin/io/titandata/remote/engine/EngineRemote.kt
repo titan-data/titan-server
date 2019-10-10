@@ -2,7 +2,9 @@
  * Copyright The Titan Project Contributors.
  */
 
-package io.titandata.models
+package io.titandata.remote.engine
+
+import io.titandata.models.Remote
 
 data class EngineRemote(
     override var provider: String = "engine",

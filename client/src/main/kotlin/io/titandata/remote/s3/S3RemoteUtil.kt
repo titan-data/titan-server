@@ -2,12 +2,10 @@
  * Copyright The Titan Project Contributors.
  */
 
-package io.titandata.serialization.remote
+package io.titandata.remote.s3
 
 import io.titandata.models.Remote
 import io.titandata.models.RemoteParameters
-import io.titandata.models.S3Parameters
-import io.titandata.models.S3Remote
 import io.titandata.serialization.RemoteUtilProvider
 import software.amazon.awssdk.auth.credentials.AwsSessionCredentials
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider

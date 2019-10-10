@@ -2,14 +2,10 @@
  * Copyright The Titan Project Contributors.
  */
 
-package io.titandata.serialization.remote
+package io.titandata.remote.nop
 
-import io.titandata.models.NopParameters
-import io.titandata.models.NopRemote
 import io.titandata.models.Remote
 import io.titandata.models.RemoteParameters
-import io.titandata.models.SshRemote
-import io.titandata.serialization.RemoteUtil
 import io.titandata.serialization.RemoteUtilProvider
 import java.net.URI
 

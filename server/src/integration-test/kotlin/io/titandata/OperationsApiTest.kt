@@ -29,8 +29,8 @@ import io.mockk.impl.annotations.InjectMockKs
 import io.mockk.impl.annotations.MockK
 import io.mockk.impl.annotations.OverrideMockKs
 import io.titandata.models.Error
-import io.titandata.models.NopParameters
 import io.titandata.models.Operation
+import io.titandata.remote.nop.NopParameters
 import io.titandata.serialization.ModelTypeAdapters
 import io.titandata.storage.OperationData
 import io.titandata.storage.zfs.ZfsStorageProvider

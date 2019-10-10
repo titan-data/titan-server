@@ -6,7 +6,6 @@ package io.titandata.serialization
 
 import io.titandata.models.Remote
 import io.titandata.models.RemoteParameters
-import io.titandata.models.SshRemote
 import java.net.URI
 
 abstract class RemoteUtilProvider {

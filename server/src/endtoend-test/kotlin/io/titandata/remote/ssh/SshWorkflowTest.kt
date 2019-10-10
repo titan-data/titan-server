@@ -2,18 +2,17 @@
  * Copyright The Titan Project Contributors.
  */
 
-package io.titandata
+package io.titandata.remote.ssh
 
 import io.kotlintest.Spec
 import io.kotlintest.TestCaseOrder
 import io.kotlintest.shouldBe
 import io.kotlintest.shouldThrow
+import io.titandata.EndToEndTest
 import io.titandata.client.infrastructure.ClientException
 import io.titandata.client.infrastructure.ServerException
 import io.titandata.models.Commit
 import io.titandata.models.Repository
-import io.titandata.models.SshParameters
-import io.titandata.models.SshRemote
 import io.titandata.models.VolumeCreateRequest
 import io.titandata.models.VolumeMountRequest
 import io.titandata.models.VolumeRequest

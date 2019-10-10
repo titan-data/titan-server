@@ -11,14 +11,14 @@ import io.kotlintest.shouldNotBe
 import io.kotlintest.shouldThrow
 import io.titandata.client.infrastructure.ClientException
 import io.titandata.models.Commit
-import io.titandata.models.NopParameters
-import io.titandata.models.NopRemote
 import io.titandata.models.Operation
 import io.titandata.models.ProgressEntry
 import io.titandata.models.Repository
 import io.titandata.models.VolumeCreateRequest
 import io.titandata.models.VolumeMountRequest
 import io.titandata.models.VolumeRequest
+import io.titandata.remote.nop.NopParameters
+import io.titandata.remote.nop.NopRemote
 import java.time.Duration
 import kotlinx.coroutines.time.delay
 
@@ -170,6 +170,25 @@ class LocalWorkflowTest : EndToEndTest() {
             exception.code shouldBe "NoSuchObjectException"
         }
 
+        "get commit status succeeds" {
+            val status = commitApi.getCommitStatus("foo", "id")
+            status.logicalSize shouldNotBe 0
+            status.actualSize shouldNotBe 0
+            status.uniqueSize shouldBe 0
+        }
+
+        "get repository status succeeds" {
+            val status = repoApi.getRepositoryStatus("foo")
+            status.checkedOutFrom shouldBe null
+            status.lastCommit shouldBe "id"
+            status.logicalSize shouldNotBe 0
+            status.actualSize shouldNotBe 0
+            status.volumeStatus.size shouldBe 1
+            status.volumeStatus[0].name shouldBe "vol"
+            status.volumeStatus[0].actualSize shouldNotBe 0
+            status.volumeStatus[0].logicalSize shouldNotBe 0
+        }
+
         "commit shows up in list" {
             val commits = commitApi.listCommits("foo")
             commits.size shouldBe 1
@@ -195,6 +214,12 @@ class LocalWorkflowTest : EndToEndTest() {
             volumeApi.mountVolume(VolumeMountRequest(name = "foo/vol"))
             val result = dockerUtil.readFile("foo/vol", "testfile")
             result shouldBe "Hello\n"
+        }
+
+        "get repository status indicates source commit" {
+            val status = repoApi.getRepositoryStatus("foo")
+            status.checkedOutFrom shouldBe "id"
+            status.lastCommit shouldBe "id"
         }
 
         "add remote succeeds" {

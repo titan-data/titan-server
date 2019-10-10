@@ -11,10 +11,10 @@ import io.kotlintest.matchers.types.shouldBeInstanceOf
 import io.kotlintest.shouldBe
 import io.kotlintest.shouldThrow
 import io.kotlintest.specs.StringSpec
-import io.titandata.models.EngineRemote
-import io.titandata.models.NopRemote
 import io.titandata.models.Remote
 import io.titandata.models.RemoteParameters
+import io.titandata.remote.engine.EngineRemote
+import io.titandata.remote.nop.NopRemote
 
 class SerializationTest : StringSpec() {
 

@@ -2,7 +2,7 @@
  * Copyright The Titan Project Contributors.
  */
 
-package io.titandata.serialization
+package io.titandata.remote.nop
 
 import com.google.gson.GsonBuilder
 import com.google.gson.JsonParseException
@@ -10,10 +10,10 @@ import io.kotlintest.matchers.types.shouldBeInstanceOf
 import io.kotlintest.shouldBe
 import io.kotlintest.shouldThrow
 import io.kotlintest.specs.StringSpec
-import io.titandata.models.NopParameters
-import io.titandata.models.NopRemote
 import io.titandata.models.Remote
 import io.titandata.models.RemoteParameters
+import io.titandata.serialization.ModelTypeAdapters
+import io.titandata.serialization.RemoteUtil
 
 class NopRemoteTest : StringSpec() {
 

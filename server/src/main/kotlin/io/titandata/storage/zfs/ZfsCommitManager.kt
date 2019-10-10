@@ -8,7 +8,9 @@ import io.titandata.exception.CommandException
 import io.titandata.exception.NoSuchObjectException
 import io.titandata.exception.ObjectExistsException
 import io.titandata.models.Commit
+import io.titandata.models.CommitStatus
 import java.time.Instant
+import java.time.OffsetDateTime
 import java.time.format.DateTimeFormatter
 
 /**
@@ -97,6 +99,43 @@ class ZfsCommitManager(val provider: ZfsStorageProvider) {
     }
 
     /**
+     * Get additional status about a commit, in this case the commit size. We map the following values to their
+     * ZFS counterparts:
+     *
+     *      logicalSize -> logicalreferenced     The amount of data referenced by the snapshot, independent of
+     *                                           compression.
+     *
+     *      actualSize -> referenced             The amount of compressed data reference by the snapshot. This data
+     *                                           could be shared with other ZFS snapshots or datasets.
+     *
+     *      uniqueSize -> used                   The amount of data uniquely held by this snapshot. This is the
+     *                                           amount of space that would be recovered should the commit be deleted.
+     *
+     * Since our commits are recursive snaphots, we have to sum up the space ourselves.
+     */
+    fun getCommitStatus(repo: String, id: String): CommitStatus {
+        val guid = provider.getCommitGuid(repo, id)
+        guid ?: throw NoSuchObjectException("no such commit '$id' in repository '$repo'")
+
+        val output = provider.executor.exec("zfs", "list", "-Hpo", "name,logicalreferenced,referenced,used", "-t",
+                "snapshot", "-r", "$poolName/repo/$repo/$guid")
+
+        var logicalSize = 0L
+        var actualSize = 0L
+        var uniqueSize = 0L
+
+        val regex = "^$poolName/repo/$repo/$guid/.*@$id\t(.*)\t(.*)\t(.*)$".toRegex(RegexOption.MULTILINE)
+        for (line in output.lines()) {
+            val result = regex.find(line) ?: continue
+            logicalSize += result.groupValues.get(1).toLong()
+            actualSize += result.groupValues.get(2).toLong()
+            uniqueSize += result.groupValues.get(3).toLong()
+        }
+
+        return CommitStatus(logicalSize = logicalSize, actualSize = actualSize, uniqueSize = uniqueSize)
+    }
+
+    /**
      * Parse the name and metadata for a commit, based on 'zfs list' output. Similar to
      * parseRepository(), this is invoked when listing commits. It assumes that there
      * are only two fields being listed, the name and the metadata. It will parse the metadata as
@@ -135,7 +174,11 @@ class ZfsCommitManager(val provider: ZfsStorageProvider) {
                     }
                 }
             }
-            return commits
+
+            // We always return commits in descending order so that the client doesn't have to
+            return commits.sortedByDescending { OffsetDateTime.parse(it.properties.get(timestampProperty)?.toString()
+                    ?: DateTimeFormatter.ISO_INSTANT.format(Instant.ofEpochSecond(0)),
+                    DateTimeFormatter.ISO_DATE_TIME) }
         } catch (e: CommandException) {
             provider.checkNoSuchRepository(e, repo)
             throw e

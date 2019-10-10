@@ -26,9 +26,9 @@ import io.titandata.exception.CommandException
 import io.titandata.exception.InvalidStateException
 import io.titandata.exception.NoSuchObjectException
 import io.titandata.exception.ObjectExistsException
-import io.titandata.models.EngineRemote
-import io.titandata.models.NopRemote
 import io.titandata.models.Repository
+import io.titandata.remote.engine.EngineRemote
+import io.titandata.remote.nop.NopRemote
 import io.titandata.util.CommandExecutor
 import io.titandata.util.GuidGenerator
 
@@ -153,6 +153,38 @@ class ZfsRepositoryTest : StringSpec() {
             shouldThrow<InvalidStateException> {
                 provider.getRepository("foo")
             }
+        }
+
+        "get repository status succeeds" {
+            every { executor.exec("zfs", "list", "-Ho", "name,defer_destroy,io.titan-data:metadata", "-t", "snapshot",
+                    "-d", "2", "test/repo/foo") } returns "test/repo/foo/guid@hash\toff\t{}\n"
+            every { executor.exec("zfs", "list", "-Ho", "io.titan-data:metadata",
+                    "test/repo/foo/guid@hash") } returns "{\"a\":\"b\"}\n"
+            every { executor.exec("zfs", "list", "-Hpo", "io.titan-data:active",
+                    "test/repo/foo") } returns "guid"
+            every { executor.exec("zfs", "list", "-pHo", "logicalused,used", "test/repo/foo/guid") } returns "40\t20\n"
+            every { executor.exec("zfs", "list", "-Ho", "origin", "-r", "test/repo/foo/guid") } returns
+                    "test/repo/foo/guidtwo/v0@sourcehash\n"
+            every { executor.exec("zfs", "list", "-d", "1",
+                    "-pHo", "name,logicalreferenced,referenced,io.titan-data:metadata", "test/repo/foo/guid") } returns arrayOf(
+                    "test/repo/foo/guid\t4\t6\t{}",
+                    "test/repo/foo/guid/v0\t5\t10\t{\"path\":\"/var/a\"}",
+                    "test/repo/foo/guid/v1\t8\t16\t{\"path\":\"/var/b\"}"
+            ).joinToString("\n")
+            val status = provider.getRepositoryStatus("foo")
+            status.checkedOutFrom shouldBe "sourcehash"
+            status.lastCommit shouldBe "hash"
+            status.logicalSize shouldBe 40L
+            status.actualSize shouldBe 20L
+            status.volumeStatus.size shouldBe 2
+            status.volumeStatus[0].name shouldBe "v0"
+            status.volumeStatus[0].logicalSize shouldBe 5
+            status.volumeStatus[0].actualSize shouldBe 10
+            status.volumeStatus[0].properties["path"] shouldBe "/var/a"
+            status.volumeStatus[1].name shouldBe "v1"
+            status.volumeStatus[1].logicalSize shouldBe 8
+            status.volumeStatus[1].actualSize shouldBe 16
+            status.volumeStatus[1].properties["path"] shouldBe "/var/b"
         }
 
         "update fails with invalid name" {

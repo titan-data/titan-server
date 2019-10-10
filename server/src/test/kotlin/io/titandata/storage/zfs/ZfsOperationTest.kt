@@ -22,8 +22,8 @@ import io.mockk.verify
 import io.titandata.exception.CommandException
 import io.titandata.exception.NoSuchObjectException
 import io.titandata.models.Commit
-import io.titandata.models.NopParameters
 import io.titandata.models.Operation
+import io.titandata.remote.nop.NopParameters
 import io.titandata.storage.OperationData
 import io.titandata.util.CommandExecutor
 import io.titandata.util.GuidGenerator

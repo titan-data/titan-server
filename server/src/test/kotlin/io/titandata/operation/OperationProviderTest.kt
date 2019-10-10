@@ -24,12 +24,12 @@ import io.titandata.ProviderModule
 import io.titandata.exception.NoSuchObjectException
 import io.titandata.exception.ObjectExistsException
 import io.titandata.models.Commit
-import io.titandata.models.EngineParameters
-import io.titandata.models.NopParameters
-import io.titandata.models.NopRemote
 import io.titandata.models.Operation
 import io.titandata.models.ProgressEntry
 import io.titandata.models.Repository
+import io.titandata.remote.engine.EngineParameters
+import io.titandata.remote.nop.NopParameters
+import io.titandata.remote.nop.NopRemote
 import io.titandata.remote.nop.NopRemoteProvider
 import io.titandata.storage.OperationData
 import io.titandata.storage.zfs.ZfsStorageProvider

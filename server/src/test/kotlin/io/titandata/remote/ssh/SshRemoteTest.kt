@@ -2,7 +2,7 @@
  * Copyright The Titan Project Contributors.
  */
 
-package io.titandata.serialization
+package io.titandata.remote.ssh
 
 import com.google.gson.GsonBuilder
 import io.kotlintest.TestCase
@@ -19,9 +19,8 @@ import io.mockk.impl.annotations.MockK
 import io.mockk.impl.annotations.OverrideMockKs
 import io.titandata.models.Remote
 import io.titandata.models.RemoteParameters
-import io.titandata.models.SshParameters
-import io.titandata.models.SshRemote
-import io.titandata.serialization.remote.SshRemoteUtil
+import io.titandata.serialization.ModelTypeAdapters
+import io.titandata.serialization.RemoteUtil
 import java.io.Console
 import org.junit.rules.TemporaryFolder
 

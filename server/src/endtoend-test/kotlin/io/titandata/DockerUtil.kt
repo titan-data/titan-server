@@ -10,6 +10,7 @@ import io.titandata.util.CommandExecutor
 import java.net.InetAddress
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import org.slf4j.LoggerFactory
 
 /**
  * Utility class for managing docker containers for integration tests. There are two types of
@@ -34,6 +35,10 @@ class DockerUtil(
 
     fun url(path: String): String {
         return "http://localhost:$port/v1/$path"
+    }
+
+    companion object {
+        val log = LoggerFactory.getLogger(CommandExecutor::class.java)
     }
 
     fun startTitan(entryPoint: String, daemon: Boolean): String {
@@ -75,7 +80,14 @@ class DockerUtil(
         var tried = 1
         while (testGet() != 200) {
             if (tried++ == retries) {
-                throw Exception("Timed out waiting for server to start")
+                val process = executor.start("docker", "logs", "$identity-launch")
+                log.error(process.inputStream.bufferedReader().readText())
+                val stderr = process.errorStream.bufferedReader().readText()
+                try {
+                    throw Exception("Timed out waiting for server to start: " + stderr)
+                } finally {
+                    process.destroy()
+                }
             }
             Thread.sleep(timeout)
         }

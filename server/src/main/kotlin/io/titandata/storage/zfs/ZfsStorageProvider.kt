@@ -12,9 +12,11 @@ import io.titandata.exception.InvalidStateException
 import io.titandata.exception.NoSuchObjectException
 import io.titandata.exception.ObjectExistsException
 import io.titandata.models.Commit
+import io.titandata.models.CommitStatus
 import io.titandata.models.Operation
 import io.titandata.models.Remote
 import io.titandata.models.Repository
+import io.titandata.models.RepositoryStatus
 import io.titandata.models.Volume
 import io.titandata.serialization.ModelTypeAdapters
 import io.titandata.storage.OperationData
@@ -281,6 +283,11 @@ class ZfsStorageProvider(
     }
 
     @Synchronized
+    override fun getRepositoryStatus(name: String): RepositoryStatus {
+        return repositoryManager.getRepositoryStatus(name)
+    }
+
+    @Synchronized
     override fun updateRepository(name: String, repo: Repository) {
         log.info("update repository $name")
         repositoryManager.updateRepository(name, repo)
@@ -312,6 +319,11 @@ class ZfsStorageProvider(
     @Synchronized
     override fun getCommit(repo: String, id: String): Commit {
         return commitManager.getCommit(repo, id)
+    }
+
+    @Synchronized
+    override fun getCommitStatus(repo: String, id: String): CommitStatus {
+        return commitManager.getCommitStatus(repo, id)
     }
 
     @Synchronized

@@ -2,17 +2,19 @@
  * Copyright The Titan Project Contributors.
  */
 
-package io.titandata.serialization
+package io.titandata.remote.s3
 
 import com.google.gson.GsonBuilder
+import io.kotlintest.extensions.system.OverrideMode
+import io.kotlintest.extensions.system.withEnvironment
 import io.kotlintest.matchers.types.shouldBeInstanceOf
 import io.kotlintest.shouldBe
 import io.kotlintest.shouldThrow
 import io.kotlintest.specs.StringSpec
 import io.titandata.models.Remote
 import io.titandata.models.RemoteParameters
-import io.titandata.models.S3Parameters
-import io.titandata.models.S3Remote
+import io.titandata.serialization.ModelTypeAdapters
+import io.titandata.serialization.RemoteUtil
 
 class S3RemoteTest : StringSpec() {
 
@@ -192,6 +194,23 @@ class S3RemoteTest : StringSpec() {
             params.accessKey shouldBe "ACCESS"
             params.secretKey shouldBe "SECRET"
             params.region shouldBe "REGION"
+        }
+
+        "getting credentials from environment succeeds" {
+            withEnvironment(mapOf("AWS_ACCESS_KEY_ID" to "accessKey", "AWS_SECRET_ACCESS_KEY" to "secretKey",
+                    "AWS_REGION" to "us-west-2", "AWS_SESSION_TOKEN" to "sessionToken"), OverrideMode.SetOrOverride) {
+                System.getenv("AWS_ACCESS_KEY_ID") shouldBe "accessKey"
+                System.getenv("AWS_SECRET_ACCESS_KEY") shouldBe "secretKey"
+                System.getenv("AWS_REGION") shouldBe "us-west-2"
+                System.getenv("AWS_SESSION_TOKEN") shouldBe "sessionToken"
+                val params = remoteUtil.getParameters(S3Remote(name = "name", bucket = "bucket", path = "path"))
+                params.shouldBeInstanceOf<S3Parameters>()
+                params as S3Parameters
+                params.accessKey shouldBe "accessKey"
+                params.secretKey shouldBe "secretKey"
+                params.sessionToken shouldBe "sessionToken"
+                params.region shouldBe "us-west-2"
+            }
         }
     }
 }

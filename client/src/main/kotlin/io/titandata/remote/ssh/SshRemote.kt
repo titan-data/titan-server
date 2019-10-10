@@ -2,7 +2,9 @@
  * Copyright The Titan Project Contributors.
  */
 
-package io.titandata.models
+package io.titandata.remote.ssh
+
+import io.titandata.models.Remote
 
 data class SshRemote(
     override var provider: String = "ssh",

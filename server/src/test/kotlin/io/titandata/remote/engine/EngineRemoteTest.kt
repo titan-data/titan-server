@@ -2,7 +2,7 @@
  * Copyright The Titan Project Contributors.
  */
 
-package io.titandata.serialization
+package io.titandata.remote.engine
 
 import com.google.gson.GsonBuilder
 import io.kotlintest.TestCase
@@ -17,11 +17,10 @@ import io.mockk.every
 import io.mockk.impl.annotations.InjectMockKs
 import io.mockk.impl.annotations.MockK
 import io.mockk.impl.annotations.OverrideMockKs
-import io.titandata.models.EngineParameters
-import io.titandata.models.EngineRemote
 import io.titandata.models.Remote
 import io.titandata.models.RemoteParameters
-import io.titandata.serialization.remote.EngineRemoteUtil
+import io.titandata.serialization.ModelTypeAdapters
+import io.titandata.serialization.RemoteUtil
 import java.io.Console
 
 class EngineRemoteTest : StringSpec() {

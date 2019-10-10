@@ -89,6 +89,7 @@ class RsyncExecutor(
         }
 
         args.addAll(arrayOf("-o", "StrictHostKeyChecking=no"))
+        args.addAll(arrayOf("-o", "UserKnownHostsFile=/dev/null"))
         args.addAll(command)
 
         return args

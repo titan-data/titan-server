@@ -2,7 +2,7 @@
  * Copyright The Titan Project Contributors.
  */
 
-package io.titandata
+package io.titandata.remote.engine
 
 import com.delphix.sdk.Delphix
 import com.delphix.sdk.Http
@@ -11,16 +11,14 @@ import io.kotlintest.SkipTestException
 import io.kotlintest.Spec
 import io.kotlintest.shouldBe
 import io.kotlintest.shouldThrow
+import io.titandata.EndToEndTest
 import io.titandata.client.infrastructure.ClientException
 import io.titandata.models.Commit
-import io.titandata.models.EngineParameters
-import io.titandata.models.EngineRemote
 import io.titandata.models.ProgressEntry
 import io.titandata.models.Repository
 import io.titandata.models.VolumeCreateRequest
 import io.titandata.models.VolumeMountRequest
 import io.titandata.models.VolumeRequest
-import io.titandata.remote.engine.EngineRemoteProvider
 import io.titandata.serialization.RemoteUtil
 import java.time.OffsetDateTime
 import java.time.format.DateTimeFormatter

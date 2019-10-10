@@ -2,13 +2,12 @@
  * Copyright The Titan Project Contributors.
  */
 
-package io.titandata.serialization.remote
+package io.titandata.remote.s3
 
 import io.titandata.models.Remote
 import io.titandata.models.RemoteParameters
-import io.titandata.models.S3Parameters
-import io.titandata.models.S3Remote
 import io.titandata.serialization.RemoteUtilProvider
+import software.amazon.awssdk.auth.credentials.AwsSessionCredentials
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider
 import software.amazon.awssdk.regions.providers.DefaultAwsRegionProviderChain
 import java.net.URI
@@ -102,6 +101,7 @@ class S3RemoteUtil : RemoteUtilProvider() {
 
         var accessKey = remote.accessKey
         var secretKey = remote.secretKey
+        var sessionToken:String? = null
         if (accessKey == null || secretKey == null) {
             val creds = DefaultCredentialsProvider.create().resolveCredentials()
             if (creds == null) {
@@ -112,6 +112,10 @@ class S3RemoteUtil : RemoteUtilProvider() {
             if (accessKey == null || secretKey == null) {
                 throw IllegalArgumentException("Unable to determine AWS credentials")
             }
+
+            if (creds is AwsSessionCredentials) {
+                sessionToken = creds.sessionToken()
+            }
         }
 
         var region = remote.region
@@ -119,6 +123,6 @@ class S3RemoteUtil : RemoteUtilProvider() {
             region = DefaultAwsRegionProviderChain().region?.id()
         }
 
-        return S3Parameters(accessKey = accessKey, secretKey = secretKey, region = region)
+        return S3Parameters(accessKey = accessKey, secretKey = secretKey, region = region, sessionToken = sessionToken)
     }
 }

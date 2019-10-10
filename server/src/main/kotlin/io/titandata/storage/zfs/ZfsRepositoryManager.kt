@@ -9,6 +9,8 @@ import io.titandata.exception.CommandException
 import io.titandata.exception.InvalidStateException
 import io.titandata.models.Remote
 import io.titandata.models.Repository
+import io.titandata.models.RepositoryStatus
+import io.titandata.models.RepositoryVolumeStatus
 
 /**
  * All repositories are placed under the "<pool>/repo" dataset. This is done to provide additional
@@ -137,6 +139,86 @@ class ZfsRepositoryManager(val provider: ZfsStorageProvider) {
             provider.checkNoSuchRepository(e, name)
             throw e
         }
+    }
+
+    /**
+     * Get the status of a repository. This fetches a few additional pieces of information about
+     * the repository:
+     *
+     *      logicalSize     Equivalent to 'logicalUsed'. This includes the size of any and all snapshots.
+     *
+     *      actutalSize     Equivalent to 'used'. Includes the size of any and all snapshots.
+     *
+     *      checkedOutFrom  If this is a clone, then this is the commit portion of the clone origin.
+     *
+     *      lastCommit      Last committed change. This may or may not be the same as the last commit on the current
+     *                      head filesystem, so we need to list all commits and fetch the latest one across the
+     *                      entire repository.
+     *
+     *      volumeStatus    Status for each volume. This reports status for the current head of each volume, including:
+     *
+     *                      logicalSize     Equivalent to 'logicalrefererenced'. This is only the referenced data
+     *                                      because it doesn't include snapshots (which maake no sense fo the
+     *                                      current head filesystem.
+     *
+     *                      actualSize      Equivalent to 'referenced'. Like 'logicalSize', we exclude snapshots.
+     *
+     *                      properties      The client-controlled properties of the volume. This includes, for example,
+     *                                      the path of the volume within the container.
+     */
+    fun getRepositoryStatus(name: String): RepositoryStatus {
+        provider.validateRepositoryName(name)
+        val commits = provider.commitManager.listCommits(name)
+        val latest = commits.getOrNull(0)?.id
+        val guid = provider.getActive(name)
+
+        // Get the size from the dataset itself
+        val fields = provider.executor.exec("zfs", "list", "-pHo", "logicalused,used",
+                "$poolName/repo/$name/$guid").lines().get(0).split("\t")
+        val logicalSize = fields[0].toLong()
+        val actualSize = fields[1].toLong()
+
+        // List recursively all orgign datasets, as those will be present on volumes, not the repo dataset
+        val origins = provider.executor.exec("zfs", "list", "-Ho", "origin", "-r",
+                "$poolName/repo/$name/$guid")
+        var checkedOutFrom: String? = null
+        for (line in origins.lines()) {
+            if (line.contains("@")) {
+                val snapshot = line.trim().substringAfterLast("@")
+                if (snapshot != INITIAL_COMMIT) {
+                    checkedOutFrom = snapshot
+                    break
+                }
+            }
+        }
+
+        val volumes = mutableListOf<RepositoryVolumeStatus>()
+        val volumeOutput = provider.executor.exec("zfs", "list", "-d", "1", "-pHo",
+                "name,logicalreferenced,referenced,$METADATA_PROP", "$poolName/repo/$name/$guid")
+        val regex = "^$poolName/repo/$name/$guid/([^/\t]+)\t([^\t]+)\t([^\t]+)\t(.*)$".toRegex()
+        for (line in volumeOutput.lines()) {
+            val result = regex.find(line)
+            if (result != null) {
+                val volumeName = result.groupValues.get(1)
+                val volumeLogical = result.groupValues.get(2).toLong()
+                val volumeActual = result.groupValues.get(3).toLong()
+                val metadataString = result.groupValues.get(4)
+                volumes.add(RepositoryVolumeStatus(
+                        name = volumeName,
+                        logicalSize = volumeLogical,
+                        actualSize = volumeActual,
+                        properties = provider.parseMetadata(metadataString)
+                ))
+            }
+        }
+
+        return RepositoryStatus(
+                logicalSize = logicalSize,
+                actualSize = actualSize,
+                checkedOutFrom = checkedOutFrom,
+                lastCommit = latest,
+                volumeStatus = volumes
+        )
     }
 
     /**

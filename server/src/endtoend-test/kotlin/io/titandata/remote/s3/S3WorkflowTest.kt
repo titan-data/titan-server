@@ -2,7 +2,7 @@
  * Copyright The Titan Project Contributors.
  */
 
-package io.titandata
+package io.titandata.remote.s3
 
 import com.amazonaws.AmazonServiceException
 import com.amazonaws.regions.DefaultAwsRegionProviderChain
@@ -16,16 +16,15 @@ import io.kotlintest.Spec
 import io.kotlintest.TestCaseOrder
 import io.kotlintest.shouldBe
 import io.kotlintest.shouldThrow
+import io.titandata.EndToEndTest
+import io.titandata.ProviderModule
 import io.titandata.client.infrastructure.ClientException
 import io.titandata.client.infrastructure.ServerException
 import io.titandata.models.Commit
 import io.titandata.models.Repository
-import io.titandata.models.S3Parameters
-import io.titandata.models.S3Remote
 import io.titandata.models.VolumeCreateRequest
 import io.titandata.models.VolumeMountRequest
 import io.titandata.models.VolumeRequest
-import io.titandata.remote.s3.S3RemoteProvider
 import io.titandata.util.GuidGenerator
 import java.io.ByteArrayInputStream
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider

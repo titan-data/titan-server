@@ -11,14 +11,14 @@ import io.kotlintest.shouldNotBe
 import io.kotlintest.shouldThrow
 import io.titandata.client.infrastructure.ClientException
 import io.titandata.models.Commit
-import io.titandata.models.NopParameters
-import io.titandata.models.NopRemote
 import io.titandata.models.Operation
 import io.titandata.models.ProgressEntry
 import io.titandata.models.Repository
 import io.titandata.models.VolumeCreateRequest
 import io.titandata.models.VolumeMountRequest
 import io.titandata.models.VolumeRequest
+import io.titandata.remote.nop.NopParameters
+import io.titandata.remote.nop.NopRemote
 import java.time.Duration
 import kotlinx.coroutines.time.delay
 

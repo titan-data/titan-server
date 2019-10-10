@@ -23,9 +23,9 @@ import io.titandata.ProviderModule
 import io.titandata.exception.CommandException
 import io.titandata.models.Operation
 import io.titandata.models.ProgressEntry
-import io.titandata.models.SshParameters
-import io.titandata.models.SshRemote
 import io.titandata.operation.OperationExecutor
+import io.titandata.remote.ssh.SshParameters
+import io.titandata.remote.ssh.SshRemote
 import io.titandata.util.CommandExecutor
 import java.io.ByteArrayInputStream
 import java.io.InputStream

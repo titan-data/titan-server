@@ -6,10 +6,10 @@ package io.titandata.serialization
 
 import io.titandata.models.Remote
 import io.titandata.models.RemoteParameters
-import io.titandata.serialization.remote.EngineRemoteUtil
-import io.titandata.serialization.remote.NopRemoteUtil
-import io.titandata.serialization.remote.S3RemoteUtil
-import io.titandata.serialization.remote.SshRemoteUtil
+import io.titandata.remote.engine.EngineRemoteUtil
+import io.titandata.remote.nop.NopRemoteUtil
+import io.titandata.remote.s3.S3RemoteUtil
+import io.titandata.remote.ssh.SshRemoteUtil
 import java.net.URI
 import java.net.URISyntaxException
 

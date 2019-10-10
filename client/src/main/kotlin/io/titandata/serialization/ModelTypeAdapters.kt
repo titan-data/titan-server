@@ -4,16 +4,16 @@
 
 package io.titandata.serialization
 
-import io.titandata.models.EngineRemote
-import io.titandata.models.EngineParameters
-import io.titandata.models.NopRemote
-import io.titandata.models.NopParameters
+import io.titandata.remote.engine.EngineRemote
+import io.titandata.remote.engine.EngineParameters
+import io.titandata.remote.nop.NopRemote
+import io.titandata.remote.nop.NopParameters
 import io.titandata.models.RemoteParameters
 import io.titandata.models.Remote
-import io.titandata.models.S3Parameters
-import io.titandata.models.S3Remote
-import io.titandata.models.SshRemote
-import io.titandata.models.SshParameters
+import io.titandata.remote.s3.S3Parameters
+import io.titandata.remote.s3.S3Remote
+import io.titandata.remote.ssh.SshRemote
+import io.titandata.remote.ssh.SshParameters
 import com.google.gson.GsonBuilder
 
 class ModelTypeAdapters {

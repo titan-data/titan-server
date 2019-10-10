@@ -28,8 +28,6 @@ import io.titandata.exception.ObjectExistsException
 import io.titandata.models.Commit
 import io.titandata.models.Operation
 import io.titandata.models.ProgressEntry
-import io.titandata.models.SshParameters
-import io.titandata.models.SshRemote
 import io.titandata.models.Volume
 import io.titandata.operation.OperationExecutor
 import io.titandata.storage.zfs.ZfsStorageProvider

@@ -22,8 +22,6 @@ import io.titandata.exception.InvalidStateException
 import io.titandata.exception.NoSuchObjectException
 import io.titandata.exception.RemoteException
 import io.titandata.models.Commit
-import io.titandata.models.EngineParameters
-import io.titandata.models.EngineRemote
 import io.titandata.models.Operation
 import io.titandata.models.ProgressEntry
 import io.titandata.models.Remote

@@ -2,7 +2,9 @@
  * Copyright The Titan Project Contributors.
  */
 
-package io.titandata.models
+package io.titandata.remote.s3
+
+import io.titandata.models.RemoteParameters
 
 data class S3Parameters(
     override var provider: String = "s3",

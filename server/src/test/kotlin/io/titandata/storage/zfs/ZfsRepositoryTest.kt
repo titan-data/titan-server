@@ -26,9 +26,9 @@ import io.titandata.exception.CommandException
 import io.titandata.exception.InvalidStateException
 import io.titandata.exception.NoSuchObjectException
 import io.titandata.exception.ObjectExistsException
-import io.titandata.models.EngineRemote
-import io.titandata.models.NopRemote
 import io.titandata.models.Repository
+import io.titandata.remote.engine.EngineRemote
+import io.titandata.remote.nop.NopRemote
 import io.titandata.util.CommandExecutor
 import io.titandata.util.GuidGenerator
 

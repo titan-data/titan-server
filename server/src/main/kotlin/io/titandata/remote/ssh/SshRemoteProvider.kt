@@ -13,8 +13,6 @@ import io.titandata.models.Operation
 import io.titandata.models.ProgressEntry
 import io.titandata.models.Remote
 import io.titandata.models.RemoteParameters
-import io.titandata.models.SshParameters
-import io.titandata.models.SshRemote
 import io.titandata.operation.OperationExecutor
 import io.titandata.remote.BaseRemoteProvider
 import io.titandata.serialization.ModelTypeAdapters

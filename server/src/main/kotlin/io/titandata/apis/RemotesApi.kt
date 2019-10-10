@@ -19,6 +19,9 @@ import io.titandata.exception.NoSuchObjectException
 import io.titandata.exception.ObjectExistsException
 import io.titandata.models.Remote
 import io.titandata.models.RemoteParameters
+import java.time.Instant
+import java.time.OffsetDateTime
+import java.time.format.DateTimeFormatter
 
 /**
  * The remotes API is slightly more substantial because while we expose a more complete CRUD
@@ -125,7 +128,10 @@ fun Route.RemotesApi(providers: ProviderModule) {
             val remote = remotes[idx]
             val params = providers.gson.fromJson(call.request.headers["titan-remote-parameters"],
                     RemoteParameters::class.java)
-            call.respond(providers.remote(remote.provider).listCommits(remote, params))
+            val commits = providers.remote(remote.provider).listCommits(remote, params)
+            call.respond(commits.sortedByDescending { OffsetDateTime.parse(it.properties.get("timestamp")?.toString()
+                    ?: DateTimeFormatter.ISO_INSTANT.format(Instant.ofEpochSecond(0)),
+                    DateTimeFormatter.ISO_DATE_TIME) })
         }
     }
 

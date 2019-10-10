@@ -189,8 +189,8 @@ class S3WorkflowTest : EndToEndTest() {
         "list remote commits records two commits" {
             val commits = remoteApi.listRemoteCommits("foo", "origin", S3Parameters())
             commits.size shouldBe 2
-            commits[0].id shouldBe "id"
-            commits[1].id shouldBe "id2"
+            commits[0].id shouldBe "id2"
+            commits[1].id shouldBe "id"
         }
 
         "delete local commits succeeds" {
@@ -240,8 +240,8 @@ class S3WorkflowTest : EndToEndTest() {
             val commits = remoteApi.listRemoteCommits("foo", "origin", S3Parameters(accessKey = remote.accessKey,
                     secretKey = remote.secretKey, region = remote.region))
             commits.size shouldBe 2
-            commits[0].id shouldBe "id"
-            commits[1].id shouldBe "id2"
+            commits[0].id shouldBe "id2"
+            commits[1].id shouldBe "id"
         }
 
         "list commits without keys fails" {

@@ -9,6 +9,7 @@ import io.titandata.models.RemoteParameters
 import io.titandata.remote.engine.EngineRemoteUtil
 import io.titandata.remote.nop.NopRemoteUtil
 import io.titandata.remote.s3.S3RemoteUtil
+import io.titandata.remote.s3web.S3WebRemoteUtil
 import io.titandata.remote.ssh.SshRemoteUtil
 import java.net.URI
 import java.net.URISyntaxException
@@ -19,7 +20,8 @@ class RemoteUtil {
         "nop" to NopRemoteUtil(),
         "ssh" to SshRemoteUtil(),
         "engine" to EngineRemoteUtil(),
-        "s3" to S3RemoteUtil()
+        "s3" to S3RemoteUtil(),
+        "s3web" to S3WebRemoteUtil()
     )
 
     fun parseUri(uriString: String, name: String, properties: Map<String, String>) : Remote {

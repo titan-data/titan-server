@@ -10,7 +10,6 @@ import com.amazonaws.auth.BasicSessionCredentials
 import com.amazonaws.services.s3.AmazonS3
 import com.amazonaws.services.s3.AmazonS3ClientBuilder
 import com.amazonaws.services.s3.model.AmazonS3Exception
-import com.amazonaws.services.s3.model.ListObjectsRequest
 import com.amazonaws.services.s3.model.ObjectMetadata
 import com.amazonaws.services.s3.model.PutObjectRequest
 import com.google.gson.GsonBuilder
@@ -26,10 +25,28 @@ import io.titandata.remote.BaseRemoteProvider
 import io.titandata.serialization.ModelTypeAdapters
 import java.io.ByteArrayInputStream
 import java.io.File
+import java.io.InputStream
+import java.io.SequenceInputStream
 import java.lang.IllegalArgumentException
 
 /**
- * The S3 provider is a very simple provider for storing whole commits directly in a S3 bucket.
+ * The S3 provider is a very simple provider for storing whole commits directly in a S3 bucket. Each commit is is a
+ * key within a folder, for example:
+ *
+ *      s3://bucket/path/to/repo/3583-4053-598ea-298fa
+ *
+ * Within each commit sub-directory, there is .tar.gz file for each volume. The metadata for each commit is stored
+ * as metadata for the object, as well in a 'titan' file at the root of the repository, with once line per commit. We
+ * do this for a few reasons:
+ *
+ *      * Storing it in object metdata is inefficient, as there's no way to fetch the metadata of multiple objects
+ *        at once. We keep it per-object for the cases where we
+ *      * We want to be able to access this data in a read-only fashion over the HTTP interface, and there is no way
+ *        to access object metadata (or even necessarily iterate over objects) through the HTTP interface.
+ *
+ * This has its downsides, namely that deleting a commit is more complicated, and there is greater risk of
+ * concurrent operations creating invalid state, but those are existing challenges with these simplistic providers.
+ * Properly solving them would require a more sophisticated provider with server-side logic.
  */
 class S3RemoteProvider(val providers: ProviderModule) : BaseRemoteProvider() {
 
@@ -78,35 +95,65 @@ class S3RemoteProvider(val providers: ProviderModule) : BaseRemoteProvider() {
         return gson.fromJson(metadata[METADATA_PROP], Commit::class.java)
     }
 
-    override fun listCommits(remote: Remote, params: RemoteParameters): List<Commit> {
+    private fun getMetadataKey(key: String?): String {
+        return when (key) {
+            null -> "titan"
+            else -> "$key/titan"
+        }
+    }
+
+    private fun getMetadataContent(remote: Remote, params: RemoteParameters): InputStream {
         val s3 = getClient(remote, params)
         val (bucket, key) = getPath(remote)
 
-        var request = ListObjectsRequest()
-                .withBucketName(bucket)
-        if (key != null) {
-            request = request.withPrefix(key)
-        }
-
-        var objects = s3.listObjects(request)
-        val result = mutableListOf<Commit>()
-        while (true) {
-            for (o in objects.objectSummaries) {
-                val metadata = s3.getObjectMetadata(o.bucketName, o.key)
-                val commit = objectToCommit(metadata)
-                if (commit != null) {
-                    result.add(commit)
-                }
-            }
-
-            if (objects.isTruncated()) {
-                objects = s3.listNextBatchOfObjects(objects)
+        try {
+            return s3.getObject(bucket, getMetadataKey(key)).objectContent
+        } catch (e: AmazonS3Exception) {
+            if (e.statusCode == 404) {
+                return ByteArrayInputStream("".toByteArray())
             } else {
-                break
+                throw e
+            }
+        }
+    }
+
+    private fun appendMetadata(remote: Remote, params: RemoteParameters, json: String) {
+        val s3 = getClient(remote, params)
+        val (bucket, key) = getPath(remote)
+
+        var length = 0L
+        var currentMetadata: InputStream
+        try {
+            val obj = s3.getObject(bucket, getMetadataKey(key))
+            currentMetadata = obj.objectContent
+            length = obj.objectMetadata.contentLength
+        } catch (e: AmazonS3Exception) {
+            if (e.statusCode == 404) {
+                currentMetadata = ByteArrayInputStream("".toByteArray())
+            } else {
+                throw e
             }
         }
 
-        return result
+        val appendStream = ByteArrayInputStream("$json\n".toByteArray())
+        val stream = SequenceInputStream(currentMetadata, appendStream)
+        var objectMetadata = ObjectMetadata()
+        objectMetadata.contentLength = length + json.length + 1
+        s3.putObject(PutObjectRequest(bucket, getMetadataKey(key), stream, objectMetadata))
+    }
+
+    override fun listCommits(remote: Remote, params: RemoteParameters): List<Commit> {
+        val metadata = getMetadataContent(remote, params)
+        val ret = mutableListOf<Commit>()
+
+        for (line in metadata.bufferedReader().lines()) {
+            if (line != "") {
+                ret.add(gson.fromJson(line, Commit::class.java))
+            }
+        }
+        metadata.close()
+
+        return ret
     }
 
     override fun getCommit(remote: Remote, commitId: String, params: RemoteParameters): Commit {
@@ -189,10 +236,14 @@ class S3RemoteProvider(val providers: ProviderModule) : BaseRemoteProvider() {
                 if (operation.operation.type == Operation.Type.PUSH) {
                     val commit = providers.storage.getCommit(repo, operation.operation.commitId)
                     val metadata = ObjectMetadata()
-                    metadata.userMetadata = mapOf(METADATA_PROP to gson.toJson(commit))
+                    val json = gson.toJson(commit)
+                    metadata.userMetadata = mapOf(METADATA_PROP to json)
+                    metadata.contentLength = 0
                     val input = ByteArrayInputStream("".toByteArray())
                     val request = PutObjectRequest(bucket, key, input, metadata)
                     s3.putObject(request)
+
+                    appendMetadata(operation.remote, operation.params, json)
                 }
             } finally {
                 providers.storage.unmountOperationVolumes(repo, operationId)

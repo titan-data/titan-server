@@ -5,6 +5,8 @@
 package com.delphix.sdk
 
 import okhttp3.*
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONObject
 import java.io.IOException
 import java.util.concurrent.TimeUnit
@@ -30,7 +32,7 @@ class Http(
             throw IOException("Unexpected Code: $response")
         }
         checkCookie(response)
-        return response.body()!!
+        return response.body!!
     }
 
     private fun validateResponse(response: JSONObject) {
@@ -57,8 +59,8 @@ class Http(
     }
 
     fun setSession() {
-        val json = MediaType.parse("application/json; charset=utf-8")
-        val requestBody = RequestBody.create(json, JSONObject(requestSessions()).toString());
+        val json = "application/json; charset=utf-8".toMediaTypeOrNull()
+        val requestBody = JSONObject(requestSessions()).toString().toRequestBody(json)
         val request = Request.Builder()
                 .url("$engineAddress$sessionResource")
                 .post(requestBody)
@@ -83,8 +85,8 @@ class Http(
 
     fun handlePost(url: String, data: Map<String, Any?>): JSONObject {
         if (debug) println(url)
-        val json = MediaType.parse("application/json; charset=utf-8")
-        val requestBody = RequestBody.create(json, JSONObject(data).toString());
+        val json = "application/json; charset=utf-8".toMediaTypeOrNull()
+        val requestBody = JSONObject(data).toString().toRequestBody(json)
         val request = Request.Builder()
                 .url("$engineAddress$url")
                 .addHeader("Cookie","JSESSIONID=$JSESSIONID")

@@ -20,5 +20,5 @@ dependencies {
     compile(kotlin("stdlib"))
     compile(kotlin("reflect"))
     compile("org.json:json:20190722")
-    compile("com.squareup.okhttp3:okhttp:3.14.2")
+    compile("com.squareup.okhttp3:okhttp:4.2.2")
 }

@@ -50,6 +50,6 @@ publishing {
 dependencies {
     compile(kotlin("stdlib"))
     compile("com.squareup.okhttp3:okhttp:3.14.2")
-    compile("com.google.code.gson:gson:2.8.5")
-    compile("software.amazon.awssdk:auth:2.7.33")
+    compile("com.google.code.gson:gson:2.8.6")
+    compile("software.amazon.awssdk:auth:2.9.18")
 }

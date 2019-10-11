@@ -42,6 +42,7 @@ import io.titandata.remote.RemoteProvider
 import io.titandata.remote.engine.EngineRemoteProvider
 import io.titandata.remote.nop.NopRemoteProvider
 import io.titandata.remote.s3.S3RemoteProvider
+import io.titandata.remote.s3web.S3WebRemoteProvider
 import io.titandata.remote.ssh.SshRemoteProvider
 import io.titandata.serialization.ModelTypeAdapters
 import io.titandata.storage.StorageProvider
@@ -72,6 +73,7 @@ class ProviderModule(val pool: String) {
     private val sshRemoteProvider = SshRemoteProvider(this)
     private val operationProvider = OperationProvider(this)
     private val s3Provider = S3RemoteProvider(this)
+    private val s3WebProvider = S3WebRemoteProvider(this)
 
     val gson = ModelTypeAdapters.configure(GsonBuilder()).create()
     val commandExecutor = CommandExecutor()
@@ -99,6 +101,7 @@ class ProviderModule(val pool: String) {
             "engine" -> engineRemoteProvider
             "ssh" -> sshRemoteProvider
             "s3" -> s3Provider
+            "s3web" -> s3WebProvider
             else -> throw IllegalArgumentException("unknown remote provider '$type'")
         }
     }

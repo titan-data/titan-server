@@ -11,7 +11,7 @@ var buildDockerServer = tasks.register<Exec>("buildDockerServer") {
 }
 
 // Convenience function that doesn't do --no-cache for quick rebuilds (at risk of potentially stale data
-tasks.register<Exec>("rebuildDockerServer") {
+var rebuildDockerServer = tasks.register<Exec>("rebuildDockerServer") {
     group = LifecycleBasePlugin.BUILD_GROUP
     description = "Build docker server image"
     commandLine("docker", "build", "-t", "$imageName:latest", "-f", "${project.projectDir}/docker/server.Dockerfile", "${project.projectDir}")
@@ -41,6 +41,12 @@ var buildSshServer = tasks.register<Exec>("buildSshTestServer") {
 tasks.named("assemble").configure {
     dependsOn(buildDockerServer)
     dependsOn(tagDockerServer)
+    dependsOn(tagLocalDockerServer)
+}
+
+tasks.named("rebuild").configure {
+    dependsOn(tasks.named("shadowJar"))
+    dependsOn(rebuildDockerServer)
     dependsOn(tagLocalDockerServer)
 }
 

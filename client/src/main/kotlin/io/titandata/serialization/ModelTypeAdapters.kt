@@ -15,6 +15,8 @@ import io.titandata.remote.s3.S3Remote
 import io.titandata.remote.ssh.SshRemote
 import io.titandata.remote.ssh.SshParameters
 import com.google.gson.GsonBuilder
+import io.titandata.remote.s3web.S3WebParameters
+import io.titandata.remote.s3web.S3WebRemote
 
 class ModelTypeAdapters {
     companion object {
@@ -23,12 +25,14 @@ class ModelTypeAdapters {
                 .registerSubtype(EngineRemote::class.java, "engine")
                 .registerSubtype(SshRemote::class.java, "ssh")
                 .registerSubtype(S3Remote::class.java, "s3")
+                .registerSubtype(S3WebRemote::class.java, "s3web")
 
         private val request = RuntimeTypeAdapterFactory.of(RemoteParameters::class.java, "provider", true)
                 .registerSubtype(NopParameters::class.java, "nop")
                 .registerSubtype(EngineParameters::class.java, "engine")
                 .registerSubtype(SshParameters::class.java, "ssh")
                 .registerSubtype(S3Parameters::class.java, "s3")
+                .registerSubtype(S3WebParameters::class.java, "s3web")
 
         fun configure(builder: GsonBuilder) : GsonBuilder {
             return builder.registerTypeAdapterFactory(remote)

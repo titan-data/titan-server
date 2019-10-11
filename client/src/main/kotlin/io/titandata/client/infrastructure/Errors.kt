@@ -22,9 +22,8 @@ fun getError(gson: Gson, body: String?) : Error? {
      * Docker volume errors are a bit strange in that they just return success but include
      * a "Err" field. Try to pull it out here.
      */
-    val parser = JsonParser()
     try {
-        val element = parser.parse(body)
+        val element = JsonParser.parseString(body)
         val obj = element.asJsonObject
         if (obj != null && obj.has("Err") && obj.get("Err").asString != "") {
             return Error(message = obj.get("Err").asString)

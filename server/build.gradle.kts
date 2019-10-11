@@ -18,7 +18,7 @@ repositories {
     maven("https://dl.bintray.com/kotlin/kotlinx")
 }
 
-val ktorVersion = "1.2.3"
+val ktorVersion = "1.2.5"
 
 dependencies {
     compile(project(":client"))
@@ -27,17 +27,17 @@ dependencies {
     compile("io.ktor:ktor-server-cio:$ktorVersion")
     compile("io.ktor:ktor-gson:$ktorVersion")
     compile("ch.qos.logback:logback-classic:1.2.3")
-    compile("com.google.code.gson:gson:2.8.5")
+    compile("com.google.code.gson:gson:2.8.6")
+    compile("com.squareup.okhttp3:okhttp:4.2.2")
 
     // S3 Provider dependencies
-    compile("com.amazonaws:aws-java-sdk-s3:1.11.622")
+    compile("com.amazonaws:aws-java-sdk-s3:1.11.650")
     compile("javax.xml.bind:jaxb-api:2.3.1")
 
-    testCompile("com.squareup.okhttp3:okhttp:3.14.2")
     testCompile("io.ktor:ktor-server-test-host:$ktorVersion")
     testImplementation("io.kotlintest:kotlintest-runner-junit5:3.4.2")
     testImplementation("io.mockk:mockk:1.9.3")
-    testImplementation("org.apache.commons:commons-text:1.7")
+    testImplementation("org.apache.commons:commons-text:1.8")
 }
 
 jacoco {
@@ -50,6 +50,11 @@ application {
 
 tasks.withType<ShadowJar> {
     archiveFileName.set("titan-server.jar")
+}
+
+tasks.register("rebuild") {
+    group = LifecycleBasePlugin.BUILD_GROUP
+    description = "Fast rebuild of docker image"
 }
 
 tasks.register("publish") {

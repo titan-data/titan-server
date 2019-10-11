@@ -70,7 +70,7 @@ class DockerUtil(
         try {
             val request = Request.Builder().url(url("repositories")).build()
             val response = OkHttpClient().newCall(request).execute()
-            return response.code()
+            return response.code
         } catch (e: Exception) {
             return 500
         }

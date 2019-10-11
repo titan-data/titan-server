@@ -118,7 +118,7 @@ class S3WebWorkflowTest : EndToEndTest() {
 
                 val webRemote = getS3WebRemote()
                 val webProvider = S3WebRemoteProvider(ProviderModule("test"))
-                val body = webProvider.getFile(webRemote, "id").string()
+                val body = webProvider.getFile(webRemote, "id").body!!.string()
                 body shouldBe "Hello, world!"
 
                 s3.deleteObject(bucket, key)
@@ -204,7 +204,7 @@ class S3WebWorkflowTest : EndToEndTest() {
             val exception = shouldThrow<ClientException> {
                 operationApi.push("foo", "web", "id2", S3Parameters())
             }
-            exception.code shouldBe "IllegalStateException"
+            exception.code shouldBe "IllegalArgumentException"
         }
 
         "push second commit succeeds" {

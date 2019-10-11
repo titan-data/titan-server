@@ -19,6 +19,7 @@ import java.io.File
 import java.io.IOException
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import okhttp3.Response
 import okhttp3.ResponseBody
 
 /**
@@ -36,20 +37,24 @@ class S3WebRemoteProvider(val providers: ProviderModule) : BaseRemoteProvider() 
     private val gson = ModelTypeAdapters.configure(GsonBuilder()).create()
     private val client = OkHttpClient()
 
-    fun getFile(remote: Remote, path: String): ResponseBody {
+    fun getFile(remote: Remote, path: String): Response {
         remote as S3WebRemote
         val request = Request.Builder().url("${remote.url}/$path").build()
-        val response = client.newCall(request).execute()
+        return client.newCall(request).execute()
 
-        if (!response.isSuccessful) {
-            throw IOException("failed to get ${remote.url}/$path, error code ${response.code}")
-        }
-
-        return response.body!!
     }
 
     private fun getAllCommits(remote: Remote): List<Commit> {
-        val body = getFile(remote, "titan").string()
+        remote as S3WebRemote
+        val response = getFile(remote, "titan")
+        val body = when (response.isSuccessful) {
+            true -> response.body!!.string()
+            false -> when (response.code) {
+                404 -> ""
+                else -> throw IOException("failed to get ${remote.url}/titan, error code ${response.code}")
+            }
+        }
+
         val ret = mutableListOf<Commit>()
 
         for (line in body.split("\n")) {
@@ -82,6 +87,7 @@ class S3WebRemoteProvider(val providers: ProviderModule) : BaseRemoteProvider() 
         val repo = operation.repo
         val operationId = operation.operation.id
         val remote = operation.remote as S3WebRemote
+        val commitId = operation.operation.commitId
 
         val scratch = providers.storage.createOperationScratch(repo, operationId)
         try {
@@ -93,10 +99,14 @@ class S3WebRemoteProvider(val providers: ProviderModule) : BaseRemoteProvider() 
                     operation.addProgress(ProgressEntry(type = ProgressEntry.Type.START,
                             message = "Downloading archive for $desc"))
 
-                    val src = getFile(remote, "${vol.name}.tar.gz")
+                    val path = "${commitId}/${vol.name}.tar.gz"
+                    val response = getFile(remote, path)
+                    if (!response.isSuccessful) {
+                        throw IOException("failed to get ${remote.url}/$path, error code ${response.code}")
+                    }
                     val archive = "$scratch/${vol.name}.tar.gz"
                     val archiveFile = File(archive)
-                    src.byteStream().use { input ->
+                    response.body!!.byteStream().use { input ->
                         archiveFile.outputStream().use { output ->
                             input.copyTo(output)
                         }

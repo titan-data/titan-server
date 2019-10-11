@@ -20,7 +20,6 @@ import java.io.IOException
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.Response
-import okhttp3.ResponseBody
 
 /**
  * The S3 provider is a very simple provider for reading commits created by the S3 provider. It's primary purpose is to
@@ -41,7 +40,6 @@ class S3WebRemoteProvider(val providers: ProviderModule) : BaseRemoteProvider() 
         remote as S3WebRemote
         val request = Request.Builder().url("${remote.url}/$path").build()
         return client.newCall(request).execute()
-
     }
 
     private fun getAllCommits(remote: Remote): List<Commit> {
@@ -99,7 +97,7 @@ class S3WebRemoteProvider(val providers: ProviderModule) : BaseRemoteProvider() 
                     operation.addProgress(ProgressEntry(type = ProgressEntry.Type.START,
                             message = "Downloading archive for $desc"))
 
-                    val path = "${commitId}/${vol.name}.tar.gz"
+                    val path = "$commitId/${vol.name}.tar.gz"
                     val response = getFile(remote, path)
                     if (!response.isSuccessful) {
                         throw IOException("failed to get ${remote.url}/$path, error code ${response.code}")

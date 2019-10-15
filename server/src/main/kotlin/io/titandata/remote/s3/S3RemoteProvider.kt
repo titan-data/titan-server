@@ -211,15 +211,13 @@ class S3RemoteProvider(val providers: ProviderModule) : BaseRemoteProvider() {
 
                         val archive = "$scratch/${vol.name}.tar.gz"
                         val obj = s3.getObject(bucket, "$key/${vol.name}.tar.gz")
-                        val stream = obj.objectContent
-                        val outputStream = File(archive).outputStream()
                         // TODO - progress monitoring
-                        try {
-                            stream.copyTo(outputStream)
-                            operation.addProgress(ProgressEntry(type = ProgressEntry.Type.END))
-                        } finally {
-                            outputStream.close()
+                        obj.objectContent.use { input ->
+                            File(archive).outputStream().use { output ->
+                                input.copyTo(output)
+                            }
                         }
+                        operation.addProgress(ProgressEntry(type = ProgressEntry.Type.END))
 
                         operation.addProgress(ProgressEntry(type = ProgressEntry.Type.START,
                                 message = "Extracting archive for $desc"))

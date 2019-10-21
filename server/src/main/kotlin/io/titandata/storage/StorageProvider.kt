@@ -29,7 +29,7 @@ interface StorageProvider {
     fun createCommit(repo: String, commit: Commit): Commit
     fun getCommit(repo: String, id: String): Commit
     fun getCommitStatus(repo: String, id: String): CommitStatus
-    fun listCommits(repo: String): List<Commit>
+    fun listCommits(repo: String, tags: List<String>?): List<Commit>
     fun deleteCommit(repo: String, commit: String)
     fun checkoutCommit(repo: String, commit: String)
 

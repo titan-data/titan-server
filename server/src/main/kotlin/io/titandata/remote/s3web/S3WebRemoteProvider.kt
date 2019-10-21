@@ -15,6 +15,7 @@ import io.titandata.models.RemoteParameters
 import io.titandata.operation.OperationExecutor
 import io.titandata.remote.BaseRemoteProvider
 import io.titandata.serialization.ModelTypeAdapters
+import io.titandata.util.TagFilter
 import java.io.File
 import java.io.IOException
 import okhttp3.OkHttpClient
@@ -64,8 +65,8 @@ class S3WebRemoteProvider(val providers: ProviderModule) : BaseRemoteProvider() 
         return ret
     }
 
-    override fun listCommits(remote: Remote, params: RemoteParameters): List<Commit> {
-        return getAllCommits(remote)
+    override fun listCommits(remote: Remote, params: RemoteParameters, tags: List<String> ?): List<Commit> {
+        return TagFilter(tags).filter(getAllCommits(remote))
     }
 
     override fun getCommit(remote: Remote, commitId: String, params: RemoteParameters): Commit {

@@ -224,13 +224,13 @@ class ZfsCommitTest : StringSpec() {
 
         "list commits fails with invalid repo name" {
             shouldThrow<IllegalArgumentException> {
-                provider.listCommits("not/ok")
+                provider.listCommits("not/ok", null)
             }
         }
 
         "list commits returns empty list with no output" {
             every { executor.exec(*anyVararg()) } returns ""
-            val result = provider.listCommits("foo")
+            val result = provider.listCommits("foo", null)
             result.size shouldBe 0
             verify {
                 executor.exec("zfs", "list", "-Ho",
@@ -246,7 +246,7 @@ class ZfsCommitTest : StringSpec() {
                     "test/repo/foo/guid1@hash1\toff\t{\"a\":\"b\"}",
                     "test/repo/foo/guid2@hash2\toff\t{\"c\":\"d\"}"
             ).joinToString("\n")
-            val result = provider.listCommits("foo")
+            val result = provider.listCommits("foo", null)
             result.size shouldBe 2
             result[0].id shouldBe "hash1"
             result[0].properties["a"] shouldBe "b"
@@ -260,7 +260,7 @@ class ZfsCommitTest : StringSpec() {
                     "test/repo/foo/guid1@initial\toff\t{\"a\":\"b\"}",
                     "test/repo/foo/guid2@hash2\toff\t{\"c\":\"d\"}"
             ).joinToString("\n")
-            val result = provider.listCommits("foo")
+            val result = provider.listCommits("foo", null)
             result.size shouldBe 1
             result[0].id shouldBe "hash2"
             result[0].properties["c"] shouldBe "d"
@@ -272,7 +272,7 @@ class ZfsCommitTest : StringSpec() {
                     "test/repo/foo/guid1@hash1\ton\t{\"a\":\"b\"}",
                     "test/repo/foo/guid2@hash2\toff\t{\"c\":\"d\"}"
             ).joinToString("\n")
-            val result = provider.listCommits("foo")
+            val result = provider.listCommits("foo", null)
             result.size shouldBe 1
             result[0].id shouldBe "hash2"
             result[0].properties["c"] shouldBe "d"
@@ -283,7 +283,7 @@ class ZfsCommitTest : StringSpec() {
                     "test/repo/foo/guid1@hash1\toff\t{\"timestamp\":\"2019-10-08T15:10:54Z\"}",
                     "test/repo/foo/guid2@hash2\toff\t{\"timestamp\":\"2019-10-08T15:20:54Z\"}"
             ).joinToString("\n")
-            val result = provider.listCommits("foo")
+            val result = provider.listCommits("foo", null)
             result.size shouldBe 2
             result[0].id shouldBe "hash2"
             result[1].id shouldBe "hash1"
@@ -292,7 +292,7 @@ class ZfsCommitTest : StringSpec() {
         "list commits throws exception for non-existent repo" {
             every { executor.exec(*anyVararg()) } throws CommandException("", 1, "does not exist")
             shouldThrow<NoSuchObjectException> {
-                provider.listCommits("foo")
+                provider.listCommits("foo", null)
             }
         }
 

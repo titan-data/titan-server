@@ -23,6 +23,7 @@ import io.titandata.models.RemoteParameters
 import io.titandata.operation.OperationExecutor
 import io.titandata.remote.BaseRemoteProvider
 import io.titandata.serialization.ModelTypeAdapters
+import io.titandata.util.TagFilter
 import java.io.ByteArrayInputStream
 import java.io.File
 import java.io.InputStream
@@ -142,7 +143,7 @@ class S3RemoteProvider(val providers: ProviderModule) : BaseRemoteProvider() {
         s3.putObject(PutObjectRequest(bucket, getMetadataKey(key), stream, objectMetadata))
     }
 
-    override fun listCommits(remote: Remote, params: RemoteParameters): List<Commit> {
+    override fun listCommits(remote: Remote, params: RemoteParameters, tags: List<String>?): List<Commit> {
         val metadata = getMetadataContent(remote, params)
         val ret = mutableListOf<Commit>()
 
@@ -153,7 +154,7 @@ class S3RemoteProvider(val providers: ProviderModule) : BaseRemoteProvider() {
         }
         metadata.close()
 
-        return ret
+        return TagFilter(tags).filter(ret)
     }
 
     override fun getCommit(remote: Remote, commitId: String, params: RemoteParameters): Commit {

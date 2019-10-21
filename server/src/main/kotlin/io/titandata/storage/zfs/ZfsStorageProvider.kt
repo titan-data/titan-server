@@ -58,6 +58,7 @@ class ZfsStorageProvider(
     internal val OPERATION_PROP = "io.titan-data:operation"
     internal val REAPER_PROP = "io.titan-data:reaper"
     internal val INITIAL_COMMIT = "initial"
+    internal val TAGS_METADATA = "tags"
     internal val executor = CommandExecutor()
     internal val generator = GuidGenerator()
 
@@ -333,8 +334,8 @@ class ZfsStorageProvider(
     }
 
     @Synchronized
-    override fun listCommits(repo: String): List<Commit> {
-        return commitManager.listCommits(repo)
+    override fun listCommits(repo: String, tags: List<String>?): List<Commit> {
+        return commitManager.listCommits(repo, tags)
     }
 
     @Synchronized

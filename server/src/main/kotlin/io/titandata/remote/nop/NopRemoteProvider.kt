@@ -19,7 +19,7 @@ import io.titandata.remote.BaseRemoteProvider
  * remotes will always return an empty list.
  */
 class NopRemoteProvider : BaseRemoteProvider() {
-    override fun listCommits(remote: Remote, params: RemoteParameters): List<Commit> {
+    override fun listCommits(remote: Remote, params: RemoteParameters, tags: List<String>?): List<Commit> {
         return listOf()
     }
 

@@ -11,7 +11,7 @@ import io.titandata.models.RemoteParameters
 import io.titandata.operation.OperationExecutor
 
 interface RemoteProvider {
-    fun listCommits(remote: Remote, params: RemoteParameters): List<Commit>
+    fun listCommits(remote: Remote, params: RemoteParameters, tags: List<String>?): List<Commit>
     fun getCommit(remote: Remote, commitId: String, params: RemoteParameters): Commit
     fun runOperation(operation: OperationExecutor)
     fun validateOperation(remote: Remote, commitId: String, opType: Operation.Type, params: RemoteParameters)

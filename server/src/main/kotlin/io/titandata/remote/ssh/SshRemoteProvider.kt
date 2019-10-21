@@ -17,6 +17,7 @@ import io.titandata.operation.OperationExecutor
 import io.titandata.remote.BaseRemoteProvider
 import io.titandata.serialization.ModelTypeAdapters
 import io.titandata.sync.RsyncExecutor
+import io.titandata.util.TagFilter
 import java.io.File
 import java.io.IOException
 import java.nio.file.Files
@@ -143,16 +144,20 @@ class SshRemoteProvider(val providers: ProviderModule) : BaseRemoteProvider() {
         }
     }
 
-    override fun listCommits(remote: Remote, params: RemoteParameters): List<Commit> {
+    override fun listCommits(remote: Remote, params: RemoteParameters, tags: List<String>?): List<Commit> {
         val sshRemote = remote as SshRemote
 
         val output = runSsh(remote, params, "ls", "-1", sshRemote.path)
         val commits = mutableListOf<Commit>()
+        val filter = TagFilter(tags)
         for (line in output.lines()) {
             val commitId = line.trim()
             if (commitId != "") {
                 try {
-                    commits.add(getCommit(remote, commitId, params))
+                    val commit = getCommit(remote, commitId, params)
+                    if (filter.match(commit)) {
+                        commits.add(commit)
+                    }
                 } catch (e: NoSuchObjectException) {
                     // Ignore broken links
                 }

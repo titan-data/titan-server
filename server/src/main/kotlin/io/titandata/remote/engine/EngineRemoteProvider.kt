@@ -29,6 +29,7 @@ import io.titandata.models.RemoteParameters
 import io.titandata.operation.OperationExecutor
 import io.titandata.remote.BaseRemoteProvider
 import io.titandata.sync.RsyncExecutor
+import io.titandata.util.TagFilter
 import java.time.OffsetDateTime
 import java.time.format.DateTimeFormatter
 import org.json.JSONObject
@@ -190,16 +191,17 @@ class EngineRemoteProvider(val providers: ProviderModule) : BaseRemoteProvider()
         return ret.sortedByDescending { OffsetDateTime.parse(it.getString("creation"), DateTimeFormatter.ISO_DATE_TIME) }
     }
 
-    override fun listCommits(remote: Remote, params: RemoteParameters): List<Commit> {
+    override fun listCommits(remote: Remote, params: RemoteParameters, tags: List<String> ?): List<Commit> {
         val engine = connect(remote, params)
-        return listSnapshots(engine, remote).map {
+        val filter = TagFilter(tags)
+        return filter.filter(listSnapshots(engine, remote).map {
             Commit(id = it.getString("hash"), properties = it.getJSONObject("metadata").toMap())
-        }
+        })
     }
 
     override fun getCommit(remote: Remote, commitId: String, params: RemoteParameters): Commit {
         // This is horribly inefficient, but all we can do until we have a better API
-        val commits = listCommits(remote, params)
+        val commits = listCommits(remote, params, null)
         return commits.find { it -> it.id == commitId }
             ?: throw NoSuchObjectException("no such commit $commitId in remote ${remote.name}")
     }

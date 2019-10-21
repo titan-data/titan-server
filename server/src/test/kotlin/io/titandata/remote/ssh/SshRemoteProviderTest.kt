@@ -81,7 +81,7 @@ class SshRemoteProviderTest : StringSpec() {
     init {
         "list commits returns an empty list" {
             every { executor.exec(*anyVararg()) } returns ""
-            val result = provider.listCommits(getRemote(), SshParameters())
+            val result = provider.listCommits(getRemote(), SshParameters(), null)
             result.size shouldBe 0
         }
 
@@ -92,7 +92,7 @@ class SshRemoteProviderTest : StringSpec() {
                     "-o", "UserKnownHostsFile=/dev/null", "root@localhost", "cat", "/var/tmp/a/metadata.json") } returns "{\"id\":\"a\",\"properties\":{}}"
             every { executor.exec("sshpass", "-f", any(), "ssh", "-o", "StrictHostKeyChecking=no",
                     "-o", "UserKnownHostsFile=/dev/null", "root@localhost", "cat", "/var/tmp/b/metadata.json") } returns "{\"id\":\"b\",\"properties\":{}}"
-            val result = provider.listCommits(getRemote(), SshParameters())
+            val result = provider.listCommits(getRemote(), SshParameters(), null)
             result.size shouldBe 2
             result[0].id shouldBe "a"
             result[1].id shouldBe "b"
@@ -105,7 +105,7 @@ class SshRemoteProviderTest : StringSpec() {
                     "-o", "UserKnownHostsFile=/dev/null", "root@localhost", "cat", "/var/tmp/a/metadata.json") } throws CommandException("", 1,
                     "No such file or directory")
 
-            val result = provider.listCommits(getRemote(), SshParameters())
+            val result = provider.listCommits(getRemote(), SshParameters(), null)
             result.size shouldBe 0
         }
 

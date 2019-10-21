@@ -357,16 +357,13 @@ class ZfsCommitTest : StringSpec() {
             confirmVerified()
         }
 
-        "delete last commit on inactive guid destroy's dataset" {
+        "delete last commit on inactive guid sets reaper flag" {
+            every { executor.exec(*anyVararg()) } returns ""
             every { executor.exec("zfs", "list", "-Ho", "name,defer_destroy", "-t", "snapshot",
                     "-d", "2", "test/repo/foo")
             } returns "test/repo/foo/guid@hash\toff"
-            every { executor.exec("zfs", "destroy", "-rd", "test/repo/foo/guid@hash") } returns ""
             every { executor.exec("zfs", "list", "-Hpo", "io.titan-data:active",
                     "test/repo/foo") } returns "guid2"
-            every { executor.exec("zfs", "list", "-H", "-t", "snapshot", "-d", "1",
-                    "test/repo/foo/guid") } returns ""
-            every { executor.exec("zfs", "destroy", "-r", "test/repo/foo/guid") } returns ""
             provider.deleteCommit("foo", "hash")
             verifySequence {
                 executor.exec("zfs", "list", "-Ho", "name,defer_destroy", "-t", "snapshot",
@@ -376,7 +373,7 @@ class ZfsCommitTest : StringSpec() {
                         "test/repo/foo")
                 executor.exec("zfs", "list", "-H", "-t", "snapshot", "-d", "1",
                         "test/repo/foo/guid")
-                executor.exec("zfs", "destroy", "-r", "test/repo/foo/guid")
+                executor.exec("zfs", "set", "io.titan-data:reaper=on", "test/repo/foo/guid")
             }
             confirmVerified()
         }
@@ -401,29 +398,62 @@ class ZfsCommitTest : StringSpec() {
         }
 
         "checkout sets active dataset correctly" {
+            every { executor.exec(*anyVararg()) } returns ""
             every { generator.get() } returns "newguid"
             every { executor.exec("zfs", "list", "-Ho", "name,defer_destroy", "-t", "snapshot",
                     "-d", "2", "test/repo/foo")
             } returns "test/repo/foo/guid@hash\toff"
             every { executor.exec("zfs", "list", "-rHo", "name,io.titan-data:metadata", "test/repo/foo/guid") } returns
                     arrayOf("test/repo/foo/guid\t-", "test/repo/foo/guid/v0\t{}", "test/repo/foo/guid/v1\t{}").joinToString("\n")
-            every { executor.exec("zfs", "create", "test/repo/foo/newguid") } returns ""
-            every { executor.exec("zfs", "clone", "-o", "io.titan-data:metadata={}", "test/repo/foo/guid/v0@hash",
-                    "test/repo/foo/newguid/v0") } returns ""
-            every { executor.exec("zfs", "clone", "-o", "io.titan-data:metadata={}", "test/repo/foo/guid/v1@hash",
-                    "test/repo/foo/newguid/v1") } returns ""
-            every { executor.exec("zfs", "set", "io.titan-data:active=newguid",
-                    "test/repo/foo") } returns ""
+            every { executor.exec("zfs", "list", "-Hpo", "io.titan-data:active",
+                    "test/repo/foo") } returns "guid\n"
             provider.checkoutCommit("foo", "hash")
 
             verifySequence {
                 executor.exec("zfs", "list", "-Ho", "name,defer_destroy", "-t", "snapshot",
                         "-d", "2", "test/repo/foo")
+                executor.exec("zfs", "list", "-Hpo", "io.titan-data:active", "test/repo/foo")
                 executor.exec("zfs", "list", "-rHo", "name,io.titan-data:metadata", "test/repo/foo/guid")
                 executor.exec("zfs", "create", "test/repo/foo/newguid")
                 executor.exec("zfs", "clone", "-o", "io.titan-data:metadata={}", "test/repo/foo/guid/v0@hash", "test/repo/foo/newguid/v0")
                 executor.exec("zfs", "clone", "-o", "io.titan-data:metadata={}", "test/repo/foo/guid/v1@hash", "test/repo/foo/newguid/v1")
                 executor.exec("zfs", "set", "io.titan-data:active=newguid", "test/repo/foo")
+                executor.exec("zfs", "list", "-pHo", "name,creation", "-t", "snapshot", "-d", "1", "test/repo/foo/guid")
+                executor.exec("zfs", "destroy", "-r", "test/repo/foo/guid")
+            }
+            confirmVerified()
+        }
+
+        "checkout rolls back correctly" {
+            every { executor.exec(*anyVararg()) } returns ""
+            every { generator.get() } returns "newguid"
+            every { executor.exec("zfs", "list", "-Ho", "name,defer_destroy", "-t", "snapshot",
+                    "-d", "2", "test/repo/foo")
+            } returns "test/repo/foo/guid@hash\toff"
+            every { executor.exec("zfs", "list", "-rHo", "name,io.titan-data:metadata", "test/repo/foo/guid") } returns
+                    arrayOf("test/repo/foo/guid\t-", "test/repo/foo/guid/v0\t{}", "test/repo/foo/guid/v1\t{}").joinToString("\n")
+            every { executor.exec("zfs", "list", "-Hpo", "io.titan-data:active",
+                    "test/repo/foo") } returns "guid\n"
+            every { executor.exec("zfs", "list", "-pHo", "name,creation", "-t", "snapshot", "-d", "1",
+                    "test/repo/foo/guid") } returns "test/repo/foo/guid@last\t3984\ntest/repo/foo/guid@first\t3983"
+            every { executor.exec("zfs", "list", "-Ho", "name", "-r", "test/repo/foo/guid") } returns
+                    "test/repo/foo/guid\ntest/repo/foo/guid/v0\ntest/repo/foo/guid/v1\n"
+            provider.checkoutCommit("foo", "hash")
+
+            verifySequence {
+                executor.exec("zfs", "list", "-Ho", "name,defer_destroy", "-t", "snapshot",
+                        "-d", "2", "test/repo/foo")
+                executor.exec("zfs", "list", "-Hpo", "io.titan-data:active", "test/repo/foo")
+                executor.exec("zfs", "list", "-rHo", "name,io.titan-data:metadata", "test/repo/foo/guid")
+                executor.exec("zfs", "create", "test/repo/foo/newguid")
+                executor.exec("zfs", "clone", "-o", "io.titan-data:metadata={}", "test/repo/foo/guid/v0@hash", "test/repo/foo/newguid/v0")
+                executor.exec("zfs", "clone", "-o", "io.titan-data:metadata={}", "test/repo/foo/guid/v1@hash", "test/repo/foo/newguid/v1")
+                executor.exec("zfs", "set", "io.titan-data:active=newguid", "test/repo/foo")
+                executor.exec("zfs", "list", "-pHo", "name,creation", "-t", "snapshot", "-d", "1", "test/repo/foo/guid")
+                executor.exec("zfs", "list", "-Ho", "name", "-r", "test/repo/foo/guid")
+                executor.exec("zfs", "rollback", "test/repo/foo/guid@last")
+                executor.exec("zfs", "rollback", "test/repo/foo/guid/v0@last")
+                executor.exec("zfs", "rollback", "test/repo/foo/guid/v1@last")
             }
             confirmVerified()
         }

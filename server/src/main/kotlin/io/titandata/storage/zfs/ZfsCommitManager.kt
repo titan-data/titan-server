@@ -38,6 +38,7 @@ class ZfsCommitManager(val provider: ZfsStorageProvider) {
     private val timestampProperty = provider.timestampProperty
     private val METADATA_PROP = provider.METADATA_PROP
     private val ACTIVE_PROP = provider.ACTIVE_PROP
+    private val REAPER_PROP = provider.REAPER_PROP
     private val INITIAL_COMMIT = provider.INITIAL_COMMIT
 
     /**
@@ -213,7 +214,7 @@ class ZfsCommitManager(val provider: ZfsStorageProvider) {
                  * clones. To deal with this, we instead set a flag, "io.titan-data:deathrow", that the
                  * ZFS reaper class will periodically try to clean these up in the background.
                  */
-                provider.executor.exec("zfs", "set", "io.titan-data:deathrow=on", "$poolName/repo/$repo/$guid")
+                provider.executor.exec("zfs", "set", "$REAPER_PROP=on", "$poolName/repo/$repo/$guid")
             }
         }
     }
@@ -245,7 +246,7 @@ class ZfsCommitManager(val provider: ZfsStorageProvider) {
                 "$poolName/repo/$repo/$active").trim()
 
         if (output == "") {
-             // If there were no active snapshots (and hence commits) on the previous active GUID, destroy it now.
+            // If there were no active snapshots (and hence commits) on the previous active GUID, destroy it now.
             provider.executor.exec("zfs", "destroy", "-r", "$poolName/repo/$repo/$active")
         } else {
             // Get the most recent snapshot
@@ -258,7 +259,9 @@ class ZfsCommitManager(val provider: ZfsStorageProvider) {
             // Now iterate over all children and rollback
             val datasets = provider.executor.exec("zfs", "list", "-Ho", "name", "-r", "$poolName/repo/$repo/$active")
             for (dataset in datasets.split("\n")) {
-                provider.executor.exec("zfs", "rollback", "${dataset.trim()}@$mostRecentSnap")
+                if (dataset.trim() != "") {
+                    provider.executor.exec("zfs", "rollback", "${dataset.trim()}@$mostRecentSnap")
+                }
             }
         }
     }

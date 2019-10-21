@@ -38,6 +38,7 @@ class ZfsCommitManager(val provider: ZfsStorageProvider) {
     private val timestampProperty = provider.timestampProperty
     private val METADATA_PROP = provider.METADATA_PROP
     private val ACTIVE_PROP = provider.ACTIVE_PROP
+    private val REAPER_PROP = provider.REAPER_PROP
     private val INITIAL_COMMIT = provider.INITIAL_COMMIT
 
     /**
@@ -205,10 +206,15 @@ class ZfsCommitManager(val provider: ZfsStorageProvider) {
             val output = provider.executor.exec("zfs", "list", "-H", "-t", "snapshot", "-d", "1",
                     "$poolName/repo/$repo/$guid").trim()
             if (output == "") {
-                // There were no snapshots, so we can destroy the entire guid. We should be able
-                // to use '-r' or '-R' since there are no snapshots, but we use '-r' just to be
-                // safe and not accidentally destroy clones should something go horribly wrong.
-                provider.executor.exec("zfs", "destroy", "-r", "$poolName/repo/$repo/$guid")
+                /*
+                 * The above command will recursively destroy any snapshots. If this commit
+                 * has been checked out, then there may be clones of a child dataset (e.g. "vol@commit")
+                 * in the deferred destroy state, even if the parent snapshot on the dataset itself
+                 * was deleted. Because of this, a vanilla destroy command can fail due to dependent
+                 * clones. To deal with this, we instead set a flag, "io.titan-data:deathrow", that the
+                 * ZFS reaper class will periodically try to clean these up in the background.
+                 */
+                provider.executor.exec("zfs", "set", "$REAPER_PROP=on", "$poolName/repo/$repo/$guid")
             }
         }
     }
@@ -219,13 +225,10 @@ class ZfsCommitManager(val provider: ZfsStorageProvider) {
      *  1. Find the source guid for the given commit
      *  2. Clone the dataset and all volumes into a new GUID
      *  3. Set the active guid for the repo to point to the new clone
+     *  4. Cleanup the previous active guid
      *
-     * The exception is if the hash is the latest snapshot for the given GUID. If so, we will
-     * rollback to the previous state instead of cloning a new copy. This keeps storage sprawl
-     * down for cases where the user is repeatedly checking out a previous commit and not
-     * making any subsequent commits.
-     *
-     * TODO rollback the previous filesystem to discard any head state
+     * To cleanup the guid we do one of two things. First, if the guid has no active snapshots, then we can simply
+     * blow it away. Otherwise, we rollback to the most recent commit as we no longer need the head filesystem data.
      */
     fun checkoutCommit(repo: String, commit: String) {
         provider.validateRepositoryName(repo)
@@ -235,8 +238,31 @@ class ZfsCommitManager(val provider: ZfsStorageProvider) {
 
         val newGuid = provider.generator.get()
 
-        // TODO roll back if this is the last snapshot of a guid
+        val active = provider.getActive(repo)
         provider.cloneCommit(repo, guid, commit, newGuid)
         provider.executor.exec("zfs", "set", "$ACTIVE_PROP=$newGuid", "$poolName/repo/$repo")
+
+        val output = provider.executor.exec("zfs", "list", "-pHo", "name,creation", "-t", "snapshot", "-d", "1",
+                "$poolName/repo/$repo/$active").trim()
+
+        if (output == "") {
+            // If there were no active snapshots (and hence commits) on the previous active GUID, destroy it now.
+            provider.executor.exec("zfs", "destroy", "-r", "$poolName/repo/$repo/$active")
+        } else {
+            // Get the most recent snapshot
+            val snaps = output.split("\n").map {
+                it.trim().split("\t")
+            }
+            val sorted = snaps.sortedByDescending { it[1].toLong() }
+            val mostRecentSnap = sorted[0][0].substringAfterLast("@")
+
+            // Now iterate over all children and rollback
+            val datasets = provider.executor.exec("zfs", "list", "-Ho", "name", "-r", "$poolName/repo/$repo/$active")
+            for (dataset in datasets.split("\n")) {
+                if (dataset.trim() != "") {
+                    provider.executor.exec("zfs", "rollback", "${dataset.trim()}@$mostRecentSnap")
+                }
+            }
+        }
     }
 }

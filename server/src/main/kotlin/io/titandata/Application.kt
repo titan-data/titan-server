@@ -122,6 +122,7 @@ internal fun ApplicationCompressionConfiguration(): Compression.Configuration.()
 @KtorExperimentalAPI
 fun Application.main() {
     val providers = ProviderModule(System.getenv("TITAN_POOL") ?: "titan")
+    providers.storage.load()
     providers.operation.loadState()
     mainProvider(providers)
 }

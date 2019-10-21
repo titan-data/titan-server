@@ -14,6 +14,8 @@ import io.titandata.models.Volume
 
 interface StorageProvider {
 
+    fun load()
+
     fun createRepository(repo: Repository)
     fun listRepositories(): List<Repository>
     fun getRepository(name: String): Repository

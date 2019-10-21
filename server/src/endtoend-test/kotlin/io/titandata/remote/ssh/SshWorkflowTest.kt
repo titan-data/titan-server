@@ -209,15 +209,12 @@ class SshWorkflowTest : EndToEndTest() {
             commits[0].properties["a"] shouldBe "b"
         }
 
-        // TODO - this doesn't yet work because we can't destroy a commit that has been cloned
-        /*
         "pull commit with key succeeds" {
             val key = getResource("/id_rsa")
             commitApi.deleteCommit("foo", "id")
             val op = operationApi.pull("foo", "origin", "id", SshParameters(key = key))
             waitForOperation(op.id)
         }
-         */
 
         "delete volume succeeds" {
             volumeApi.unmountVolume(VolumeMountRequest(name = "foo/vol"))

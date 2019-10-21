@@ -56,6 +56,7 @@ class ZfsStorageProvider(
     internal val ACTIVE_PROP = "io.titan-data:active"
     internal val REMOTES_PROP = "io.titan-data:remotes"
     internal val OPERATION_PROP = "io.titan-data:operation"
+    internal val REAPER_PROP = "io.titan-data:reaper"
     internal val INITIAL_COMMIT = "initial"
     internal val executor = CommandExecutor()
     internal val generator = GuidGenerator()
@@ -64,8 +65,13 @@ class ZfsStorageProvider(
     internal val operationManager = ZfsOperationManager(this)
     internal val repositoryManager = ZfsRepositoryManager(this)
     internal val commitManager = ZfsCommitManager(this)
+    internal val reaper = ZfsReaper(this)
 
     internal val gson = ModelTypeAdapters.configure(GsonBuilder()).create()
+
+    override fun load() {
+        Thread(reaper).start()
+    }
 
     // Utility methods that translate from generic CommandExceptions into a more specific
     // exception based on error output

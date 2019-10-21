@@ -224,19 +224,16 @@ class CommitsApiTest : StringSpec() {
         }
 
         "checkout commit succeeds" {
+            every { executor.exec(*anyVararg()) } returns ""
             every { generator.get() } returns "newguid"
             every { executor.exec("zfs", "list", "-Ho", "name,defer_destroy", "-t", "snapshot",
                     "-d", "2", "test/repo/foo")
             } returns "test/repo/foo/guid@hash\toff"
             every { executor.exec("zfs", "list", "-rHo", "name,io.titan-data:metadata", "test/repo/foo/guid") } returns
                     arrayOf("test/repo/foo/guid\t-", "test/repo/foo/guid/v0\t{}", "test/repo/foo/guid/v1\t{}").joinToString("\n")
-            every { executor.exec("zfs", "create", "test/repo/foo/newguid") } returns ""
-            every { executor.exec("zfs", "clone", "-o", "io.titan-data:metadata={}", "test/repo/foo/guid/v0@hash",
-                    "test/repo/foo/newguid/v0") } returns ""
-            every { executor.exec("zfs", "clone", "-o", "io.titan-data:metadata={}", "test/repo/foo/guid/v1@hash",
-                    "test/repo/foo/newguid/v1") } returns ""
-            every { executor.exec("zfs", "set", "io.titan-data:active=newguid",
-                    "test/repo/foo") } returns ""
+            every { executor.exec("zfs", "list", "-Hpo", "io.titan-data:active",
+                    "test/repo/foo") } returns "guid\n"
+
             with(engine.handleRequest(HttpMethod.Post, "/v1/repositories/foo/commits/hash/checkout")) {
                 response.status() shouldBe HttpStatusCode.NoContent
             }

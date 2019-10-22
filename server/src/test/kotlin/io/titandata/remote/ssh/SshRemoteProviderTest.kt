@@ -98,6 +98,18 @@ class SshRemoteProviderTest : StringSpec() {
             result[1].id shouldBe "b"
         }
 
+        "list commits filters result" {
+            every { executor.exec("sshpass", "-f", any(), "ssh", "-o", "StrictHostKeyChecking=no",
+                    "-o", "UserKnownHostsFile=/dev/null", "root@localhost", "ls", "-1", "/var/tmp") } returns "a\nb\n"
+            every { executor.exec("sshpass", "-f", any(), "ssh", "-o", "StrictHostKeyChecking=no",
+                    "-o", "UserKnownHostsFile=/dev/null", "root@localhost", "cat", "/var/tmp/a/metadata.json") } returns "{\"id\":\"a\",\"properties\":{\"tags\":{\"c\":\"d\"}}}"
+            every { executor.exec("sshpass", "-f", any(), "ssh", "-o", "StrictHostKeyChecking=no",
+                    "-o", "UserKnownHostsFile=/dev/null", "root@localhost", "cat", "/var/tmp/b/metadata.json") } returns "{\"id\":\"b\",\"properties\":{}}"
+            val result = provider.listCommits(getRemote(), SshParameters(), listOf("c"))
+            result.size shouldBe 1
+            result[0].id shouldBe "a"
+        }
+
         "list commits ignores missing file" {
             every { executor.exec("sshpass", "-f", any(), "ssh", "-o", "StrictHostKeyChecking=no",
                     "-o", "UserKnownHostsFile=/dev/null", "root@localhost", "ls", "-1", "/var/tmp") } returns "a\n"

@@ -128,7 +128,7 @@ fun Route.RemotesApi(providers: ProviderModule) {
             val remote = remotes[idx]
             val params = providers.gson.fromJson(call.request.headers["titan-remote-parameters"],
                     RemoteParameters::class.java)
-            val tags = call.request.queryParameters.getAll("tags")
+            val tags = call.request.queryParameters.getAll("tag")
             val commits = providers.remote(remote.provider).listCommits(remote, params, tags)
             call.respond(commits.sortedByDescending { OffsetDateTime.parse(it.properties.get("timestamp")?.toString()
                     ?: DateTimeFormatter.ISO_INSTANT.format(Instant.ofEpochSecond(0)),

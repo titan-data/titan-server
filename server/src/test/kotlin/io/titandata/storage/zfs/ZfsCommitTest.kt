@@ -254,6 +254,39 @@ class ZfsCommitTest : StringSpec() {
             result[1].properties["c"] shouldBe "d"
         }
 
+        "list commits filters exact result" {
+            every { executor.exec(*anyVararg()) } returns arrayOf(
+                    "test/repo/foo@ignore\toff\t{}",
+                    "test/repo/foo/guid1@hash1\toff\t{\"tags\":{\"a\":\"b\"}}",
+                    "test/repo/foo/guid2@hash2\toff\t{\"tags\":{\"c\":\"d\"}}"
+            ).joinToString("\n")
+            val result = provider.listCommits("foo", listOf("a=b"))
+            result.size shouldBe 1
+            result[0].id shouldBe "hash1"
+        }
+
+        "list commits filters exists result" {
+            every { executor.exec(*anyVararg()) } returns arrayOf(
+                    "test/repo/foo@ignore\toff\t{}",
+                    "test/repo/foo/guid1@hash1\toff\t{\"tags\":{\"a\":\"b\"}}",
+                    "test/repo/foo/guid2@hash2\toff\t{\"tags\":{\"c\":\"d\"}}"
+            ).joinToString("\n")
+            val result = provider.listCommits("foo", listOf("a"))
+            result.size shouldBe 1
+            result[0].id shouldBe "hash1"
+        }
+
+        "list commits filters compound result" {
+            every { executor.exec(*anyVararg()) } returns arrayOf(
+                    "test/repo/foo@ignore\toff\t{}",
+                    "test/repo/foo/guid1@hash1\toff\t{\"tags\":{\"a\":\"b\",\"c\":\"d\"}}",
+                    "test/repo/foo/guid2@hash2\toff\t{\"tags\":{\"c\":\"d\"}}"
+            ).joinToString("\n")
+            val result = provider.listCommits("foo", listOf("a=b", "c=d"))
+            result.size shouldBe 1
+            result[0].id shouldBe "hash1"
+        }
+
         "list commits ignores initial commit" {
             every { executor.exec(*anyVararg()) } returns arrayOf(
                     "test/repo/foo@ignore\toff\t{}",
@@ -266,7 +299,7 @@ class ZfsCommitTest : StringSpec() {
             result[0].properties["c"] shouldBe "d"
         }
 
-        "list commits ignores snapshots with defer_destory set" {
+        "list commits ignores snapshots with defer_destroy set" {
             every { executor.exec(*anyVararg()) } returns arrayOf(
                     "test/repo/foo@ignore\toff\t{}",
                     "test/repo/foo/guid1@hash1\ton\t{\"a\":\"b\"}",

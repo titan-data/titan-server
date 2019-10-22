@@ -31,7 +31,7 @@ fun Route.CommitsApi(providers: ProviderModule) {
 
         get {
             val repo = call.parameters["repositoryName"] ?: throw IllegalArgumentException("missing repository name parameter")
-            val tags = call.request.queryParameters.getAll("tags")
+            val tags = call.request.queryParameters.getAll("tag")
             call.respond(providers.storage.listCommits(repo, tags))
         }
     }

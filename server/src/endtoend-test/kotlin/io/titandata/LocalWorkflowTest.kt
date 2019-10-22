@@ -171,6 +171,14 @@ class LocalWorkflowTest : EndToEndTest() {
             exception.code shouldBe "NoSuchObjectException"
         }
 
+        "update commit succeeds" {
+            val newCommit = Commit(id = "id", properties = mapOf("tags" to mapOf("a" to "B", "c" to "d")))
+            commitApi.updateCommit("foo", newCommit)
+            getTag(newCommit, "a") shouldBe "B"
+            val commit = commitApi.getCommit("foo", "id")
+            getTag(commit, "a") shouldBe "B"
+        }
+
         "get commit status succeeds" {
             val status = commitApi.getCommitStatus("foo", "id")
             status.logicalSize shouldNotBe 0
@@ -202,13 +210,13 @@ class LocalWorkflowTest : EndToEndTest() {
         }
 
         "commit present when part of filter" {
-            val commits = commitApi.listCommits("foo", listOf("a=b"))
+            val commits = commitApi.listCommits("foo", listOf("a=B"))
             commits.size shouldBe 1
             commits[0].id shouldBe "id"
         }
 
         "commit present when part of compound filter" {
-            val commits = commitApi.listCommits("foo", listOf("a=b", "c"))
+            val commits = commitApi.listCommits("foo", listOf("a=B", "c"))
             commits.size shouldBe 1
             commits[0].id shouldBe "id"
         }
@@ -383,12 +391,10 @@ class LocalWorkflowTest : EndToEndTest() {
         "list commits shows two commits" {
             val commits = commitApi.listCommits("foo")
             commits.size shouldBe 2
-            commits[0].id shouldBe "id"
-            commits[1].id shouldBe "id2"
         }
 
         "list commits filters out commit" {
-            val commits = commitApi.listCommits("foo", listOf("a=b"))
+            val commits = commitApi.listCommits("foo", listOf("a=B"))
             commits.size shouldBe 1
             commits[0].id shouldBe "id"
         }

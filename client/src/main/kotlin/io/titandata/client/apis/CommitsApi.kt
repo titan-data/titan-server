@@ -22,7 +22,7 @@ class CommitsApi(basePath: String = "http://localhost:5001") : ApiClient(basePat
         val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
         val localVariableConfig = RequestConfig(
                 RequestMethod.POST,
-                "/v1/repositories/{repositoryName}/commits/{commitId}/checkout".replace("{" + "repositoryName" + "}", "$repositoryName").replace("{" + "commitId" + "}", "$commitId"),
+                "/v1/repositories/$repositoryName/commits/$commitId/checkout",
                 query = localVariableQuery,
                 headers = localVariableHeaders
         )
@@ -46,7 +46,7 @@ class CommitsApi(basePath: String = "http://localhost:5001") : ApiClient(basePat
         val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
         val localVariableConfig = RequestConfig(
                 RequestMethod.POST,
-                "/v1/repositories/{repositoryName}/commits".replace("{" + "repositoryName" + "}", "$repositoryName"),
+                "/v1/repositories/$repositoryName/commits",
                 query = localVariableQuery,
                 headers = localVariableHeaders
         )
@@ -63,13 +63,37 @@ class CommitsApi(basePath: String = "http://localhost:5001") : ApiClient(basePat
         }
     }
 
+    @Suppress("UNCHECKED_CAST")
+    fun updateCommit(repositoryName: String, commit: Commit) : Commit {
+        val localVariableBody: Any? = commit
+        val localVariableQuery: Map<String,List<String>> = mapOf()
+        val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
+        val localVariableConfig = RequestConfig(
+                RequestMethod.POST,
+                "/v1/repositories/$repositoryName/commits/${commit.id}",
+                query = localVariableQuery,
+                headers = localVariableHeaders
+        )
+        val response = request<Commit>(
+                localVariableConfig,
+                localVariableBody
+        )
+
+        return when (response.responseType) {
+            ResponseType.Success -> (response as Success<*>).data as Commit
+            ResponseType.ClientError -> throw ClientException.fromResponse(gson, response)
+            ResponseType.ServerError -> throw ServerException.fromResponse(gson, response)
+            else -> throw NotImplementedError(response.responseType.toString())
+        }
+    }
+
     fun deleteCommit(repositoryName: String, commitId: String) {
         val localVariableBody: Any? = null
         val localVariableQuery: Map<String,List<String>> = mapOf()
         val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
         val localVariableConfig = RequestConfig(
                 RequestMethod.DELETE,
-                "/v1/repositories/{repositoryName}/commits/{commitId}".replace("{" + "repositoryName" + "}", "$repositoryName").replace("{" + "commitId" + "}", "$commitId"),
+                "/v1/repositories/$repositoryName/commits/$commitId",
                 query = localVariableQuery,
                 headers = localVariableHeaders
         )
@@ -86,14 +110,13 @@ class CommitsApi(basePath: String = "http://localhost:5001") : ApiClient(basePat
         }
     }
 
-    @Suppress("UNCHECKED_CAST")
     fun getCommit(repositoryName: String, commitId: String) : Commit {
         val localVariableBody: Any? = null
         val localVariableQuery: Map<String,List<String>> = mapOf()
         val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
         val localVariableConfig = RequestConfig(
                 RequestMethod.GET,
-                "/v1/repositories/{repositoryName}/commits/{commitId}".replace("{" + "repositoryName" + "}", "$repositoryName").replace("{" + "commitId" + "}", "$commitId"),
+                "/v1/repositories/$repositoryName/commits/$commitId",
                 query = localVariableQuery,
                 headers = localVariableHeaders
         )
@@ -117,7 +140,7 @@ class CommitsApi(basePath: String = "http://localhost:5001") : ApiClient(basePat
         val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
         val localVariableConfig = RequestConfig(
                 RequestMethod.GET,
-                "/v1/repositories/{repositoryName}/commits/{commitId}/status".replace("{" + "repositoryName" + "}", "$repositoryName").replace("{" + "commitId" + "}", "$commitId"),
+                "/v1/repositories/$repositoryName/commits/$commitId/status",
                 query = localVariableQuery,
                 headers = localVariableHeaders
         )
@@ -145,7 +168,7 @@ class CommitsApi(basePath: String = "http://localhost:5001") : ApiClient(basePat
         val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
         val localVariableConfig = RequestConfig(
                 RequestMethod.GET,
-                "/v1/repositories/{repositoryName}/commits".replace("{" + "repositoryName" + "}", "$repositoryName"),
+                "/v1/repositories/$repositoryName/commits",
                 query = localVariableQuery,
                 headers = localVariableHeaders
         )

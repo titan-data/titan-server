@@ -351,6 +351,12 @@ class ZfsStorageProvider(
     }
 
     @Synchronized
+    override fun updateCommit(repo: String, commit: Commit) {
+        log.info("updating commit ${commit.id} in $repo")
+        commitManager.updateCommit(repo, commit)
+    }
+
+    @Synchronized
     override fun createOperation(repo: String, operation: OperationData, localCommit: String?) {
         log.info("create operation ${operation.operation.id} in $repo")
         operationManager.createOperation(repo, operation, localCommit)

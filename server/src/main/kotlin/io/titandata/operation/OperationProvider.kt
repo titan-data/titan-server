@@ -199,9 +199,13 @@ class OperationProvider(val providers: ProviderModule) {
 
         try {
             providers.storage.getCommit(repository, commitId)
-            throw ObjectExistsException("commit '$commitId' already exists in repository '$repository'")
+            if (!metadataOnly) {
+                throw ObjectExistsException("commit '$commitId' already exists in repository '$repository'")
+            }
         } catch (e: NoSuchObjectException) {
-            // Ignore
+            if (metadataOnly) {
+                throw ObjectExistsException("no such commit '$commitId' in repository '$repository'")
+            }
         }
 
         return createAndStartOperation(Operation.Type.PULL, repository, r, commitId, params, metadataOnly)

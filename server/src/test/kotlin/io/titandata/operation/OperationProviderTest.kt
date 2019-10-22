@@ -164,6 +164,14 @@ class OperationProviderTest : StringSpec() {
             }
         }
 
+        "pull fails if local commit does not exist and metadata only set" {
+            every { zfsStorageProvider.getRemotes(any()) } returns listOf(NopRemote(name = "remote"))
+            every { zfsStorageProvider.getCommit(any(), any()) } throws NoSuchObjectException("")
+            shouldThrow<ObjectExistsException> {
+                provider.startPull("foo", "remote", "commit", NopParameters(), true)
+            }
+        }
+
         "pull succeeds" {
             every { zfsStorageProvider.getRemotes(any()) } returns listOf(NopRemote(name = "remote"))
             every { zfsStorageProvider.getCommit(any(), any()) } throws NoSuchObjectException("")

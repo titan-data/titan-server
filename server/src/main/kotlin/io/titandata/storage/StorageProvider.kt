@@ -32,6 +32,7 @@ interface StorageProvider {
     fun listCommits(repo: String, tags: List<String>?): List<Commit>
     fun deleteCommit(repo: String, commit: String)
     fun checkoutCommit(repo: String, commit: String)
+    fun updateCommit(repo: String, commit: Commit)
 
     fun createOperation(repo: String, operation: OperationData, localCommit: String? = null)
     fun listOperations(repo: String): List<OperationData>

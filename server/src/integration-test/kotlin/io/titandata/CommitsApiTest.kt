@@ -27,6 +27,7 @@ import io.mockk.every
 import io.mockk.impl.annotations.InjectMockKs
 import io.mockk.impl.annotations.MockK
 import io.mockk.impl.annotations.OverrideMockKs
+import io.mockk.verify
 import io.titandata.exception.CommandException
 import io.titandata.models.Error
 import io.titandata.operation.OperationProvider
@@ -198,6 +199,21 @@ class CommitsApiTest : StringSpec() {
                 val error = Gson().fromJson(response.content, Error::class.java)
                 error.code shouldBe "IllegalArgumentException"
                 error.message shouldBe "invalid commit name, can only contain alphanumeric characters, '-', ':', '.', or '_'"
+            }
+        }
+
+        "update commit succeeds" {
+            every { executor.exec(*anyVararg()) } returns ""
+            every { executor.exec("zfs", "list", "-Ho", "name,defer_destroy", "-t", "snapshot",
+                    "-d", "2", "test/repo/foo") } returns "test/repo/foo/guid@hash\toff\n"
+            with(engine.handleRequest(HttpMethod.Post, "/v1/repositories/foo/commits/hash") {
+                addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+                setBody("{\"id\":\"hash\",\"properties\":{\"a\":\"b\"}}")
+            }) {
+                response.status() shouldBe HttpStatusCode.OK
+                verify {
+                    executor.exec("zfs", "set", "io.titan-data:metadata={\"a\":\"b\"}", "test/repo/foo/guid@hash")
+                }
             }
         }
 

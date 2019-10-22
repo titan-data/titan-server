@@ -267,4 +267,17 @@ class ZfsCommitManager(val provider: ZfsStorageProvider) {
             }
         }
     }
+
+    /**
+     * Update the metadata for the given commit. This is generally used to change the tags, though it's up to the
+     * client so it could be used to update other parts of the metadata.
+     */
+    fun updateCommit(repo: String, commit: Commit) {
+        provider.validateRepositoryName(repo)
+        val guid = provider.getCommitGuid(repo, commit.id)
+        guid ?: throw NoSuchObjectException("no such commit '${commit.id}' in repository '$repo'")
+
+        val json = provider.gson.toJson(commit.properties)
+        provider.executor.exec("zfs", "set", "$METADATA_PROP=$json", "$poolName/repo/$repo/$guid@${commit.id}")
+    }
 }

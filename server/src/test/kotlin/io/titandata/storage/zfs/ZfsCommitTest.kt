@@ -181,6 +181,24 @@ class ZfsCommitTest : StringSpec() {
             commit.properties["a"] shouldBe "b"
         }
 
+        "update commit succeeds" {
+            every { executor.exec(*anyVararg()) } returns ""
+            every { executor.exec("zfs", "list", "-Ho", "name,defer_destroy", "-t", "snapshot",
+                    "-d", "2", "test/repo/foo") } returns "test/repo/foo/guid@hash\toff\n"
+            val commit = Commit(id = "hash", properties = mapOf("a" to "b"))
+            provider.updateCommit("foo", commit)
+            verify {
+                executor.exec("zfs", "set", "io.titan-data:metadata={\"a\":\"b\"}", "test/repo/foo/guid@hash")
+            }
+        }
+
+        "update commit fails if no commit found" {
+            every { executor.exec(*anyVararg()) } returns "test/repo/foo/guid@hash2\toff\n"
+            shouldThrow<NoSuchObjectException> {
+                provider.updateCommit("foo", Commit(id = "hash", properties = mapOf()))
+            }
+        }
+
         "get commit fails if no commit found" {
             every { executor.exec(*anyVararg()) } returns "test/repo/foo/guid@hash2\toff\n"
             shouldThrow<NoSuchObjectException> {

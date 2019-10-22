@@ -25,6 +25,7 @@ import io.titandata.models.Repository
 import io.titandata.models.VolumeCreateRequest
 import io.titandata.models.VolumeMountRequest
 import io.titandata.models.VolumeRequest
+import io.titandata.remote.ssh.SshParameters
 import io.titandata.util.GuidGenerator
 import java.io.ByteArrayInputStream
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider
@@ -143,9 +144,11 @@ class S3WorkflowTest : EndToEndTest() {
         }
 
         "create commit succeeds" {
-            val commit = commitApi.createCommit("foo", Commit(id = "id", properties = mapOf("a" to "b")))
+            val commit = commitApi.createCommit("foo", Commit(id = "id",
+                    properties = mapOf("tags" to mapOf("a" to "b", "c" to "d"))))
             commit.id shouldBe "id"
-            commit.properties["a"] shouldBe "b"
+            getTag(commit, "a") shouldBe "b"
+            getTag(commit, "c") shouldBe "d"
         }
 
         "add s3 remote succeeds" {
@@ -167,7 +170,18 @@ class S3WorkflowTest : EndToEndTest() {
             val commits = remoteApi.listRemoteCommits("foo", "origin", S3Parameters())
             commits.size shouldBe 1
             commits[0].id shouldBe "id"
-            commits[0].properties["a"] shouldBe "b"
+            getTag(commits[0], "a") shouldBe "b"
+        }
+
+        "list remote commits filters out commit" {
+            val commits = remoteApi.listRemoteCommits("foo", "origin", S3Parameters(), listOf("e"))
+            commits.size shouldBe 0
+        }
+
+        "list remote commits filters include commit" {
+            val commits = remoteApi.listRemoteCommits("foo", "origin", S3Parameters(), listOf("a=b", "c=d"))
+            commits.size shouldBe 1
+            commits[0].id shouldBe "id"
         }
 
         "push of same commit fails" {
@@ -191,6 +205,12 @@ class S3WorkflowTest : EndToEndTest() {
             commits.size shouldBe 2
             commits[0].id shouldBe "id2"
             commits[1].id shouldBe "id"
+        }
+
+        "list remote commits filters commits" {
+            val commits = remoteApi.listRemoteCommits("foo", "origin", S3Parameters(), listOf("a"))
+            commits.size shouldBe 1
+            commits[0].id shouldBe "id"
         }
 
         "delete local commits succeeds" {

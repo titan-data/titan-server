@@ -135,9 +135,13 @@ class CommitsApi(basePath: String = "http://localhost:5001") : ApiClient(basePat
     }
 
     @Suppress("UNCHECKED_CAST")
-    fun listCommits(repositoryName: String) : Array<Commit> {
+    fun listCommits(repositoryName: String, tags: List<String>? = null) : Array<Commit> {
         val localVariableBody: Any? = null
-        val localVariableQuery: Map<String,List<String>> = mapOf()
+        val localVariableQuery: Map<String,List<String>> = if (tags == null) {
+            mapOf()
+        } else {
+            mapOf("tag" to tags)
+        }
         val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
         val localVariableConfig = RequestConfig(
                 RequestMethod.GET,

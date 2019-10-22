@@ -11,6 +11,7 @@ import io.titandata.client.apis.OperationsApi
 import io.titandata.client.apis.RemotesApi
 import io.titandata.client.apis.RepositoriesApi
 import io.titandata.client.apis.VolumeApi
+import io.titandata.models.Commit
 import io.titandata.models.ProgressEntry
 import org.slf4j.LoggerFactory
 
@@ -28,6 +29,12 @@ abstract class EndToEndTest : StringSpec() {
 
     companion object {
         val log = LoggerFactory.getLogger(EndToEndTest::class.java)
+    }
+
+    fun getTag(commit: Commit, key: String) : String? {
+        @Suppress("UNCHECKED_CAST")
+        val tags = commit.properties["tags"] as Map<String, String>
+        return tags.get(key)
     }
 
     fun waitForOperation(id: String): List<ProgressEntry> {

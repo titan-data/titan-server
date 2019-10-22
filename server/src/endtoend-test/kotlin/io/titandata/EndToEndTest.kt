@@ -31,7 +31,7 @@ abstract class EndToEndTest : StringSpec() {
         val log = LoggerFactory.getLogger(EndToEndTest::class.java)
     }
 
-    fun getTag(commit: Commit, key: String) : String? {
+    fun getTag(commit: Commit, key: String): String? {
         @Suppress("UNCHECKED_CAST")
         val tags = commit.properties["tags"] as Map<String, String>
         return tags.get(key)

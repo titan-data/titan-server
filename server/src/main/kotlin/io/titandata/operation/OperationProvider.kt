@@ -65,13 +65,14 @@ class OperationProvider(val providers: ProviderModule) {
         operationsByRepo.get(exec.repo)!!.remove(exec)
     }
 
-    internal fun buildOperation(type: Operation.Type, remote: String, commitId: String): Operation {
+    internal fun buildOperation(type: Operation.Type, remote: String, commitId: String, metadataOnly: Boolean): Operation {
         return Operation(
                 generator.get(),
                 type,
                 Operation.State.RUNNING,
                 remote,
-                commitId
+                commitId,
+                metadataOnly
         )
     }
 
@@ -80,9 +81,10 @@ class OperationProvider(val providers: ProviderModule) {
         repository: String,
         remote: Remote,
         commitId: String,
-        params: RemoteParameters
+        params: RemoteParameters,
+        metadataOnly: Boolean
     ): Operation {
-        val op = buildOperation(type, remote.name, commitId)
+        val op = buildOperation(type, remote.name, commitId, metadataOnly)
         val exec = OperationExecutor(providers, op, repository, remote, params)
         addOperation(exec)
         val message = when (type) {
@@ -172,7 +174,13 @@ class OperationProvider(val providers: ProviderModule) {
     }
 
     @Synchronized
-    fun startPull(repository: String, remote: String, commitId: String, params: RemoteParameters): Operation {
+    fun startPull(
+        repository: String,
+        remote: String,
+        commitId: String,
+        params: RemoteParameters,
+        metadataOnly: Boolean = false
+    ): Operation {
 
         log.info("pull $commitId from $remote in $repository")
         val r = getRemote(repository, remote)
@@ -196,11 +204,17 @@ class OperationProvider(val providers: ProviderModule) {
             // Ignore
         }
 
-        return createAndStartOperation(Operation.Type.PULL, repository, r, commitId, params)
+        return createAndStartOperation(Operation.Type.PULL, repository, r, commitId, params, metadataOnly)
     }
 
     @Synchronized
-    fun startPush(repository: String, remote: String, commitId: String, params: RemoteParameters): Operation {
+    fun startPush(
+        repository: String,
+        remote: String,
+        commitId: String,
+        params: RemoteParameters,
+        metadataOnly: Boolean = false
+    ): Operation {
 
         log.info("push $commitId to $remote in $repository")
         val r = getRemote(repository, remote)
@@ -220,6 +234,6 @@ class OperationProvider(val providers: ProviderModule) {
 
         remoteProvider.validateOperation(r, commitId, Operation.Type.PUSH, params)
 
-        return createAndStartOperation(Operation.Type.PUSH, repository, r, commitId, params)
+        return createAndStartOperation(Operation.Type.PUSH, repository, r, commitId, params, metadataOnly)
     }
 }

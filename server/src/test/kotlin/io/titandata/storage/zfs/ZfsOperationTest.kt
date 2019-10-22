@@ -122,7 +122,7 @@ class ZfsOperationTest : StringSpec() {
             val op = getOperation()
             val json = "{\"operation\":{\"id\":\"id\"," +
                     "\"type\":\"PUSH\",\"state\":\"RUNNING\",\"remote\":\"remote\"," +
-                    "\"commitId\":\"commit\"},\"params\":{\"provider\":\"nop\",\"delay\":0}}"
+                    "\"commitId\":\"commit\",\"metadataOnly\":false},\"params\":{\"provider\":\"nop\",\"delay\":0}}"
             every { executor.start(*anyVararg()) } returns mockk()
             every { executor.exec(any<Process>(), any()) } returns ""
             provider.createOperation("foo", op, "hash")
@@ -273,7 +273,7 @@ class ZfsOperationTest : StringSpec() {
             mockOperation()
             val newJson = "{\"operation\":{\"id\":\"id\"," +
                     "\"type\":\"PUSH\",\"state\":\"COMPLETE\",\"remote\":\"remote\"," +
-                    "\"commitId\":\"commit\"},\"params\":{\"provider\":\"nop\",\"delay\":0}}"
+                    "\"commitId\":\"commit\",\"metadataOnly\":false},\"params\":{\"provider\":\"nop\",\"delay\":0}}"
             every { executor.start(*anyVararg()) } returns mockk()
             every { executor.exec(any<Process>(), any()) } returns ""
 

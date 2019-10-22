@@ -67,7 +67,7 @@ class OperationProviderTest : StringSpec() {
 
     fun addOperation(type: Operation.Type = Operation.Type.PULL) {
         provider.addOperation(OperationExecutor(providers,
-                provider.buildOperation(type, "remote", "commit"),
+                provider.buildOperation(type, "remote", "commit", false),
                 "foo", NopRemote(name = "remote"),
                 NopParameters()))
     }

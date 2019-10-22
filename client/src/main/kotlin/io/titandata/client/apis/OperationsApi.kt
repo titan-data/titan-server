@@ -23,7 +23,7 @@ class OperationsApi(basePath: String = "http://localhost:5001") : ApiClient(base
         val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
         val localVariableConfig = RequestConfig(
                 RequestMethod.DELETE,
-                "/v1/repositories/{repositoryName}/operations/{operationId}".replace("{" + "repositoryName" + "}", "$repositoryName").replace("{" + "operationId" + "}", "$operationId"),
+                "/v1/repositories/$repositoryName/operations/$operationId",
                 query = localVariableQuery,
                 headers = localVariableHeaders
         )
@@ -40,14 +40,13 @@ class OperationsApi(basePath: String = "http://localhost:5001") : ApiClient(base
         }
     }
 
-    @Suppress("UNCHECKED_CAST")
     fun getOperation(repositoryName: String, operationId: String) : Operation {
         val localVariableBody: Any? = null
         val localVariableQuery: Map<String,List<String>> = mapOf()
         val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
         val localVariableConfig = RequestConfig(
                 RequestMethod.GET,
-                "/v1/repositories/{repositoryName}/operations/{operationId}".replace("{" + "repositoryName" + "}", "$repositoryName").replace("{" + "operationId" + "}", "$operationId"),
+                "/v1/repositories/$repositoryName/operations/$operationId",
                 query = localVariableQuery,
                 headers = localVariableHeaders
         )
@@ -71,7 +70,7 @@ class OperationsApi(basePath: String = "http://localhost:5001") : ApiClient(base
         val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
         val localVariableConfig = RequestConfig(
                 RequestMethod.GET,
-                "/v1/repositories/{repositoryName}/operations/{operationId}/progress".replace("{" + "repositoryName" + "}", "$repositoryName").replace("{" + "operationId" + "}", "$operationId"),
+                "/v1/repositories/$repositoryName/operations/$operationId/progress",
                 query = localVariableQuery,
                 headers = localVariableHeaders
         )
@@ -95,7 +94,7 @@ class OperationsApi(basePath: String = "http://localhost:5001") : ApiClient(base
         val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
         val localVariableConfig = RequestConfig(
                 RequestMethod.GET,
-                "/v1/repositories/{repositoryName}/operations".replace("{" + "repositoryName" + "}", "$repositoryName"),
+                "/v1/repositories/$repositoryName/operations",
                 query = localVariableQuery,
                 headers = localVariableHeaders
         )
@@ -105,21 +104,21 @@ class OperationsApi(basePath: String = "http://localhost:5001") : ApiClient(base
         )
 
         return when (response.responseType) {
-            ResponseType.Success -> (response as Success<*>).data as kotlin.Array<Operation>
+            ResponseType.Success -> (response as Success<*>).data as Array<Operation>
             ResponseType.ClientError -> throw ClientException.fromResponse(gson, response)
             ResponseType.ServerError -> throw ServerException.fromResponse(gson, response)
             else -> throw NotImplementedError(response.responseType.toString())
         }
     }
 
-    @Suppress("UNCHECKED_CAST")
-    fun pull(repositoryName: String, remoteName: String, commitId: String, request: RemoteParameters) : Operation {
+    fun pull(repositoryName: String, remoteName: String, commitId: String, request: RemoteParameters,
+             metadataOnly: Boolean = false) : Operation {
         val localVariableBody: Any? = request
-        val localVariableQuery: Map<String,List<String>> = mapOf()
+        val localVariableQuery: Map<String,List<String>> = mapOf("metadataOnly" to listOf(metadataOnly.toString()))
         val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
         val localVariableConfig = RequestConfig(
                 RequestMethod.POST,
-                "/v1/repositories/{repositoryName}/remotes/{remoteName}/commits/{commitId}/pull".replace("{" + "repositoryName" + "}", "$repositoryName").replace("{" + "remoteName" + "}", "$remoteName").replace("{" + "commitId" + "}", "$commitId"),
+                "/v1/repositories/$repositoryName/remotes/$remoteName/commits/$commitId/pull",
                 query = localVariableQuery,
                 headers = localVariableHeaders
         )
@@ -136,14 +135,14 @@ class OperationsApi(basePath: String = "http://localhost:5001") : ApiClient(base
         }
     }
 
-    @Suppress("UNCHECKED_CAST")
-    fun push(repositoryName: String, remoteName: String, commitId: String, anyRequest: RemoteParameters?) : Operation {
-        val localVariableBody: Any? = anyRequest
-        val localVariableQuery: Map<String,List<String>> = mapOf()
+    fun push(repositoryName: String, remoteName: String, commitId: String, request: RemoteParameters,
+             metadataOnly: Boolean = false) : Operation {
+        val localVariableBody: Any? = request
+        val localVariableQuery: Map<String,List<String>> = mapOf("metadataOnly" to listOf(metadataOnly.toString()))
         val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
         val localVariableConfig = RequestConfig(
                 RequestMethod.POST,
-                "/v1/repositories/{repositoryName}/remotes/{remoteName}/commits/{commitId}/push".replace("{" + "repositoryName" + "}", "$repositoryName").replace("{" + "remoteName" + "}", "$remoteName").replace("{" + "commitId" + "}", "$commitId"),
+                "/v1/repositories/$repositoryName/remotes/$remoteName/commits/$commitId/push",
                 query = localVariableQuery,
                 headers = localVariableHeaders
         )

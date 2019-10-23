@@ -227,6 +227,9 @@ class OperationProvider(val providers: ProviderModule) {
         }
         providers.storage.getCommit(repository, commitId) // check commit exists
         val remoteProvider = providers.remote(r.provider)
+        if (metadataOnly) {
+            remoteProvider.getCommit(r, commitId, params) // for metadata only must exist in remote as well
+        }
 
         operationsById.values.forEach {
             if (it.repo == repository && it.operation.type == Operation.Type.PUSH &&

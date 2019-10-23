@@ -13,6 +13,7 @@ import io.titandata.models.Operation
 import io.titandata.models.ProgressEntry
 import io.titandata.models.Remote
 import io.titandata.models.RemoteParameters
+import io.titandata.models.Volume
 import io.titandata.operation.OperationExecutor
 import io.titandata.remote.BaseRemoteProvider
 import io.titandata.serialization.ModelTypeAdapters
@@ -181,49 +182,39 @@ class SshRemoteProvider(val providers: ProviderModule) : BaseRemoteProvider() {
         }
     }
 
-    override fun runOperation(operation: OperationExecutor) {
-        val repo = operation.repo
-        val operationId = operation.operation.id
+    override fun syncVolume(operation: OperationExecutor, data: Any?, volume: Volume, basePath: String, scratchPath: String) {
         val remote = operation.remote as SshRemote
-        val params = operation.params
 
-        val base = providers.storage.mountOperationVolumes(repo, operationId)
-        try {
-            for (vol in providers.storage.listVolumes(repo)) {
-                val desc = vol.properties?.get("path")?.toString() ?: vol.name
-                val localPath = "$base/${vol.name}/"
-                val remoteDir = "${remote.path}/${operation.operation.commitId}/data/${vol.name}"
-                val remotePath = "${remote.username}@${remote.address}:$remoteDir/"
-                val src = when (operation.operation.type) {
-                    Operation.Type.PUSH -> localPath
-                    Operation.Type.PULL -> remotePath
-                }
-                val dst = when (operation.operation.type) {
-                    Operation.Type.PUSH -> remotePath
-                    Operation.Type.PULL -> localPath
-                }
-
-                operation.addProgress(ProgressEntry(type = ProgressEntry.Type.START,
-                        message = "Syncing $desc", percent = 0))
-
-                if (operation.operation.type == Operation.Type.PUSH) {
-                    runSsh(remote, params, "sudo", "mkdir", "-p", remoteDir)
-                }
-
-                val (password, key) = getSshAuth(remote, params)
-                val rsync = RsyncExecutor(operation, remote.port, password,
-                        key, "$src/", dst, providers.commandExecutor)
-                rsync.run()
-            }
-
-            if (operation.operation.type == Operation.Type.PUSH) {
-                val commit = providers.storage.getCommit(repo, operation.operation.commitId)
-                val json = gson.toJson(commit)
-                writeFileSsh(remote, params,
-                        "${remote.path}/${operation.operation.commitId}/metadata.json", json)
-            }
-        } finally {
-            providers.storage.unmountOperationVolumes(repo, operationId)
+        val localPath = "$basePath/${volume.name}/"
+        val remoteDir = "${remote.path}/${operation.operation.commitId}/data/${volume.name}"
+        val remotePath = "${remote.username}@${remote.address}:$remoteDir/"
+        val src = when (operation.operation.type) {
+            Operation.Type.PUSH -> localPath
+            Operation.Type.PULL -> remotePath
         }
+        val dst = when (operation.operation.type) {
+            Operation.Type.PUSH -> remotePath
+            Operation.Type.PULL -> localPath
+        }
+
+        val desc = getVolumeDesc(volume)
+        operation.addProgress(ProgressEntry(type = ProgressEntry.Type.START,
+                message = "Syncing $desc", percent = 0))
+
+        if (operation.operation.type == Operation.Type.PUSH) {
+            runSsh(remote, operation.params, "sudo", "mkdir", "-p", remoteDir)
+        }
+
+        val (password, key) = getSshAuth(remote, operation.params)
+        val rsync = RsyncExecutor(operation, remote.port, password,
+                key, "$src/", dst, providers.commandExecutor)
+        rsync.run()
+    }
+
+    override fun pushMetadata(operation: OperationExecutor, data: Any?, commit: Commit, isUpdate: Boolean) {
+        val remote = operation.remote as SshRemote
+        val json = gson.toJson(commit)
+        writeFileSsh(remote, operation.params,
+                "${remote.path}/${operation.operation.commitId}/metadata.json", json)
     }
 }

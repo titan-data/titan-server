@@ -26,6 +26,7 @@ import io.titandata.models.Operation
 import io.titandata.models.ProgressEntry
 import io.titandata.models.Remote
 import io.titandata.models.RemoteParameters
+import io.titandata.models.Volume
 import io.titandata.operation.OperationExecutor
 import io.titandata.remote.BaseRemoteProvider
 import io.titandata.sync.RsyncExecutor
@@ -266,10 +267,18 @@ class EngineRemoteProvider(val providers: ProviderModule) : BaseRemoteProvider()
         return obj
     }
 
-    override fun runOperation(operation: OperationExecutor) {
-        val engine = connect(operation.remote, operation.params)
-        val name = (operation.remote as EngineRemote).repository
+    class EngineOperation(
+        val engine: Delphix,
+        val operationRef: String,
+        val sshAddress: String,
+        val sshUser: String,
+        val sshKey: String
+    )
 
+    override fun startOperation(operation: OperationExecutor): Any? {
+        val engine = connect(operation.remote, operation.params)
+
+        val name = (operation.remote as EngineRemote).repository
         if (!repoExists(engine, name)) {
             if (operation.operation.type == Operation.Type.PULL) {
                 throw NoSuchObjectException("no such repository '$name' in remote '${operation.remote.name}")
@@ -286,74 +295,71 @@ class EngineRemoteProvider(val providers: ProviderModule) : BaseRemoteProvider()
                 timeflowPointParameters = timeflowPoint,
                 source = buildSource(operation),
                 sourceConfig = buildSourceConfig(engine, operation.operation)
-                )
+        )
 
         var response = engine.container().provision("provision", params)
         val operationRef = response.getString("result")
 
-        var deleteOperation = true
-        try {
-            waitForJob(engine, response)
-            operation.addProgress(ProgressEntry(type = ProgressEntry.Type.END))
+        waitForJob(engine, response)
+        operation.addProgress(ProgressEntry(type = ProgressEntry.Type.END))
 
-            val resultParams = getParameters(engine, operationRef)
-            val sshAddress = operation.remote.address
-            val sshUser = resultParams.getString("sshUser")
-            val sshKey = resultParams.getString("sshKey")
+        val resultParams = getParameters(engine, operationRef)
 
-            val repo = operation.repo
-            val base = providers.storage.mountOperationVolumes(repo, operation.operation.id)
-            try {
-                for (vol in providers.storage.listVolumes(repo)) {
-                    val desc = vol.properties?.get("path")?.toString() ?: vol.name
-                    val localPath = "$base/${vol.name}"
-                    val remotePath = "$sshUser@$sshAddress:data/${vol.name}"
-                    val src = when (operation.operation.type) {
-                        Operation.Type.PUSH -> localPath
-                        Operation.Type.PULL -> remotePath
-                    }
-                    val dst = when (operation.operation.type) {
-                        Operation.Type.PUSH -> remotePath
-                        Operation.Type.PULL -> localPath
-                    }
+        return EngineOperation(engine, operationRef, operation.remote.address, resultParams.getString("sshUser"),
+                resultParams.getString("sshKey"))
+    }
 
-                    operation.addProgress(ProgressEntry(type = ProgressEntry.Type.START,
-                            message = "Syncing $desc", percent = 0))
-                    val rsync = RsyncExecutor(operation, 8022, null,
-                            sshKey, "$src/", "$dst/", providers.commandExecutor)
-                    rsync.run()
-                }
-            } finally {
-                providers.storage.unmountOperationVolumes(repo, operation.operation.id)
+    override fun endOperation(operation: OperationExecutor, data: Any?) {
+        data as EngineOperation
+        operation.addProgress(ProgressEntry(type = ProgressEntry.Type.START, message = "Removing remote endpoint"))
+        if (operation.operation.type == Operation.Type.PUSH) {
+            var response = data.engine.container().sync(data.operationRef, AppDataSyncParameters())
+            waitForJob(data.engine, response)
+
+            val source = findInResult(data.engine.source().list()) {
+                it.getString("container") == data.operationRef
             }
-
-            operation.addProgress(ProgressEntry(type = ProgressEntry.Type.START, message = "Removing remote endpoint"))
-            if (operation.operation.type == Operation.Type.PUSH) {
-                response = engine.container().sync(operationRef, AppDataSyncParameters())
-                waitForJob(engine, response)
-
-                val source = findInResult(engine.source().list()) {
-                    it.getString("container") == operationRef
-                }
-                response = engine.source().disable(source!!.getString("reference"),
-                        SourceDisableParameters())
-                waitForJob(engine, response)
-            } else {
-                response = engine.container().delete(operationRef, DeleteParameters())
-                waitForJob(engine, response)
-            }
-            deleteOperation = false
-            operation.addProgress(ProgressEntry(type = ProgressEntry.Type.END))
-        } catch (t: Throwable) {
-            try {
-                if (deleteOperation) {
-                    response = engine.container().delete(operationRef, DeleteParameters())
-                    waitForJob(engine, response)
-                }
-            } catch (t2: Throwable) {
-                log.error("error while trying to cleanup failed operation ${operation.operation.id} on remote ${operation.remote.name}", t2) // Ignore
-            }
-            throw t
+            response = data.engine.source().disable(source!!.getString("reference"),
+                    SourceDisableParameters())
+            waitForJob(data.engine, response)
+        } else {
+            val response = data.engine.container().delete(data.operationRef, DeleteParameters())
+            waitForJob(data.engine, response)
         }
+        operation.addProgress(ProgressEntry(type = ProgressEntry.Type.END))
+    }
+
+    override fun syncVolume(operation: OperationExecutor, data: Any?, volume: Volume, basePath: String, scratchPath: String) {
+        data as EngineOperation
+        val desc = getVolumeDesc(volume)
+        val localPath = "$basePath/${volume.name}"
+        val remotePath = "${data.sshUser}@${data.sshAddress}:data/${volume.name}"
+        val src = when (operation.operation.type) {
+            Operation.Type.PUSH -> localPath
+            Operation.Type.PULL -> remotePath
+        }
+        val dst = when (operation.operation.type) {
+            Operation.Type.PUSH -> remotePath
+            Operation.Type.PULL -> localPath
+        }
+
+        operation.addProgress(ProgressEntry(type = ProgressEntry.Type.START,
+                message = "Syncing $desc", percent = 0))
+        val rsync = RsyncExecutor(operation, 8022, null,
+                data.sshKey, "$src/", "$dst/", providers.commandExecutor)
+        rsync.run()
+    }
+
+    override fun pushMetadata(operation: OperationExecutor, data: Any?, commit: Commit, isUpdate: Boolean) {
+        // Our metadata is created at the time the snapshot is created, and can't be updated
+        if (isUpdate) {
+            throw IllegalStateException("commit metadata cannot be updated for engine remotes")
+        }
+    }
+
+    override fun failOperation(operation: OperationExecutor, data: Any?) {
+        data as EngineOperation
+        val response = data.engine.container().delete(data.operationRef, DeleteParameters())
+        waitForJob(data.engine, response)
     }
 }

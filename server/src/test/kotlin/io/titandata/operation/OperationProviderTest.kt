@@ -204,7 +204,7 @@ class OperationProviderTest : StringSpec() {
             every { zfsStorageProvider.getRemotes(any()) } returns listOf(NopRemote(name = "remote"))
             every { zfsStorageProvider.getCommit(any(), any()) } throws NoSuchObjectException("")
             every { generator.get() } returns "id"
-            every { nopRemoteProvider.runOperation(any()) } throws Exception("error")
+            every { nopRemoteProvider.syncVolume(any(), any(), any(), any(), any()) } throws Exception("error")
             every { zfsStorageProvider.createOperation("foo", any(), any()) } just Runs
             every { zfsStorageProvider.discardOperation("foo", "id") } just Runs
             var op = provider.startPull("foo", "remote", "commit", NopParameters())
@@ -224,7 +224,7 @@ class OperationProviderTest : StringSpec() {
             every { zfsStorageProvider.getRemotes(any()) } returns listOf(NopRemote(name = "remote"))
             every { zfsStorageProvider.getCommit(any(), any()) } throws NoSuchObjectException("")
             every { generator.get() } returns "id"
-            every { nopRemoteProvider.runOperation(any()) } throws InterruptedException()
+            every { nopRemoteProvider.syncVolume(any(), any(), any(), any(), any()) } throws InterruptedException()
             every { zfsStorageProvider.createOperation("foo", any(), any()) } just Runs
             every { zfsStorageProvider.discardOperation("foo", "id") } just Runs
             var op = provider.startPull("foo", "remote", "commit", NopParameters())
@@ -321,7 +321,7 @@ class OperationProviderTest : StringSpec() {
             every { zfsStorageProvider.getRemotes(any()) } returns listOf(NopRemote(name = "remote"))
             every { zfsStorageProvider.getCommit(any(), any()) } returns Commit(id = "commit", properties = mapOf())
             every { generator.get() } returns "id"
-            every { nopRemoteProvider.runOperation(any()) } throws Exception("error")
+            every { nopRemoteProvider.syncVolume(any(), any(), any(), any(), any()) } throws Exception("error")
             every { zfsStorageProvider.createOperation("foo", any(), any()) } just Runs
             every { zfsStorageProvider.discardOperation("foo", "id") } just Runs
             var op = provider.startPush("foo", "remote", "commit", NopParameters())
@@ -341,7 +341,7 @@ class OperationProviderTest : StringSpec() {
             every { zfsStorageProvider.getRemotes(any()) } returns listOf(NopRemote(name = "remote"))
             every { zfsStorageProvider.getCommit(any(), any()) } returns Commit(id = "commit", properties = mapOf())
             every { generator.get() } returns "id"
-            every { nopRemoteProvider.runOperation(any()) } throws InterruptedException("error")
+            every { nopRemoteProvider.syncVolume(any(), any(), any(), any(), any()) } throws InterruptedException("error")
             every { zfsStorageProvider.createOperation("foo", any(), any()) } just Runs
             every { zfsStorageProvider.discardOperation("foo", "id") } just Runs
             var op = provider.startPush("foo", "remote", "commit", NopParameters())

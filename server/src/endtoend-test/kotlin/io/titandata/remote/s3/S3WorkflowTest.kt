@@ -25,6 +25,7 @@ import io.titandata.models.Repository
 import io.titandata.models.VolumeCreateRequest
 import io.titandata.models.VolumeMountRequest
 import io.titandata.models.VolumeRequest
+import io.titandata.remote.ssh.SshParameters
 import io.titandata.util.GuidGenerator
 import java.io.ByteArrayInputStream
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider
@@ -210,6 +211,34 @@ class S3WorkflowTest : EndToEndTest() {
             val commits = remoteApi.listRemoteCommits("foo", "origin", S3Parameters(), listOf("a"))
             commits.size shouldBe 1
             commits[0].id shouldBe "id"
+        }
+
+        "update commit succeeds" {
+            val newCommit = Commit(id = "id", properties = mapOf("tags" to mapOf("a" to "B", "c" to "d")))
+            commitApi.updateCommit("foo", newCommit)
+            getTag(newCommit, "a") shouldBe "B"
+            val commit = commitApi.getCommit("foo", "id")
+            getTag(commit, "a") shouldBe "B"
+        }
+
+        "push commit metadata succeeds" {
+            val op = operationApi.push("foo", "origin", "id", S3Parameters(), true)
+            waitForOperation(op.id)
+        }
+
+        "remote commit metadata updated" {
+            val commit = commitApi.getCommit("foo", "id")
+            commit.id shouldBe "id"
+            getTag(commit, "a") shouldBe "B"
+            getTag(commit, "c") shouldBe "d"
+        }
+
+        "list remote commits returns updated commits" {
+            val commits = remoteApi.listRemoteCommits("foo", "origin", S3Parameters())
+            commits.size shouldBe 2
+            commits[0].id shouldBe "id2"
+            commits[1].id shouldBe "id"
+            getTag(commits[1], "a") shouldBe "B"
         }
 
         "delete local commits succeeds" {

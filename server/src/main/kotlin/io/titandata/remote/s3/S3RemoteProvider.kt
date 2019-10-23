@@ -97,9 +97,10 @@ class S3RemoteProvider(val providers: ProviderModule) : BaseRemoteProvider() {
     }
 
     private fun getMetadataKey(key: String?): String {
-        return when (key) {
-            null -> "titan"
-            else -> "$key/titan"
+        return if (key == null) {
+            "titan"
+        } else {
+            "$key/titan"
         }
     }
 
@@ -121,7 +122,6 @@ class S3RemoteProvider(val providers: ProviderModule) : BaseRemoteProvider() {
     private fun appendMetadata(remote: Remote, params: RemoteParameters, json: String) {
         val s3 = getClient(remote, params)
         val (bucket, key) = getPath(remote)
-
         var length = 0L
         var currentMetadata: InputStream
         try {
@@ -141,6 +141,22 @@ class S3RemoteProvider(val providers: ProviderModule) : BaseRemoteProvider() {
         var objectMetadata = ObjectMetadata()
         objectMetadata.contentLength = length + json.length + 1
         s3.putObject(PutObjectRequest(bucket, getMetadataKey(key), stream, objectMetadata))
+    }
+
+    // There is no efficient way to do this, simply read all the commits, update the one in question, and upload
+    private fun updateMetadata(remote: Remote, params: RemoteParameters, commit: Commit) {
+        val s3 = getClient(remote, params)
+        val (bucket, key) = getPath(remote)
+        val originalCommits = listCommits(remote, params, null)
+        val metadata = originalCommits.map {
+            if (it.id == commit.id) {
+                gson.toJson(commit)
+            } else {
+                gson.toJson(it)
+            }
+        }.joinToString("\n")
+
+        s3.putObject(bucket, getMetadataKey(key), metadata)
     }
 
     override fun listCommits(remote: Remote, params: RemoteParameters, tags: List<String>?): List<Commit> {
@@ -251,8 +267,9 @@ class S3RemoteProvider(val providers: ProviderModule) : BaseRemoteProvider() {
         data.s3.putObject(request)
 
         if (isUpdate) {
-            throw IllegalArgumentException("commit updates not yet supported")
+            updateMetadata(operation.remote, operation.params, commit)
+        } else {
+            appendMetadata(operation.remote, operation.params, json)
         }
-        appendMetadata(operation.remote, operation.params, json)
     }
 }

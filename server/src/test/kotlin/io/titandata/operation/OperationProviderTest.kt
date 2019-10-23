@@ -27,6 +27,7 @@ import io.titandata.models.Commit
 import io.titandata.models.Operation
 import io.titandata.models.ProgressEntry
 import io.titandata.models.Repository
+import io.titandata.models.Volume
 import io.titandata.remote.engine.EngineParameters
 import io.titandata.remote.nop.NopParameters
 import io.titandata.remote.nop.NopRemote
@@ -178,6 +179,11 @@ class OperationProviderTest : StringSpec() {
             every { generator.get() } returns "id"
             every { zfsStorageProvider.createOperation("foo", any(), any()) } just Runs
             every { zfsStorageProvider.commitOperation("foo", "id", any()) } just Runs
+            every { zfsStorageProvider.createOperationScratch("foo", any()) } returns ""
+            every { zfsStorageProvider.mountOperationVolumes("foo", any()) } returns ""
+            every { zfsStorageProvider.listVolumes("foo") } returns listOf(Volume(name = "v0"))
+            every { zfsStorageProvider.unmountOperationVolumes("foo", any()) } just Runs
+            every { zfsStorageProvider.destroyOperationScratch("foo", any()) } just Runs
             var op = provider.startPull("foo", "remote", "commit", NopParameters())
             op.id shouldBe "id"
             op.commitId shouldBe "commit"
@@ -207,6 +213,11 @@ class OperationProviderTest : StringSpec() {
             every { nopRemoteProvider.syncVolume(any(), any(), any(), any(), any()) } throws Exception("error")
             every { zfsStorageProvider.createOperation("foo", any(), any()) } just Runs
             every { zfsStorageProvider.discardOperation("foo", "id") } just Runs
+            every { zfsStorageProvider.createOperationScratch("foo", any()) } returns ""
+            every { zfsStorageProvider.mountOperationVolumes("foo", any()) } returns ""
+            every { zfsStorageProvider.listVolumes("foo") } returns listOf(Volume(name = "v0"))
+            every { zfsStorageProvider.unmountOperationVolumes("foo", any()) } just Runs
+            every { zfsStorageProvider.destroyOperationScratch("foo", any()) } just Runs
             var op = provider.startPull("foo", "remote", "commit", NopParameters())
             provider.getExecutor("foo", op.id).join()
             op = provider.getOperation("foo", op.id)
@@ -227,6 +238,11 @@ class OperationProviderTest : StringSpec() {
             every { nopRemoteProvider.syncVolume(any(), any(), any(), any(), any()) } throws InterruptedException()
             every { zfsStorageProvider.createOperation("foo", any(), any()) } just Runs
             every { zfsStorageProvider.discardOperation("foo", "id") } just Runs
+            every { zfsStorageProvider.createOperationScratch("foo", any()) } returns ""
+            every { zfsStorageProvider.mountOperationVolumes("foo", any()) } returns ""
+            every { zfsStorageProvider.listVolumes("foo") } returns listOf(Volume(name = "v0"))
+            every { zfsStorageProvider.unmountOperationVolumes("foo", any()) } just Runs
+            every { zfsStorageProvider.destroyOperationScratch("foo", any()) } just Runs
             var op = provider.startPull("foo", "remote", "commit", NopParameters())
             provider.getExecutor("foo", op.id).join()
             op = provider.getOperation("foo", op.id)
@@ -252,6 +268,11 @@ class OperationProviderTest : StringSpec() {
             every { zfsStorageProvider.getCommit(any(), any()) } throws NoSuchObjectException("")
             every { zfsStorageProvider.createOperation("foo", any(), any()) } just Runs
             every { zfsStorageProvider.commitOperation("foo", "id", any()) } just Runs
+            every { zfsStorageProvider.createOperationScratch("foo", any()) } returns ""
+            every { zfsStorageProvider.mountOperationVolumes("foo", any()) } returns ""
+            every { zfsStorageProvider.listVolumes("foo") } returns listOf(Volume(name = "v0"))
+            every { zfsStorageProvider.unmountOperationVolumes("foo", any()) } just Runs
+            every { zfsStorageProvider.destroyOperationScratch("foo", any()) } just Runs
             var op = provider.startPull("foo", "remote", "commit2", NopParameters())
             provider.getExecutor("foo", op.id).join()
             provider.getOperation("foo", op.id)
@@ -294,6 +315,11 @@ class OperationProviderTest : StringSpec() {
             every { generator.get() } returns "id"
             every { zfsStorageProvider.createOperation("foo", any(), any()) } just Runs
             every { zfsStorageProvider.discardOperation("foo", "id") } just Runs
+            every { zfsStorageProvider.createOperationScratch("foo", any()) } returns ""
+            every { zfsStorageProvider.mountOperationVolumes("foo", any()) } returns ""
+            every { zfsStorageProvider.listVolumes("foo") } returns listOf(Volume(name = "v0"))
+            every { zfsStorageProvider.unmountOperationVolumes("foo", any()) } just Runs
+            every { zfsStorageProvider.destroyOperationScratch("foo", any()) } just Runs
             var op = provider.startPush("foo", "remote", "commit", NopParameters())
             op.id shouldBe "id"
             op.commitId shouldBe "commit"
@@ -324,6 +350,11 @@ class OperationProviderTest : StringSpec() {
             every { nopRemoteProvider.syncVolume(any(), any(), any(), any(), any()) } throws Exception("error")
             every { zfsStorageProvider.createOperation("foo", any(), any()) } just Runs
             every { zfsStorageProvider.discardOperation("foo", "id") } just Runs
+            every { zfsStorageProvider.createOperationScratch("foo", any()) } returns ""
+            every { zfsStorageProvider.mountOperationVolumes("foo", any()) } returns ""
+            every { zfsStorageProvider.listVolumes("foo") } returns listOf(Volume(name = "v0"))
+            every { zfsStorageProvider.unmountOperationVolumes("foo", any()) } just Runs
+            every { zfsStorageProvider.destroyOperationScratch("foo", any()) } just Runs
             var op = provider.startPush("foo", "remote", "commit", NopParameters())
             provider.getExecutor("foo", op.id).join()
             op = provider.getOperation("foo", op.id)
@@ -344,6 +375,11 @@ class OperationProviderTest : StringSpec() {
             every { nopRemoteProvider.syncVolume(any(), any(), any(), any(), any()) } throws InterruptedException("error")
             every { zfsStorageProvider.createOperation("foo", any(), any()) } just Runs
             every { zfsStorageProvider.discardOperation("foo", "id") } just Runs
+            every { zfsStorageProvider.createOperationScratch("foo", any()) } returns ""
+            every { zfsStorageProvider.mountOperationVolumes("foo", any()) } returns ""
+            every { zfsStorageProvider.listVolumes("foo") } returns listOf(Volume(name = "v0"))
+            every { zfsStorageProvider.unmountOperationVolumes("foo", any()) } just Runs
+            every { zfsStorageProvider.destroyOperationScratch("foo", any()) } just Runs
             var op = provider.startPush("foo", "remote", "commit", NopParameters())
             provider.getExecutor("foo", op.id).join()
             op = provider.getOperation("foo", op.id)
@@ -371,6 +407,11 @@ class OperationProviderTest : StringSpec() {
             every { generator.get() } returns "id"
             every { zfsStorageProvider.discardOperation("foo", "id") } just Runs
             every { zfsStorageProvider.createOperation("foo", any(), any()) } just Runs
+            every { zfsStorageProvider.createOperationScratch("foo", any()) } returns ""
+            every { zfsStorageProvider.mountOperationVolumes("foo", any()) } returns ""
+            every { zfsStorageProvider.listVolumes("foo") } returns listOf(Volume(name = "v0"))
+            every { zfsStorageProvider.unmountOperationVolumes("foo", any()) } just Runs
+            every { zfsStorageProvider.destroyOperationScratch("foo", any()) } just Runs
             var op = provider.startPush("foo", "remote", "commit2", NopParameters())
             provider.getExecutor("foo", op.id).join()
             op = provider.getOperation("foo", op.id)
@@ -417,6 +458,12 @@ class OperationProviderTest : StringSpec() {
             every { zfsStorageProvider.getRepository("foo") } returns Repository(name = "foo", properties = mapOf())
             every { zfsStorageProvider.getRemotes("foo") } returns listOf(
                     NopRemote(name = "remote"))
+            every { zfsStorageProvider.createOperationScratch("foo", any()) } returns ""
+            every { zfsStorageProvider.mountOperationVolumes("foo", any()) } returns ""
+            every { zfsStorageProvider.listVolumes("foo") } returns listOf(Volume(name = "v0"))
+            every { zfsStorageProvider.unmountOperationVolumes("foo", any()) } just Runs
+            every { zfsStorageProvider.destroyOperationScratch("foo", any()) } just Runs
+            every { zfsStorageProvider.getCommit("foo", any()) } returns Commit(id = "hash", properties = mapOf())
             provider.loadState()
 
             var op = provider.getOperation("foo", "id")

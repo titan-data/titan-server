@@ -7,6 +7,7 @@ package io.titandata.remote.ssh
 import io.kotlintest.TestCase
 import io.kotlintest.TestCaseOrder
 import io.kotlintest.TestResult
+import io.kotlintest.matchers.string.shouldContain
 import io.kotlintest.shouldBe
 import io.kotlintest.shouldThrow
 import io.kotlintest.specs.StringSpec
@@ -201,11 +202,14 @@ class SshRemoteProviderTest : StringSpec() {
             every { zfsStorageProvider.listVolumes(any()) } returns
                     listOf(Volume(name = "v0"), Volume(name = "v1", properties = mapOf("path" to "/volume")))
             every { zfsStorageProvider.unmountOperationVolumes(any(), any()) } just Runs
+            every { zfsStorageProvider.createOperation("repo", any(), any()) } just Runs
+            every { zfsStorageProvider.createOperationScratch("repo", any()) } returns ""
+            every { zfsStorageProvider.destroyOperationScratch("repo", any()) } just Runs
 
             operationExecutor.run()
 
             val progress = operationExecutor.getProgress()
-            progress.size shouldBe 6
+            progress.size shouldBe 7
             progress[0].type shouldBe ProgressEntry.Type.START
             progress[0].message shouldBe "Syncing v0"
             progress[1].type shouldBe ProgressEntry.Type.PROGRESS
@@ -214,6 +218,7 @@ class SshRemoteProviderTest : StringSpec() {
             progress[3].message shouldBe "Syncing /volume"
             progress[4].type shouldBe ProgressEntry.Type.PROGRESS
             progress[5].type shouldBe ProgressEntry.Type.END
+            progress[6].type shouldBe ProgressEntry.Type.COMPLETE
         }
 
         "run operation fails if rsync fails" {
@@ -240,13 +245,18 @@ class SshRemoteProviderTest : StringSpec() {
             every { zfsStorageProvider.listVolumes(any()) } returns
                     listOf(Volume(name = "v0"), Volume(name = "v1", properties = mapOf("path" to "/volume")))
             every { zfsStorageProvider.unmountOperationVolumes(any(), any()) } just Runs
+            every { zfsStorageProvider.createOperation("repo", any(), any()) } just Runs
+            every { zfsStorageProvider.createOperationScratch("repo", any()) } returns ""
+            every { zfsStorageProvider.destroyOperationScratch("repo", any()) } just Runs
 
-            val e = shouldThrow<CommandException> {
-                operationExecutor.run()
-            }
+            operationExecutor.run()
 
-            e.exitCode shouldBe 1
-            e.output shouldBe "error string"
+            val progress = operationExecutor.getProgress()
+
+            progress.size shouldBe 2
+            progress[0].type shouldBe ProgressEntry.Type.START
+            progress[1].type shouldBe ProgressEntry.Type.FAILED
+            progress[1].message shouldContain "error string"
         }
     }
 }

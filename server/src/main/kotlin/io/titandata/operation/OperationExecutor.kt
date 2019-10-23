@@ -19,9 +19,6 @@ import org.slf4j.LoggerFactory
  * The operation executor is responsible for managing the execution of a single operation. Every
  * operation will have exactly one executor associated with it, and will be the conduit to manage
  * asynchronous operations, progress, and more.
- *
- * This is basically a wrapper around an asynchronous thread, with a defined channel to report
- * back progress, and default hadling of errors
  */
 class OperationExecutor(
     val providers: ProviderModule,
@@ -29,7 +26,8 @@ class OperationExecutor(
     val repo: String,
     val remote: Remote,
     val params: RemoteParameters,
-    val isResume: Boolean = false
+    val isResume: Boolean = false,
+    val metadataOnly: Boolean = false
 ) : Runnable {
 
     companion object {
@@ -54,7 +52,7 @@ class OperationExecutor(
                     // TODO figure out best local commit for pulls, not just latest
                 }
                 providers.storage.createOperation(repo, OperationData(operation = operation,
-                        params = params), localCommit)
+                        params = params, metadataOnly = metadataOnly), localCommit)
             }
 
             if (operation.type == Operation.Type.PULL) {
@@ -63,7 +61,7 @@ class OperationExecutor(
 
             operationData = provider.startOperation(this)
 
-            if (!operation.metadataOnly) {
+            if (!metadataOnly) {
                 syncData(provider, operationData)
             } else if (operation.type == Operation.Type.PULL) {
                 providers.storage.updateCommit(repo, commit!!)
@@ -71,8 +69,10 @@ class OperationExecutor(
 
             if (operation.type == Operation.Type.PUSH) {
                 val localCommit = providers.storage.getCommit(repo, operation.commitId)
-                provider.pushMetadata(this, operationData, localCommit, operation.metadataOnly)
+                provider.pushMetadata(this, operationData, localCommit, metadataOnly)
             }
+
+            provider.endOperation(this, operationData)
 
             addProgress(ProgressEntry(ProgressEntry.Type.COMPLETE))
         } catch (t: InterruptedException) {
@@ -84,7 +84,7 @@ class OperationExecutor(
         } finally {
             try {
                 if (operation.state == Operation.State.COMPLETE &&
-                        operation.type == Operation.Type.PULL && !operation.metadataOnly) {
+                        operation.type == Operation.Type.PULL && !metadataOnly) {
                     // It shouldn't be possible for commit to be null here, or else it would've failed
                     providers.storage.commitOperation(repo, operation.id, commit!!)
                 } else {

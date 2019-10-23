@@ -84,6 +84,7 @@ class OperationsApiTest : StringSpec() {
     override fun testCaseOrder() = TestCaseOrder.Random
 
     fun loadOperations(repo: String, vararg operations: OperationData) {
+        every { executor.exec(*anyVararg()) } returns ""
         every { executor.exec("zfs", "list", "-Ho", "name,io.titan-data:metadata",
                 "test/repo/$repo") } returns "test/repo/$repo\t{}"
         every { executor.exec("zfs", "list", "-Ho", "name,io.titan-data:metadata",
@@ -91,8 +92,19 @@ class OperationsApiTest : StringSpec() {
         val lines = operations.map { o -> "test/repo/$repo/${o.operation.id}\t" + gson.toJson(o) }
         every { executor.exec("zfs", "list", "-Ho", "name,io.titan-data:operation",
                 "-d", "1", "test/repo/foo") } returns lines.joinToString("\n")
+        for (o in operations) {
+            every { executor.exec("zfs", "list", "-Ho", "name,io.titan-data:operation", "test/repo/$repo/${o.operation.id}") } returns
+                    "test/repo/$repo/${o.operation.id}\t" + gson.toJson(o)
+        }
         every { executor.exec("zfs", "list", "-Ho", "io.titan-data:remotes",
                 "test/repo/$repo") } returns "[{\"name\":\"remote\",\"provider\":\"nop\"}]"
+        every { executor.exec("zfs", "list", "-Ho", "name,defer_destroy", "-t", "snapshot",
+                "-d", "2", "test/repo/$repo")
+        } returns "test/repo/$repo/guid@initial\toff\ntest/repo/$repo/guid@commit\toff\n"
+        every { executor.exec("zfs", "list", "-rHo", "name,io.titan-data:metadata", "test/repo/$repo/guid") } returns
+                arrayOf("test/repo/$repo/guid\t-", "test/repo/$repo/guid/v0\t{}", "test/repo/$repo/guid/v1\t{}").joinToString("\n")
+        every { executor.exec("zfs", "list", "-Ho", "io.titan-data:metadata",
+                any()) } returns "{\"a\":\"b\"}\n"
         providers.operation.loadState()
     }
 

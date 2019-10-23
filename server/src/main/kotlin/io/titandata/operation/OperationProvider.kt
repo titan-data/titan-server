@@ -65,14 +65,13 @@ class OperationProvider(val providers: ProviderModule) {
         operationsByRepo.get(exec.repo)!!.remove(exec)
     }
 
-    internal fun buildOperation(type: Operation.Type, remote: String, commitId: String, metadataOnly: Boolean): Operation {
+    internal fun buildOperation(type: Operation.Type, remote: String, commitId: String): Operation {
         return Operation(
                 generator.get(),
                 type,
                 Operation.State.RUNNING,
                 remote,
-                commitId,
-                metadataOnly
+                commitId
         )
     }
 
@@ -84,8 +83,8 @@ class OperationProvider(val providers: ProviderModule) {
         params: RemoteParameters,
         metadataOnly: Boolean
     ): Operation {
-        val op = buildOperation(type, remote.name, commitId, metadataOnly)
-        val exec = OperationExecutor(providers, op, repository, remote, params)
+        val op = buildOperation(type, remote.name, commitId)
+        val exec = OperationExecutor(providers, op, repository, remote, params, false, metadataOnly)
         addOperation(exec)
         val message = when (type) {
             Operation.Type.PULL -> "Pulling $commitId from '${remote.name}'"
@@ -115,7 +114,7 @@ class OperationProvider(val providers: ProviderModule) {
         for (r in providers.storage.listRepositories()) {
             for (op in providers.storage.listOperations(r.name)) {
                 val exec = OperationExecutor(providers, op.operation, r.name,
-                        getRemote(r.name, op.operation.remote), op.params, true)
+                        getRemote(r.name, op.operation.remote), op.params, true, op.metadataOnly)
                 addOperation(exec)
                 if (op.operation.state == Operation.State.RUNNING) {
                     log.info("retrying operation ${op.operation.id} after restart")

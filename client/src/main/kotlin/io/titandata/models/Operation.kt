@@ -9,8 +9,7 @@ data class Operation(
         var type: Type,
         var state: State = State.RUNNING,
         var remote: String,
-        var commitId: String,
-        var metadataOnly: Boolean = false
+        var commitId: String
 ) {
 
     enum class Type(val value: String) {

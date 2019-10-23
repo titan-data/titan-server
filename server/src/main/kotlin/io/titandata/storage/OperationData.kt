@@ -12,5 +12,6 @@ import io.titandata.models.RemoteParameters
  */
 data class OperationData(
     val operation: Operation,
-    val params: RemoteParameters
+    val params: RemoteParameters,
+    var metadataOnly: Boolean = false
 )

@@ -9,7 +9,6 @@ import io.titandata.models.Operation
 import io.titandata.models.ProgressEntry
 import io.titandata.models.Remote
 import io.titandata.models.RemoteParameters
-import io.titandata.models.Volume
 import io.titandata.operation.OperationExecutor
 import io.titandata.remote.BaseRemoteProvider
 
@@ -37,12 +36,16 @@ class NopRemoteProvider : BaseRemoteProvider() {
         // All operations always succeed
     }
 
-    override fun syncVolume(operation: OperationExecutor, data: Any?, volume: Volume, basePath: String, scratchPath: String) {
+    override fun startOperation(operation: OperationExecutor): Any? {
         operation.addProgress(ProgressEntry(ProgressEntry.Type.START, "Running operation"))
         val request = operation.params as NopParameters
         if (request.delay != 0) {
             Thread.sleep(request.delay * 1000L)
         }
+        return null
+    }
+
+    override fun endOperation(operation: OperationExecutor, data: Any?) {
         operation.addProgress(ProgressEntry(ProgressEntry.Type.END))
     }
 }

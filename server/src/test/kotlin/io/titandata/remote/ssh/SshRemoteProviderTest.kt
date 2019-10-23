@@ -151,7 +151,7 @@ class SshRemoteProviderTest : StringSpec() {
         "validate pull operation succeeds if remote commit exists" {
             every { executor.exec("sshpass", "-f", any(), "ssh", "-o", "StrictHostKeyChecking=no",
                     "-o", "UserKnownHostsFile=/dev/null", "root@localhost", "cat", "/var/tmp/a/metadata.json") } returns "{\"id\":\"a\",\"properties\":{}}"
-            sshRemoteProvider.validateOperation(getRemote(), "a", Operation.Type.PULL, SshParameters())
+            sshRemoteProvider.validateOperation(getRemote(), "a", Operation.Type.PULL, SshParameters(), false)
         }
 
         "validate pull operation fails if remote commit does not exist" {
@@ -160,21 +160,37 @@ class SshRemoteProviderTest : StringSpec() {
                         "-o", "UserKnownHostsFile=/dev/null", "root@localhost", "cat", "/var/tmp/a/metadata.json")
             } throws CommandException("", 1, "No such file or directory")
             shouldThrow<NoSuchObjectException> {
-                sshRemoteProvider.validateOperation(getRemote(), "a", Operation.Type.PULL, SshParameters())
+                sshRemoteProvider.validateOperation(getRemote(), "a", Operation.Type.PULL, SshParameters(), false)
             }
         }
 
         "validate push operation succeeds if remote commit does not exists" {
             every { executor.exec("sshpass", "-f", any(), "ssh", "-o", "StrictHostKeyChecking=no",
                     "-o", "UserKnownHostsFile=/dev/null", "root@localhost", "cat", "/var/tmp/a/metadata.json") } throws CommandException("", 1, "No such file or directory")
-            sshRemoteProvider.validateOperation(getRemote(), "a", Operation.Type.PUSH, SshParameters())
+            sshRemoteProvider.validateOperation(getRemote(), "a", Operation.Type.PUSH, SshParameters(), false)
         }
 
-        "validate pull operation fails if remote commit exists" {
+        "validate push operation fails if remote commit exists" {
             every { executor.exec("sshpass", "-f", any(), "ssh", "-o", "StrictHostKeyChecking=no",
                     "-o", "UserKnownHostsFile=/dev/null", "root@localhost", "cat", "/var/tmp/a/metadata.json") } returns "{\"id\":\"a\",\"properties\":{}}"
             shouldThrow<ObjectExistsException> {
-                sshRemoteProvider.validateOperation(getRemote(), "a", Operation.Type.PUSH, SshParameters())
+                sshRemoteProvider.validateOperation(getRemote(), "a", Operation.Type.PUSH, SshParameters(), false)
+            }
+        }
+
+        "validate metadata only push operation succeeds if remote commit exists" {
+            every { executor.exec("sshpass", "-f", any(), "ssh", "-o", "StrictHostKeyChecking=no",
+                    "-o", "UserKnownHostsFile=/dev/null", "root@localhost", "cat", "/var/tmp/a/metadata.json") } returns "{\"id\":\"a\",\"properties\":{}}"
+            sshRemoteProvider.validateOperation(getRemote(), "a", Operation.Type.PUSH, SshParameters(), true)
+        }
+
+        "validate metadata only push operation fails if remote commit does not exist" {
+            every {
+                executor.exec("sshpass", "-f", any(), "ssh", "-o", "StrictHostKeyChecking=no",
+                        "-o", "UserKnownHostsFile=/dev/null", "root@localhost", "cat", "/var/tmp/a/metadata.json")
+            } throws CommandException("", 1, "No such file or directory")
+            shouldThrow<NoSuchObjectException> {
+                sshRemoteProvider.validateOperation(getRemote(), "a", Operation.Type.PUSH, SshParameters(), true)
             }
         }
 

@@ -31,7 +31,8 @@ class NopRemoteProvider : BaseRemoteProvider() {
         remote: Remote,
         commitId: String,
         opType: Operation.Type,
-        params: RemoteParameters
+        params: RemoteParameters,
+        metadataOnly: Boolean
     ) {
         // All operations always succeed
     }

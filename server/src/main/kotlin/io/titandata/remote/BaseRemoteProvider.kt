@@ -18,16 +18,21 @@ abstract class BaseRemoteProvider : RemoteProvider {
         remote: Remote,
         commitId: String,
         opType: Operation.Type,
-        params: RemoteParameters
+        params: RemoteParameters,
+        metadataOnly: Boolean
     ) {
         if (opType == Operation.Type.PULL) {
             getCommit(remote, commitId, params)
         } else {
             try {
                 getCommit(remote, commitId, params)
-                throw ObjectExistsException("commit $commitId exists in remote '${remote.name}'")
+                if (!metadataOnly) {
+                    throw ObjectExistsException("commit $commitId exists in remote '${remote.name}'")
+                }
             } catch (e: NoSuchObjectException) {
-                // Ignore
+                if (metadataOnly) {
+                    throw e
+                }
             }
         }
     }

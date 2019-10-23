@@ -141,6 +141,26 @@ class SshWorkflowTest : EndToEndTest() {
             exception.code shouldBe "ObjectExistsException"
         }
 
+        "update commit succeeds" {
+            val newCommit = Commit(id = "id", properties = mapOf("tags" to mapOf("a" to "B", "c" to "d")))
+            commitApi.updateCommit("foo", newCommit)
+            getTag(newCommit, "a") shouldBe "B"
+            val commit = commitApi.getCommit("foo", "id")
+            getTag(commit, "a") shouldBe "B"
+        }
+
+        "push commit metadata succeeds" {
+            val op = operationApi.push("foo", "origin", "id", SshParameters(), true)
+            waitForOperation(op.id)
+        }
+
+        "remote commit metadata updated" {
+            val commit = commitApi.getCommit("foo", "id")
+            commit.id shouldBe "id"
+            getTag(commit, "a") shouldBe "B"
+            getTag(commit, "c") shouldBe "d"
+        }
+
         "delete local commit succeeds" {
             commitApi.deleteCommit("foo", "id")
         }
@@ -158,6 +178,18 @@ class SshWorkflowTest : EndToEndTest() {
 
         "pull original commit succeeds" {
             val op = operationApi.pull("foo", "origin", "id", SshParameters())
+            waitForOperation(op.id)
+        }
+
+        "pull same commit fails" {
+            val exception = shouldThrow<ClientException> {
+                operationApi.pull("foo", "origin", "id", SshParameters())
+            }
+            exception.code shouldBe "ObjectExistsException"
+        }
+
+        "pull of metadata only succeeds" {
+            val op = operationApi.pull("foo", "origin", "id", SshParameters(), true)
             waitForOperation(op.id)
         }
 

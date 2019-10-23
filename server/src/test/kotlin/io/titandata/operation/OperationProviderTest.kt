@@ -151,7 +151,7 @@ class OperationProviderTest : StringSpec() {
 
         "pull fails for non-existent remote commit" {
             every { zfsStorageProvider.getRemotes(any()) } returns listOf(NopRemote(name = "remote"))
-            every { nopRemoteProvider.validateOperation(any(), any(), any(), any()) } throws NoSuchObjectException("")
+            every { nopRemoteProvider.validateOperation(any(), any(), any(), any(), any()) } throws NoSuchObjectException("")
             shouldThrow<NoSuchObjectException> {
                 provider.startPull("foo", "remote", "commit", NopParameters())
             }
@@ -303,7 +303,7 @@ class OperationProviderTest : StringSpec() {
         "push fails if remote commit exists" {
             every { zfsStorageProvider.getRemotes(any()) } returns listOf(NopRemote(name = "remote"))
             every { zfsStorageProvider.getCommit(any(), any()) } returns Commit(id = "commit", properties = mapOf())
-            every { nopRemoteProvider.validateOperation(any(), any(), any(), any()) } throws ObjectExistsException("")
+            every { nopRemoteProvider.validateOperation(any(), any(), any(), any(), any()) } throws ObjectExistsException("")
             shouldThrow<ObjectExistsException> {
                 provider.startPush("foo", "remote", "commit", NopParameters())
             }

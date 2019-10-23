@@ -187,7 +187,7 @@ class OperationProvider(val providers: ProviderModule) {
             throw IllegalArgumentException("operation parameters type (${params.provider}) doesn't match type of remote '$remote' (${r.provider})")
         }
         val remoteProvider = providers.remote(r.provider)
-        remoteProvider.validateOperation(r, commitId, Operation.Type.PULL, params)
+        remoteProvider.validateOperation(r, commitId, Operation.Type.PULL, params, metadataOnly)
 
         operationsById.values.forEach {
             if (it.repo == repository && it.operation.type == Operation.Type.PULL &&
@@ -238,7 +238,7 @@ class OperationProvider(val providers: ProviderModule) {
             }
         }
 
-        remoteProvider.validateOperation(r, commitId, Operation.Type.PUSH, params)
+        remoteProvider.validateOperation(r, commitId, Operation.Type.PUSH, params, metadataOnly)
 
         return createAndStartOperation(Operation.Type.PUSH, repository, r, commitId, params, metadataOnly)
     }

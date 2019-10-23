@@ -25,7 +25,6 @@ import io.titandata.models.Repository
 import io.titandata.models.VolumeCreateRequest
 import io.titandata.models.VolumeMountRequest
 import io.titandata.models.VolumeRequest
-import io.titandata.remote.ssh.SshParameters
 import io.titandata.util.GuidGenerator
 import java.io.ByteArrayInputStream
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider

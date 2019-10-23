@@ -109,20 +109,16 @@ class ZfsOperationTest : StringSpec() {
         }
 
         "create operation succeeds" {
+            every { executor.exec(*anyVararg()) } returns ""
             every { executor.exec("zfs", "list", "-Ho", "name,defer_destroy", "-t", "snapshot",
                     "-d", "2", "test/repo/foo")
             } returns "test/repo/foo/guid@hash\toff"
             every { executor.exec("zfs", "list", "-rHo", "name,io.titan-data:metadata", "test/repo/foo/guid") } returns
                     arrayOf("test/repo/foo/guid\t-", "test/repo/foo/guid/v0\t{}", "test/repo/foo/guid/v1\t{}").joinToString("\n")
-            every { executor.exec("zfs", "create", "test/repo/foo/id") } returns ""
-            every { executor.exec("zfs", "clone", "-o", "io.titan-data:metadata={}", "test/repo/foo/guid/v0@hash",
-                    "test/repo/foo/id/v0") } returns ""
-            every { executor.exec("zfs", "clone", "-o", "io.titan-data:metadata={}", "test/repo/foo/guid/v1@hash",
-                    "test/repo/foo/id/v1") } returns ""
             val op = getOperation()
             val json = "{\"operation\":{\"id\":\"id\"," +
                     "\"type\":\"PUSH\",\"state\":\"RUNNING\",\"remote\":\"remote\"," +
-                    "\"commitId\":\"commit\"},\"params\":{\"provider\":\"nop\",\"delay\":0}}"
+                    "\"commitId\":\"commit\"},\"params\":{\"provider\":\"nop\",\"delay\":0},\"metadataOnly\":false}"
             every { executor.start(*anyVararg()) } returns mockk()
             every { executor.exec(any<Process>(), any()) } returns ""
             provider.createOperation("foo", op, "hash")
@@ -273,7 +269,7 @@ class ZfsOperationTest : StringSpec() {
             mockOperation()
             val newJson = "{\"operation\":{\"id\":\"id\"," +
                     "\"type\":\"PUSH\",\"state\":\"COMPLETE\",\"remote\":\"remote\"," +
-                    "\"commitId\":\"commit\"},\"params\":{\"provider\":\"nop\",\"delay\":0}}"
+                    "\"commitId\":\"commit\"},\"params\":{\"provider\":\"nop\",\"delay\":0},\"metadataOnly\":false}"
             every { executor.start(*anyVararg()) } returns mockk()
             every { executor.exec(any<Process>(), any()) } returns ""
 

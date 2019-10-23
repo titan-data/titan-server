@@ -8,13 +8,14 @@ import com.google.gson.GsonBuilder
 import io.titandata.ProviderModule
 import io.titandata.exception.NoSuchObjectException
 import io.titandata.models.Commit
-import io.titandata.models.Operation
 import io.titandata.models.ProgressEntry
 import io.titandata.models.Remote
 import io.titandata.models.RemoteParameters
+import io.titandata.models.Volume
 import io.titandata.operation.OperationExecutor
 import io.titandata.remote.BaseRemoteProvider
 import io.titandata.serialization.ModelTypeAdapters
+import io.titandata.util.TagFilter
 import java.io.File
 import java.io.IOException
 import okhttp3.OkHttpClient
@@ -64,8 +65,8 @@ class S3WebRemoteProvider(val providers: ProviderModule) : BaseRemoteProvider() 
         return ret
     }
 
-    override fun listCommits(remote: Remote, params: RemoteParameters): List<Commit> {
-        return getAllCommits(remote)
+    override fun listCommits(remote: Remote, params: RemoteParameters, tags: List<String> ?): List<Commit> {
+        return TagFilter(tags).filter(getAllCommits(remote))
     }
 
     override fun getCommit(remote: Remote, commitId: String, params: RemoteParameters): Commit {
@@ -76,58 +77,45 @@ class S3WebRemoteProvider(val providers: ProviderModule) : BaseRemoteProvider() 
                 ?: throw NoSuchObjectException("no such commit $commitId in remote '${remote.name}'")
     }
 
-    // TODO refactor this into manageable chunks
-    override fun runOperation(operation: OperationExecutor) {
-        if (operation.operation.type == Operation.Type.PUSH) {
-            throw IllegalStateException("push operations are not supported for s3web provider")
-        }
+    override fun pushVolume(operation: OperationExecutor, data: Any?, volume: Volume, basePath: String, scratchPath: String) {
+        throw IllegalStateException("push operations are not supported for s3web provider")
+    }
 
-        val repo = operation.repo
-        val operationId = operation.operation.id
+    override fun pullVolume(operation: OperationExecutor, data: Any?, volume: Volume, basePath: String, scratchPath: String) {
         val remote = operation.remote as S3WebRemote
+        val desc = volume.properties?.get("path")?.toString() ?: volume.name
         val commitId = operation.operation.commitId
 
-        val scratch = providers.storage.createOperationScratch(repo, operationId)
-        try {
-            val base = providers.storage.mountOperationVolumes(repo, operationId)
-            try {
-                for (vol in providers.storage.listVolumes(repo)) {
-                    val desc = vol.properties?.get("path")?.toString() ?: vol.name
+        operation.addProgress(ProgressEntry(type = ProgressEntry.Type.START,
+                message = "Downloading archive for $desc"))
 
-                    operation.addProgress(ProgressEntry(type = ProgressEntry.Type.START,
-                            message = "Downloading archive for $desc"))
-
-                    val path = "$commitId/${vol.name}.tar.gz"
-                    val response = getFile(remote, path)
-                    if (!response.isSuccessful) {
-                        throw IOException("failed to get ${remote.url}/$path, error code ${response.code}")
-                    }
-                    val archive = "$scratch/${vol.name}.tar.gz"
-                    val archiveFile = File(archive)
-                    response.body!!.byteStream().use { input ->
-                        archiveFile.outputStream().use { output ->
-                            input.copyTo(output)
-                        }
-                    }
-
-                    operation.addProgress(ProgressEntry(type = ProgressEntry.Type.END))
-
-                    operation.addProgress(ProgressEntry(type = ProgressEntry.Type.START,
-                            message = "Extracting archive for $desc"))
-                    val args = arrayOf("tar", "xzf", archive)
-                    val process = ProcessBuilder()
-                            .directory(File("$base/${vol.name}"))
-                            .command(*args)
-                            .start()
-                    providers.commandExecutor.exec(process, args.joinToString())
-                    operation.addProgress(ProgressEntry(type = ProgressEntry.Type.END))
-                }
-            } finally {
-                providers.storage.unmountOperationVolumes(repo, operationId)
-            }
-        } finally {
-            providers.storage.destroyOperationScratch(repo, operationId)
+        val path = "$commitId/${volume.name}.tar.gz"
+        val response = getFile(remote, path)
+        if (!response.isSuccessful) {
+            throw IOException("failed to get ${remote.url}/$path, error code ${response.code}")
         }
-        // TODO cleanup on failure
+        val archive = "$scratchPath/${volume.name}.tar.gz"
+        val archiveFile = File(archive)
+        response.body!!.byteStream().use { input ->
+            archiveFile.outputStream().use { output ->
+                input.copyTo(output)
+            }
+        }
+
+        operation.addProgress(ProgressEntry(type = ProgressEntry.Type.END))
+
+        operation.addProgress(ProgressEntry(type = ProgressEntry.Type.START,
+                message = "Extracting archive for $desc"))
+        val args = arrayOf("tar", "xzf", archive)
+        val process = ProcessBuilder()
+                .directory(File("$basePath/${volume.name}"))
+                .command(*args)
+                .start()
+        providers.commandExecutor.exec(process, args.joinToString())
+        operation.addProgress(ProgressEntry(type = ProgressEntry.Type.END))
+    }
+
+    override fun pushMetadata(operation: OperationExecutor, data: Any?, commit: Commit, isUpdate: Boolean) {
+        throw IllegalStateException("push operations are not supported for s3web provider")
     }
 }

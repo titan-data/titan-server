@@ -10,6 +10,7 @@ import io.titandata.models.Operation
 import io.titandata.models.ProgressEntry
 import io.titandata.models.Remote
 import io.titandata.models.RemoteParameters
+import io.titandata.remote.RemoteProvider
 import io.titandata.storage.OperationData
 import io.titandata.util.CommandExecutor
 import org.slf4j.LoggerFactory
@@ -18,9 +19,6 @@ import org.slf4j.LoggerFactory
  * The operation executor is responsible for managing the execution of a single operation. Every
  * operation will have exactly one executor associated with it, and will be the conduit to manage
  * asynchronous operations, progress, and more.
- *
- * This is basically a wrapper around an asynchronous thread, with a defined channel to report
- * back progress, and default hadling of errors
  */
 class OperationExecutor(
     val providers: ProviderModule,
@@ -28,7 +26,8 @@ class OperationExecutor(
     val repo: String,
     val remote: Remote,
     val params: RemoteParameters,
-    val isResume: Boolean = false
+    val isResume: Boolean = false,
+    val metadataOnly: Boolean = false
 ) : Runnable {
 
     companion object {
@@ -40,6 +39,8 @@ class OperationExecutor(
     private var commit: Commit? = null
 
     override fun run() {
+        val provider = providers.remote(remote.provider)
+        var operationData: Any? = null
         try {
             log.info("starting ${operation.type} operation ${operation.id}")
 
@@ -51,14 +52,28 @@ class OperationExecutor(
                     // TODO figure out best local commit for pulls, not just latest
                 }
                 providers.storage.createOperation(repo, OperationData(operation = operation,
-                        params = params), localCommit)
+                        params = params, metadataOnly = metadataOnly), localCommit)
             }
 
-            val provider = providers.remote(remote.provider)
             if (operation.type == Operation.Type.PULL) {
                 commit = provider.getCommit(remote, operation.commitId, params)
             }
-            provider.runOperation(this)
+
+            operationData = provider.startOperation(this)
+
+            if (!metadataOnly) {
+                syncData(provider, operationData)
+            } else if (operation.type == Operation.Type.PULL) {
+                providers.storage.updateCommit(repo, commit!!)
+            }
+
+            if (operation.type == Operation.Type.PUSH) {
+                val localCommit = providers.storage.getCommit(repo, operation.commitId)
+                provider.pushMetadata(this, operationData, localCommit, metadataOnly)
+            }
+
+            provider.endOperation(this, operationData)
+
             addProgress(ProgressEntry(ProgressEntry.Type.COMPLETE))
         } catch (t: InterruptedException) {
             addProgress(ProgressEntry(ProgressEntry.Type.ABORT))
@@ -69,15 +84,41 @@ class OperationExecutor(
         } finally {
             try {
                 if (operation.state == Operation.State.COMPLETE &&
-                        operation.type == Operation.Type.PULL) {
+                        operation.type == Operation.Type.PULL && !metadataOnly) {
                     // It shouldn't be possible for commit to be null here, or else it would've failed
                     providers.storage.commitOperation(repo, operation.id, commit!!)
                 } else {
                     providers.storage.discardOperation(repo, operation.id)
                 }
+                operationData = null
             } catch (t: Throwable) {
                 log.error("finalization of ${operation.type} failed", t)
+            } finally {
+                if (operationData != null) {
+                    provider.failOperation(this, operationData)
+                }
             }
+        }
+    }
+
+    fun syncData(provider: RemoteProvider, data: Any?) {
+        val operationId = operation.id
+        val scratch = providers.storage.createOperationScratch(repo, operationId)
+        try {
+            val base = providers.storage.mountOperationVolumes(repo, operationId)
+            try {
+                for (volume in providers.storage.listVolumes(repo)) {
+                    if (operation.type == Operation.Type.PULL) {
+                        provider.pullVolume(this, data, volume, base, scratch)
+                    } else {
+                        provider.pushVolume(this, data, volume, base, scratch)
+                    }
+                }
+            } finally {
+                providers.storage.unmountOperationVolumes(repo, operationId)
+            }
+        } finally {
+            providers.storage.destroyOperationScratch(repo, operationId)
         }
     }
 

@@ -54,7 +54,12 @@ fun Route.OperationsApi(@Suppress("UNUSED_PARAMETER") providers: ProviderModule)
             val remote = call.parameters["remoteName"] ?: throw IllegalArgumentException("missing remote name parameter")
             val commitId = call.parameters["commitId"] ?: throw IllegalArgumentException("missing commit id parameter")
             val params = call.receive(RemoteParameters::class)
-            call.respond(providers.operation.startPull(repo, remote, commitId, params))
+            val metadataOnly = if (call.request.queryParameters.contains("metadataOnly")) {
+                call.request.queryParameters.get("metadataOnly")!!.toBoolean()
+            } else {
+                false
+            }
+            call.respond(providers.operation.startPull(repo, remote, commitId, params, metadataOnly))
         }
     }
 
@@ -64,7 +69,12 @@ fun Route.OperationsApi(@Suppress("UNUSED_PARAMETER") providers: ProviderModule)
             val remote = call.parameters["remoteName"] ?: throw IllegalArgumentException("missing remote name parameter")
             val commitId = call.parameters["commitId"] ?: throw IllegalArgumentException("missing commit id parameter")
             val params = call.receive(RemoteParameters::class)
-            call.respond(providers.operation.startPush(repo, remote, commitId, params))
+            val metadataOnly = if (call.request.queryParameters.contains("metadataOnly")) {
+                call.request.queryParameters.get("metadataOnly")!!.toBoolean()
+            } else {
+                false
+            }
+            call.respond(providers.operation.startPush(repo, remote, commitId, params, metadataOnly))
         }
     }
 }

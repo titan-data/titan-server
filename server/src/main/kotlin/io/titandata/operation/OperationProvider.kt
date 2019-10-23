@@ -80,10 +80,11 @@ class OperationProvider(val providers: ProviderModule) {
         repository: String,
         remote: Remote,
         commitId: String,
-        params: RemoteParameters
+        params: RemoteParameters,
+        metadataOnly: Boolean
     ): Operation {
         val op = buildOperation(type, remote.name, commitId)
-        val exec = OperationExecutor(providers, op, repository, remote, params)
+        val exec = OperationExecutor(providers, op, repository, remote, params, false, metadataOnly)
         addOperation(exec)
         val message = when (type) {
             Operation.Type.PULL -> "Pulling $commitId from '${remote.name}'"
@@ -113,7 +114,7 @@ class OperationProvider(val providers: ProviderModule) {
         for (r in providers.storage.listRepositories()) {
             for (op in providers.storage.listOperations(r.name)) {
                 val exec = OperationExecutor(providers, op.operation, r.name,
-                        getRemote(r.name, op.operation.remote), op.params, true)
+                        getRemote(r.name, op.operation.remote), op.params, true, op.metadataOnly)
                 addOperation(exec)
                 if (op.operation.state == Operation.State.RUNNING) {
                     log.info("retrying operation ${op.operation.id} after restart")
@@ -172,7 +173,13 @@ class OperationProvider(val providers: ProviderModule) {
     }
 
     @Synchronized
-    fun startPull(repository: String, remote: String, commitId: String, params: RemoteParameters): Operation {
+    fun startPull(
+        repository: String,
+        remote: String,
+        commitId: String,
+        params: RemoteParameters,
+        metadataOnly: Boolean = false
+    ): Operation {
 
         log.info("pull $commitId from $remote in $repository")
         val r = getRemote(repository, remote)
@@ -180,7 +187,7 @@ class OperationProvider(val providers: ProviderModule) {
             throw IllegalArgumentException("operation parameters type (${params.provider}) doesn't match type of remote '$remote' (${r.provider})")
         }
         val remoteProvider = providers.remote(r.provider)
-        remoteProvider.validateOperation(r, commitId, Operation.Type.PULL, params)
+        remoteProvider.validateOperation(r, commitId, Operation.Type.PULL, params, metadataOnly)
 
         operationsById.values.forEach {
             if (it.repo == repository && it.operation.type == Operation.Type.PULL &&
@@ -191,16 +198,26 @@ class OperationProvider(val providers: ProviderModule) {
 
         try {
             providers.storage.getCommit(repository, commitId)
-            throw ObjectExistsException("commit '$commitId' already exists in repository '$repository'")
+            if (!metadataOnly) {
+                throw ObjectExistsException("commit '$commitId' already exists in repository '$repository'")
+            }
         } catch (e: NoSuchObjectException) {
-            // Ignore
+            if (metadataOnly) {
+                throw ObjectExistsException("no such commit '$commitId' in repository '$repository'")
+            }
         }
 
-        return createAndStartOperation(Operation.Type.PULL, repository, r, commitId, params)
+        return createAndStartOperation(Operation.Type.PULL, repository, r, commitId, params, metadataOnly)
     }
 
     @Synchronized
-    fun startPush(repository: String, remote: String, commitId: String, params: RemoteParameters): Operation {
+    fun startPush(
+        repository: String,
+        remote: String,
+        commitId: String,
+        params: RemoteParameters,
+        metadataOnly: Boolean = false
+    ): Operation {
 
         log.info("push $commitId to $remote in $repository")
         val r = getRemote(repository, remote)
@@ -209,6 +226,9 @@ class OperationProvider(val providers: ProviderModule) {
         }
         providers.storage.getCommit(repository, commitId) // check commit exists
         val remoteProvider = providers.remote(r.provider)
+        if (metadataOnly) {
+            remoteProvider.getCommit(r, commitId, params) // for metadata only must exist in remote as well
+        }
 
         operationsById.values.forEach {
             if (it.repo == repository && it.operation.type == Operation.Type.PUSH &&
@@ -218,8 +238,8 @@ class OperationProvider(val providers: ProviderModule) {
             }
         }
 
-        remoteProvider.validateOperation(r, commitId, Operation.Type.PUSH, params)
+        remoteProvider.validateOperation(r, commitId, Operation.Type.PUSH, params, metadataOnly)
 
-        return createAndStartOperation(Operation.Type.PUSH, repository, r, commitId, params)
+        return createAndStartOperation(Operation.Type.PUSH, repository, r, commitId, params, metadataOnly)
     }
 }

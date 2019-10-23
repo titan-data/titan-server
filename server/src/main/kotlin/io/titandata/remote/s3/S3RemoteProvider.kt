@@ -16,18 +16,19 @@ import com.google.gson.GsonBuilder
 import io.titandata.ProviderModule
 import io.titandata.exception.NoSuchObjectException
 import io.titandata.models.Commit
-import io.titandata.models.Operation
 import io.titandata.models.ProgressEntry
 import io.titandata.models.Remote
 import io.titandata.models.RemoteParameters
+import io.titandata.models.Volume
 import io.titandata.operation.OperationExecutor
 import io.titandata.remote.BaseRemoteProvider
 import io.titandata.serialization.ModelTypeAdapters
+import io.titandata.util.TagFilter
 import java.io.ByteArrayInputStream
 import java.io.File
 import java.io.InputStream
 import java.io.SequenceInputStream
-import java.lang.IllegalArgumentException
+import kotlin.IllegalArgumentException
 
 /**
  * The S3 provider is a very simple provider for storing whole commits directly in a S3 bucket. Each commit is is a
@@ -96,9 +97,10 @@ class S3RemoteProvider(val providers: ProviderModule) : BaseRemoteProvider() {
     }
 
     private fun getMetadataKey(key: String?): String {
-        return when (key) {
-            null -> "titan"
-            else -> "$key/titan"
+        return if (key == null) {
+            "titan"
+        } else {
+            "$key/titan"
         }
     }
 
@@ -120,7 +122,6 @@ class S3RemoteProvider(val providers: ProviderModule) : BaseRemoteProvider() {
     private fun appendMetadata(remote: Remote, params: RemoteParameters, json: String) {
         val s3 = getClient(remote, params)
         val (bucket, key) = getPath(remote)
-
         var length = 0L
         var currentMetadata: InputStream
         try {
@@ -142,7 +143,23 @@ class S3RemoteProvider(val providers: ProviderModule) : BaseRemoteProvider() {
         s3.putObject(PutObjectRequest(bucket, getMetadataKey(key), stream, objectMetadata))
     }
 
-    override fun listCommits(remote: Remote, params: RemoteParameters): List<Commit> {
+    // There is no efficient way to do this, simply read all the commits, update the one in question, and upload
+    private fun updateMetadata(remote: Remote, params: RemoteParameters, commit: Commit) {
+        val s3 = getClient(remote, params)
+        val (bucket, key) = getPath(remote)
+        val originalCommits = listCommits(remote, params, null)
+        val metadata = originalCommits.map {
+            if (it.id == commit.id) {
+                gson.toJson(commit)
+            } else {
+                gson.toJson(it)
+            }
+        }.joinToString("\n")
+
+        s3.putObject(bucket, getMetadataKey(key), metadata)
+    }
+
+    override fun listCommits(remote: Remote, params: RemoteParameters, tags: List<String>?): List<Commit> {
         val metadata = getMetadataContent(remote, params)
         val ret = mutableListOf<Commit>()
 
@@ -153,7 +170,7 @@ class S3RemoteProvider(val providers: ProviderModule) : BaseRemoteProvider() {
         }
         metadata.close()
 
-        return ret
+        return TagFilter(tags).filter(ret)
     }
 
     override fun getCommit(remote: Remote, commitId: String, params: RemoteParameters): Commit {
@@ -172,83 +189,87 @@ class S3RemoteProvider(val providers: ProviderModule) : BaseRemoteProvider() {
         }
     }
 
-    // TODO refactor this into manageable chunks
-    override fun runOperation(operation: OperationExecutor) {
-        val s3 = getClient(operation.remote, operation.params)
-        val (bucket, key) = getPath(operation.remote, operation.operation.commitId)
-        val repo = operation.repo
-        val operationId = operation.operation.id
+    private class S3Operation(provider: S3RemoteProvider, operation: OperationExecutor) {
+        val s3: AmazonS3
+        val bucket: String
+        val key: String?
 
-        val scratch = providers.storage.createOperationScratch(repo, operationId)
-        try {
-            val base = providers.storage.mountOperationVolumes(repo, operationId)
-            try {
-                for (vol in providers.storage.listVolumes(repo)) {
-                    val desc = vol.properties?.get("path")?.toString() ?: vol.name
-
-                    if (operation.operation.type == Operation.Type.PUSH) {
-
-                        operation.addProgress(ProgressEntry(type = ProgressEntry.Type.START,
-                                message = "Creating archive for $desc"))
-
-                        val archive = "$scratch/${vol.name}.tar.gz"
-                        val args = arrayOf("tar", "czf", archive, ".")
-                        val process = ProcessBuilder()
-                                .directory(File("$base/${vol.name}"))
-                                .command(*args)
-                                .start()
-                        providers.commandExecutor.exec(process, args.joinToString())
-                        operation.addProgress(ProgressEntry(type = ProgressEntry.Type.END))
-
-                        operation.addProgress(ProgressEntry(type = ProgressEntry.Type.START,
-                                message = "Uploading archive for $desc"))
-                        // TODO - progress monitoring
-                        s3.putObject(bucket, "$key/${vol.name}.tar.gz", File(archive))
-                        operation.addProgress(ProgressEntry(type = ProgressEntry.Type.END))
-                    } else {
-                        operation.addProgress(ProgressEntry(type = ProgressEntry.Type.START,
-                                message = "Downloading archive for $desc"))
-
-                        val archive = "$scratch/${vol.name}.tar.gz"
-                        val obj = s3.getObject(bucket, "$key/${vol.name}.tar.gz")
-                        // TODO - progress monitoring
-                        obj.objectContent.use { input ->
-                            File(archive).outputStream().use { output ->
-                                input.copyTo(output)
-                            }
-                        }
-                        operation.addProgress(ProgressEntry(type = ProgressEntry.Type.END))
-
-                        operation.addProgress(ProgressEntry(type = ProgressEntry.Type.START,
-                                message = "Extracting archive for $desc"))
-                        val args = arrayOf("tar", "xzf", archive)
-                        val process = ProcessBuilder()
-                                .directory(File("$base/${vol.name}"))
-                                .command(*args)
-                                .start()
-                        providers.commandExecutor.exec(process, args.joinToString())
-                        operation.addProgress(ProgressEntry(type = ProgressEntry.Type.END))
-                    }
-                }
-
-                if (operation.operation.type == Operation.Type.PUSH) {
-                    val commit = providers.storage.getCommit(repo, operation.operation.commitId)
-                    val metadata = ObjectMetadata()
-                    val json = gson.toJson(commit)
-                    metadata.userMetadata = mapOf(METADATA_PROP to json)
-                    metadata.contentLength = 0
-                    val input = ByteArrayInputStream("".toByteArray())
-                    val request = PutObjectRequest(bucket, key, input, metadata)
-                    s3.putObject(request)
-
-                    appendMetadata(operation.remote, operation.params, json)
-                }
-            } finally {
-                providers.storage.unmountOperationVolumes(repo, operationId)
-            }
-        } finally {
-            providers.storage.destroyOperationScratch(repo, operationId)
+        init {
+            s3 = provider.getClient(operation.remote, operation.params)
+            val path = provider.getPath(operation.remote, operation.operation.commitId)
+            bucket = path.first
+            key = path.second
         }
-        // TODO cleanup on failure
+    }
+
+    override fun startOperation(operation: OperationExecutor): Any? {
+        return S3Operation(this, operation)
+    }
+
+    override fun pushVolume(operation: OperationExecutor, data: Any?, volume: Volume, basePath: String, scratchPath: String) {
+        data as S3Operation
+
+        val desc = getVolumeDesc(volume)
+        operation.addProgress(ProgressEntry(type = ProgressEntry.Type.START,
+                message = "Creating archive for $desc"))
+
+        val archive = "$scratchPath/${volume.name}.tar.gz"
+        val args = arrayOf("tar", "czf", archive, ".")
+        val process = ProcessBuilder()
+                .directory(File("$basePath/${volume.name}"))
+                .command(*args)
+                .start()
+        providers.commandExecutor.exec(process, args.joinToString())
+        operation.addProgress(ProgressEntry(type = ProgressEntry.Type.END))
+
+        operation.addProgress(ProgressEntry(type = ProgressEntry.Type.START,
+                message = "Uploading archive for $desc"))
+        // TODO - progress monitoring
+        data.s3.putObject(data.bucket, "${data.key}/${volume.name}.tar.gz", File(archive))
+        operation.addProgress(ProgressEntry(type = ProgressEntry.Type.END))
+    }
+
+    override fun pullVolume(operation: OperationExecutor, data: Any?, volume: Volume, basePath: String, scratchPath: String) {
+        data as S3Operation
+        val desc = getVolumeDesc(volume)
+        operation.addProgress(ProgressEntry(type = ProgressEntry.Type.START,
+                message = "Downloading archive for $desc"))
+
+        val archive = "$scratchPath/${volume.name}.tar.gz"
+        val obj = data.s3.getObject(data.bucket, "${data.key}/${volume.name}.tar.gz")
+        // TODO - progress monitoring
+        obj.objectContent.use { input ->
+            File(archive).outputStream().use { output ->
+                input.copyTo(output)
+            }
+        }
+        operation.addProgress(ProgressEntry(type = ProgressEntry.Type.END))
+
+        operation.addProgress(ProgressEntry(type = ProgressEntry.Type.START,
+                message = "Extracting archive for $desc"))
+        val args = arrayOf("tar", "xzf", archive)
+        val process = ProcessBuilder()
+                .directory(File("$basePath/${volume.name}"))
+                .command(*args)
+                .start()
+        providers.commandExecutor.exec(process, args.joinToString())
+        operation.addProgress(ProgressEntry(type = ProgressEntry.Type.END))
+    }
+
+    override fun pushMetadata(operation: OperationExecutor, data: Any?, commit: Commit, isUpdate: Boolean) {
+        data as S3Operation
+        val metadata = ObjectMetadata()
+        val json = gson.toJson(commit)
+        metadata.userMetadata = mapOf(METADATA_PROP to json)
+        metadata.contentLength = 0
+        val input = ByteArrayInputStream("".toByteArray())
+        val request = PutObjectRequest(data.bucket, data.key, input, metadata)
+        data.s3.putObject(request)
+
+        if (isUpdate) {
+            updateMetadata(operation.remote, operation.params, commit)
+        } else {
+            appendMetadata(operation.remote, operation.params, json)
+        }
     }
 }

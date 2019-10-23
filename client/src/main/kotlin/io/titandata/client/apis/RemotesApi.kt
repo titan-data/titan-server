@@ -91,9 +91,14 @@ class RemotesApi(basePath: String = "http://localhost:5001") : ApiClient(basePat
     }
 
     @Suppress("UNCHECKED_CAST")
-    fun listRemoteCommits(repositoryName: String, remoteName: String, params: RemoteParameters) : Array<Commit> {
+    fun listRemoteCommits(repositoryName: String, remoteName: String, params: RemoteParameters,
+                          tags: List<String>? = null) : Array<Commit> {
         val localVariableBody: Any? = null
-        val localVariableQuery: Map<String,List<String>> = mapOf()
+        val localVariableQuery: Map<String,List<String>> = if (tags == null) {
+            mapOf()
+        } else {
+            mapOf("tag" to tags)
+        }
         val localVariableHeaders: MutableMap<String, String> = mutableMapOf(
             "titan-remote-parameters" to gson.toJson(params)
         )

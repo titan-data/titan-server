@@ -27,6 +27,7 @@ import io.mockk.every
 import io.mockk.impl.annotations.InjectMockKs
 import io.mockk.impl.annotations.MockK
 import io.mockk.impl.annotations.OverrideMockKs
+import io.mockk.verify
 import io.titandata.exception.CommandException
 import io.titandata.models.Error
 import io.titandata.operation.OperationProvider
@@ -100,6 +101,42 @@ class CommitsApiTest : StringSpec() {
             }
         }
 
+        "list commits filters result with exact match" {
+            every { executor.exec(*anyVararg()) } returns arrayOf(
+                    "test/repo/foo@ignore\toff\t{}",
+                    "test/repo/foo/guid1@hash1\toff\t{\"tags\":{\"a\":\"b\"}}",
+                    "test/repo/foo/guid2@hash2\toff\t{\"tags\":{\"c\":\"d\"}}"
+            ).joinToString("\n")
+            with(engine.handleRequest(HttpMethod.Get, "/v1/repositories/foo/commits?tag=a=b")) {
+                response.status() shouldBe HttpStatusCode.OK
+                response.content shouldBe "[{\"id\":\"hash1\",\"properties\":{\"tags\":{\"a\":\"b\"}}}]"
+            }
+        }
+
+        "list commits filters result with exists match" {
+            every { executor.exec(*anyVararg()) } returns arrayOf(
+                    "test/repo/foo@ignore\toff\t{}",
+                    "test/repo/foo/guid1@hash1\toff\t{\"tags\":{\"a\":\"b\"}}",
+                    "test/repo/foo/guid2@hash2\toff\t{\"tags\":{\"c\":\"d\"}}"
+            ).joinToString("\n")
+            with(engine.handleRequest(HttpMethod.Get, "/v1/repositories/foo/commits?tag=a")) {
+                response.status() shouldBe HttpStatusCode.OK
+                response.content shouldBe "[{\"id\":\"hash1\",\"properties\":{\"tags\":{\"a\":\"b\"}}}]"
+            }
+        }
+
+        "list commits filters result with compound match" {
+            every { executor.exec(*anyVararg()) } returns arrayOf(
+                    "test/repo/foo@ignore\toff\t{}",
+                    "test/repo/foo/guid1@hash1\toff\t{\"tags\":{\"a\":\"b\",\"c\":\"d\"}}",
+                    "test/repo/foo/guid2@hash2\toff\t{\"tags\":{\"c\":\"d\"}}"
+            ).joinToString("\n")
+            with(engine.handleRequest(HttpMethod.Get, "/v1/repositories/foo/commits?tag=a=b&tag=c=d")) {
+                response.status() shouldBe HttpStatusCode.OK
+                response.content shouldBe "[{\"id\":\"hash1\",\"properties\":{\"tags\":{\"a\":\"b\",\"c\":\"d\"}}}]"
+            }
+        }
+
         "list commits fails with non existent repository" {
             every { executor.exec(*anyVararg()) } throws CommandException("", 1, "does not exist")
             with(engine.handleRequest(HttpMethod.Get, "/v1/repositories/repo/commits")) {
@@ -162,6 +199,21 @@ class CommitsApiTest : StringSpec() {
                 val error = Gson().fromJson(response.content, Error::class.java)
                 error.code shouldBe "IllegalArgumentException"
                 error.message shouldBe "invalid commit name, can only contain alphanumeric characters, '-', ':', '.', or '_'"
+            }
+        }
+
+        "update commit succeeds" {
+            every { executor.exec(*anyVararg()) } returns ""
+            every { executor.exec("zfs", "list", "-Ho", "name,defer_destroy", "-t", "snapshot",
+                    "-d", "2", "test/repo/foo") } returns "test/repo/foo/guid@hash\toff\n"
+            with(engine.handleRequest(HttpMethod.Post, "/v1/repositories/foo/commits/hash") {
+                addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+                setBody("{\"id\":\"hash\",\"properties\":{\"a\":\"b\"}}")
+            }) {
+                response.status() shouldBe HttpStatusCode.OK
+                verify {
+                    executor.exec("zfs", "set", "io.titan-data:metadata={\"a\":\"b\"}", "test/repo/foo/guid@hash")
+                }
             }
         }
 

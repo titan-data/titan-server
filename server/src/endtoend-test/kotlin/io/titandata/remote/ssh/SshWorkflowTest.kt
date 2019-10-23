@@ -73,9 +73,11 @@ class SshWorkflowTest : EndToEndTest() {
         }
 
         "create commit succeeds" {
-            val commit = commitApi.createCommit("foo", Commit(id = "id", properties = mapOf("a" to "b")))
+            val commit = commitApi.createCommit("foo", Commit(id = "id",
+                    properties = mapOf("tags" to mapOf("a" to "b", "c" to "d"))))
             commit.id shouldBe "id"
-            commit.properties["a"] shouldBe "b"
+            getTag(commit, "a") shouldBe "b"
+            getTag(commit, "c") shouldBe "d"
         }
 
         "add ssh remote succeeds" {
@@ -113,7 +115,18 @@ class SshWorkflowTest : EndToEndTest() {
             val commits = remoteApi.listRemoteCommits("foo", "origin", SshParameters())
             commits.size shouldBe 1
             commits[0].id shouldBe "id"
-            commits[0].properties["a"] shouldBe "b"
+            getTag(commits[0], "a") shouldBe "b"
+        }
+
+        "list remote commits filters out commit" {
+            val commits = remoteApi.listRemoteCommits("foo", "origin", SshParameters(), listOf("e"))
+            commits.size shouldBe 0
+        }
+
+        "list remote commits filters include commit" {
+            val commits = remoteApi.listRemoteCommits("foo", "origin", SshParameters(), listOf("a=b", "c=d"))
+            commits.size shouldBe 1
+            commits[0].id shouldBe "id"
         }
 
         "remote file contents is correct" {
@@ -126,6 +139,26 @@ class SshWorkflowTest : EndToEndTest() {
                 operationApi.push("foo", "origin", "id", SshParameters())
             }
             exception.code shouldBe "ObjectExistsException"
+        }
+
+        "update commit succeeds" {
+            val newCommit = Commit(id = "id", properties = mapOf("tags" to mapOf("a" to "B", "c" to "d")))
+            commitApi.updateCommit("foo", newCommit)
+            getTag(newCommit, "a") shouldBe "B"
+            val commit = commitApi.getCommit("foo", "id")
+            getTag(commit, "a") shouldBe "B"
+        }
+
+        "push commit metadata succeeds" {
+            val op = operationApi.push("foo", "origin", "id", SshParameters(), true)
+            waitForOperation(op.id)
+        }
+
+        "remote commit metadata updated" {
+            val commit = commitApi.getCommit("foo", "id")
+            commit.id shouldBe "id"
+            getTag(commit, "a") shouldBe "B"
+            getTag(commit, "c") shouldBe "d"
         }
 
         "delete local commit succeeds" {
@@ -145,6 +178,18 @@ class SshWorkflowTest : EndToEndTest() {
 
         "pull original commit succeeds" {
             val op = operationApi.pull("foo", "origin", "id", SshParameters())
+            waitForOperation(op.id)
+        }
+
+        "pull same commit fails" {
+            val exception = shouldThrow<ClientException> {
+                operationApi.pull("foo", "origin", "id", SshParameters())
+            }
+            exception.code shouldBe "ObjectExistsException"
+        }
+
+        "pull of metadata only succeeds" {
+            val op = operationApi.pull("foo", "origin", "id", SshParameters(), true)
             waitForOperation(op.id)
         }
 
@@ -179,7 +224,6 @@ class SshWorkflowTest : EndToEndTest() {
             val commits = remoteApi.listRemoteCommits("foo", "origin", SshParameters(password = "root"))
             commits.size shouldBe 1
             commits[0].id shouldBe "id"
-            commits[0].properties["a"] shouldBe "b"
         }
 
         "list commits without password fails" {
@@ -206,7 +250,6 @@ class SshWorkflowTest : EndToEndTest() {
             val commits = remoteApi.listRemoteCommits("foo", "origin", SshParameters(key = key))
             commits.size shouldBe 1
             commits[0].id shouldBe "id"
-            commits[0].properties["a"] shouldBe "b"
         }
 
         "pull commit with key succeeds" {

@@ -168,7 +168,8 @@ class ZfsRepositoryManager(val provider: ZfsStorageProvider) {
      */
     fun getRepositoryStatus(name: String): RepositoryStatus {
         provider.validateRepositoryName(name)
-        val commits = provider.commitManager.listCommits(name)
+        // This is not particularly efficient, but we don't have a better way
+        val commits = provider.commitManager.listCommits(name, null)
         val latest = commits.getOrNull(0)?.id
         val guid = provider.getActive(name)
 

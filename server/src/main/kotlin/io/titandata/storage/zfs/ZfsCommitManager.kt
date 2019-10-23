@@ -9,6 +9,7 @@ import io.titandata.exception.NoSuchObjectException
 import io.titandata.exception.ObjectExistsException
 import io.titandata.models.Commit
 import io.titandata.models.CommitStatus
+import io.titandata.util.TagFilter
 import java.time.Instant
 import java.time.OffsetDateTime
 import java.time.format.DateTimeFormatter
@@ -159,8 +160,9 @@ class ZfsCommitManager(val provider: ZfsStorageProvider) {
      * components (since the "-d" option just limits the depth, and will include the root of the
      * list command as well.
      */
-    fun listCommits(repo: String): List<Commit> {
+    fun listCommits(repo: String, tags: List<String>?): List<Commit> {
         provider.validateRepositoryName(repo)
+        val filter = TagFilter(tags)
         try {
             val output = provider.executor.exec("zfs", "list", "-Ho",
                     "name,defer_destroy,$METADATA_PROP", "-t", "snapshot", "-d", "2",
@@ -170,7 +172,7 @@ class ZfsCommitManager(val provider: ZfsStorageProvider) {
             for (line in output.lines()) {
                 if (line != "") {
                     val commit = parseCommit(line)
-                    if (commit != null && commit.id != INITIAL_COMMIT) {
+                    if (commit != null && commit.id != INITIAL_COMMIT && filter.match(commit)) {
                         commits.add(commit)
                     }
                 }
@@ -264,5 +266,18 @@ class ZfsCommitManager(val provider: ZfsStorageProvider) {
                 }
             }
         }
+    }
+
+    /**
+     * Update the metadata for the given commit. This is generally used to change the tags, though it's up to the
+     * client so it could be used to update other parts of the metadata.
+     */
+    fun updateCommit(repo: String, commit: Commit) {
+        provider.validateRepositoryName(repo)
+        val guid = provider.getCommitGuid(repo, commit.id)
+        guid ?: throw NoSuchObjectException("no such commit '${commit.id}' in repository '$repo'")
+
+        val json = provider.gson.toJson(commit.properties)
+        provider.executor.exec("zfs", "set", "$METADATA_PROP=$json", "$poolName/repo/$repo/$guid@${commit.id}")
     }
 }

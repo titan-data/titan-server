@@ -19,7 +19,7 @@ import io.titandata.remote.BaseRemoteProvider
  * remotes will always return an empty list.
  */
 class NopRemoteProvider : BaseRemoteProvider() {
-    override fun listCommits(remote: Remote, params: RemoteParameters): List<Commit> {
+    override fun listCommits(remote: Remote, params: RemoteParameters, tags: List<String>?): List<Commit> {
         return listOf()
     }
 
@@ -31,17 +31,22 @@ class NopRemoteProvider : BaseRemoteProvider() {
         remote: Remote,
         commitId: String,
         opType: Operation.Type,
-        params: RemoteParameters
+        params: RemoteParameters,
+        metadataOnly: Boolean
     ) {
         // All operations always succeed
     }
 
-    override fun runOperation(operation: OperationExecutor) {
+    override fun startOperation(operation: OperationExecutor): Any? {
         operation.addProgress(ProgressEntry(ProgressEntry.Type.START, "Running operation"))
         val request = operation.params as NopParameters
         if (request.delay != 0) {
             Thread.sleep(request.delay * 1000L)
         }
+        return null
+    }
+
+    override fun endOperation(operation: OperationExecutor, data: Any?) {
         operation.addProgress(ProgressEntry(ProgressEntry.Type.END))
     }
 }

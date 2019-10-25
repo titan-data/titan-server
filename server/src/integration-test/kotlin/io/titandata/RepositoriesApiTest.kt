@@ -121,6 +121,7 @@ class RepositoriesApiTest : StringSpec() {
         }
 
         "get repository status succeeds" {
+            every { executor.exec(*anyVararg()) } returns ""
             every { executor.exec("zfs", "list", "-Ho", "name,defer_destroy,io.titan-data:metadata", "-t", "snapshot",
                     "-d", "2", "test/repo/foo") } returns "test/repo/foo/guid@hash\toff\t{}\n"
             every { executor.exec("zfs", "list", "-Ho", "io.titan-data:metadata",
@@ -140,7 +141,7 @@ class RepositoriesApiTest : StringSpec() {
                 response.status() shouldBe HttpStatusCode.OK
                 response.contentType().toString() shouldBe "application/json; charset=UTF-8"
                 response.content shouldBe "{\"logicalSize\":40,\"actualSize\":20," +
-                    "\"checkedOutFrom\":\"sourcehash\",\"lastCommit\":\"hash\",\"volumeStatus\":[" +
+                    "\"lastCommit\":\"hash\",\"sourceCommit\":\"sourcehash\",\"volumeStatus\":[" +
                 "{\"name\":\"v0\",\"logicalSize\":5,\"actualSize\":10,\"properties\":{\"path\":\"/var/a\"}}," +
                 "{\"name\":\"v1\",\"logicalSize\":8,\"actualSize\":16,\"properties\":{\"path\":\"/var/b\"}}]}"
             }

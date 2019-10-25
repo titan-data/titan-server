@@ -154,7 +154,7 @@ class S3RemoteProvider(val providers: ProviderModule) : BaseRemoteProvider() {
             } else {
                 gson.toJson(it)
             }
-        }.joinToString("\n")
+        }.joinToString("\n") + "\n"
 
         s3.putObject(bucket, getMetadataKey(key), metadata)
     }

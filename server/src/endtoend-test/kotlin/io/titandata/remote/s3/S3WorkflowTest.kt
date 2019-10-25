@@ -190,6 +190,11 @@ class S3WorkflowTest : EndToEndTest() {
             exception.code shouldBe "ObjectExistsException"
         }
 
+        "push same commit metadata succeeds" {
+            val op = operationApi.push("foo", "origin", "id", S3Parameters(), true)
+            waitForOperation(op.id)
+        }
+
         "create second commit succeeds" {
             commitApi.createCommit("foo", Commit(id = "id2", properties = mapOf()))
         }

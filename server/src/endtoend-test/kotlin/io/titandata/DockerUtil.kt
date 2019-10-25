@@ -166,7 +166,7 @@ class DockerUtil(
 
     fun startSsh() {
         executor.exec("docker", "run", "-p", "$sshPort:22", "-d", "--name", "$identity-ssh",
-                "sshtest:latest")
+                "titandata/ssh-test-server:latest")
     }
 
     fun testSsh(): Boolean {

@@ -179,16 +179,24 @@ class ZfsRepositoryManager(val provider: ZfsStorageProvider) {
         val logicalSize = fields[0].toLong()
         val actualSize = fields[1].toLong()
 
-        // List recursively all orgign datasets, as those will be present on volumes, not the repo dataset
-        val origins = provider.executor.exec("zfs", "list", "-Ho", "origin", "-r",
-                "$poolName/repo/$name/$guid")
-        var checkedOutFrom: String? = null
-        for (line in origins.lines()) {
-            if (line.contains("@")) {
-                val snapshot = line.trim().substringAfterLast("@")
-                if (snapshot != INITIAL_COMMIT) {
-                    checkedOutFrom = snapshot
-                    break
+        var sourceCommit: String? = null
+        // Check to see if we have a previous snapshot on this GUID. If so, that's the source commit
+        var lastSnap = provider.getLatestSnapshot("$poolName/repo/$name/$guid")
+        if (lastSnap != INITIAL_COMMIT) {
+            sourceCommit = lastSnap
+        }
+
+        // If there are no commits on this GUID, then the source commit is our origin
+        if (sourceCommit == null) {
+            val origins = provider.executor.exec("zfs", "list", "-Ho", "origin", "-r",
+                    "$poolName/repo/$name/$guid")
+            for (line in origins.lines()) {
+                if (line.contains("@")) {
+                    val snapshot = line.trim().substringAfterLast("@")
+                    if (snapshot != INITIAL_COMMIT) {
+                        sourceCommit = snapshot
+                        break
+                    }
                 }
             }
         }
@@ -216,7 +224,7 @@ class ZfsRepositoryManager(val provider: ZfsStorageProvider) {
         return RepositoryStatus(
                 logicalSize = logicalSize,
                 actualSize = actualSize,
-                checkedOutFrom = checkedOutFrom,
+                sourceCommit = sourceCommit,
                 lastCommit = latest,
                 volumeStatus = volumes
         )

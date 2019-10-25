@@ -144,6 +144,12 @@ class LocalWorkflowTest : EndToEndTest() {
             result shouldBe "Hello\n"
         }
 
+        "last commit should not be set" {
+            val status = repoApi.getRepositoryStatus("foo")
+            status.sourceCommit shouldBe null
+            status.lastCommit shouldBe null
+        }
+
         "create commit succeeds" {
             val commit = commitApi.createCommit("foo", Commit(id = "id",
                     properties = mapOf("tags" to mapOf("a" to "b", "c" to "d"))))
@@ -188,7 +194,7 @@ class LocalWorkflowTest : EndToEndTest() {
 
         "get repository status succeeds" {
             val status = repoApi.getRepositoryStatus("foo")
-            status.checkedOutFrom shouldBe null
+            status.sourceCommit shouldBe "id"
             status.lastCommit shouldBe "id"
             status.logicalSize shouldNotBe 0
             status.actualSize shouldNotBe 0
@@ -244,7 +250,7 @@ class LocalWorkflowTest : EndToEndTest() {
 
         "get repository status indicates source commit" {
             val status = repoApi.getRepositoryStatus("foo")
-            status.checkedOutFrom shouldBe "id"
+            status.sourceCommit shouldBe "id"
             status.lastCommit shouldBe "id"
         }
 

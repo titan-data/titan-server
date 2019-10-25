@@ -244,25 +244,17 @@ class ZfsCommitManager(val provider: ZfsStorageProvider) {
         provider.cloneCommit(repo, guid, commit, newGuid)
         provider.executor.exec("zfs", "set", "$ACTIVE_PROP=$newGuid", "$poolName/repo/$repo")
 
-        val output = provider.executor.exec("zfs", "list", "-pHo", "name,creation", "-t", "snapshot", "-d", "1",
-                "$poolName/repo/$repo/$active").trim()
+        val snap = provider.getLatestSnapshot("$poolName/repo/$repo/$active")
 
-        if (output == "") {
+        if (snap == null) {
             // If there were no active snapshots (and hence commits) on the previous active GUID, destroy it now.
             provider.executor.exec("zfs", "destroy", "-r", "$poolName/repo/$repo/$active")
         } else {
-            // Get the most recent snapshot
-            val snaps = output.split("\n").map {
-                it.trim().split("\t")
-            }
-            val sorted = snaps.sortedByDescending { it[1].toLong() }
-            val mostRecentSnap = sorted[0][0].substringAfterLast("@")
-
             // Now iterate over all children and rollback
             val datasets = provider.executor.exec("zfs", "list", "-Ho", "name", "-r", "$poolName/repo/$repo/$active")
             for (dataset in datasets.split("\n")) {
                 if (dataset.trim() != "") {
-                    provider.executor.exec("zfs", "rollback", "${dataset.trim()}@$mostRecentSnap")
+                    provider.executor.exec("zfs", "rollback", "${dataset.trim()}@$snap")
                 }
             }
         }

@@ -263,6 +263,25 @@ class ZfsStorageProvider(
         return executor.exec(process, argString)
     }
 
+    /**
+     * Return the latest snapshot for a given ZFS dataset.
+     */
+    fun getLatestSnapshot(dataset: String): String? {
+        val output = executor.exec("zfs", "list", "-pHo", "name,creation", "-t", "snapshot", "-d", "1",
+                dataset).trim()
+
+        if (output == "") {
+            return null
+        }
+
+        // Get the most recent snapshot
+        val snaps = output.split("\n").map {
+            it.trim().split("\t")
+        }
+        val sorted = snaps.sortedByDescending { it[1].toLong() }
+        return sorted[0][0].substringAfterLast("@")
+    }
+
     /*
      * The remainder of this class simply redirects methods to the appropriate helper class. They
      * are all annotated as synchronized as a simple (if incomplete) guard to prevent concurrent

@@ -35,7 +35,7 @@ class RsyncExecutor(
 ) : Runnable {
 
     companion object {
-        val log = LoggerFactory.getLogger(CommandExecutor::class.java)
+        val log = LoggerFactory.getLogger(RsyncExecutor::class.java)
     }
 
     private var tmpfile: File? = null

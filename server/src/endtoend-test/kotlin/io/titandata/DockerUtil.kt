@@ -38,7 +38,7 @@ class DockerUtil(
     }
 
     companion object {
-        val log = LoggerFactory.getLogger(CommandExecutor::class.java)
+        val log = LoggerFactory.getLogger(DockerUtil::class.java)
     }
 
     fun startTitan(entryPoint: String, daemon: Boolean): String {

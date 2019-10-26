@@ -176,7 +176,6 @@ class ZfsOperationManager(val provider: ZfsStorageProvider) {
     }
 
     fun createOperationScratch(repo: String, id: String): String {
-        // TODO reserve "_" in volume names
         val dataset = "$poolName/repo/$repo/$id/_scratch"
         provider.executor.exec("zfs", "create", dataset)
 

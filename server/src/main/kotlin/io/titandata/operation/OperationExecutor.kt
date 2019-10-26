@@ -5,6 +5,7 @@
 package io.titandata.operation
 
 import io.titandata.ProviderModule
+import io.titandata.exception.NoSuchObjectException
 import io.titandata.models.Commit
 import io.titandata.models.Operation
 import io.titandata.models.ProgressEntry
@@ -12,7 +13,6 @@ import io.titandata.models.Remote
 import io.titandata.models.RemoteParameters
 import io.titandata.remote.RemoteProvider
 import io.titandata.storage.OperationData
-import io.titandata.util.CommandExecutor
 import org.slf4j.LoggerFactory
 
 /*
@@ -31,7 +31,7 @@ class OperationExecutor(
 ) : Runnable {
 
     companion object {
-        val log = LoggerFactory.getLogger(CommandExecutor::class.java)
+        val log = LoggerFactory.getLogger(OperationExecutor::class.java)
     }
 
     private var thread: Thread? = null
@@ -44,19 +44,47 @@ class OperationExecutor(
         try {
             log.info("starting ${operation.type} operation ${operation.id}")
 
+            if (operation.type == Operation.Type.PULL) {
+                commit = provider.getCommit(remote, operation.commitId, params)
+            }
+
             if (!isResume) {
                 var localCommit: String? = null
                 if (operation.type == Operation.Type.PUSH) {
                     localCommit = operation.commitId
                 } else {
-                    // TODO figure out best local commit for pulls, not just latest
+                    /*
+                     * For pulls, we want to try to find the best possible source snapshot, so that incremental pulls
+                     * minimize the amount of storage changed. To do this, we rely on the CLI pushing metadat with a
+                     * "source" tag that indicates the source of the commmit. We chase this chain as far as we can
+                     * on the remote until we find a matching commit locally. In the event that the chain is broken on
+                     * the remote (because a commit has been deleted) or that we don't have any appropriate commits
+                     * locally, we simply use the latest commit and hope for the best.
+                     */
+                    try {
+                        var remoteCommit = commit!!
+                        while (localCommit == null && remoteCommit.properties.containsKey("tags")) {
+                            @Suppress("UNCHECKED_CAST")
+                            val tags = remoteCommit.properties["tags"] as Map<String, String>
+                            if (tags.containsKey("source")) {
+                                val source = tags["source"]!!
+                                try {
+                                    localCommit = providers.storage.getCommit(repo, source).id
+                                } catch (e: NoSuchObjectException) {
+                                    // Ignore local commits that don't exist and continue down chain
+                                }
+                                remoteCommit = provider.getCommit(remote, source, params)
+                            } else {
+                                break
+                            }
+                        }
+                    } catch (e: NoSuchObjectException) {
+                        // If we can't find a remote commit in the chain, then default to latest
+                    }
                 }
+
                 providers.storage.createOperation(repo, OperationData(operation = operation,
                         params = params, metadataOnly = metadataOnly), localCommit)
-            }
-
-            if (operation.type == Operation.Type.PULL) {
-                commit = provider.getCommit(remote, operation.commitId, params)
             }
 
             operationData = provider.startOperation(this)

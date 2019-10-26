@@ -254,8 +254,6 @@ class ZfsRepositoryManager(val provider: ZfsStorageProvider) {
     /**
      * Delete a repository. We use the '-R' flag to 'zfs destroy' to destroy all clones in the
      * appropriate order.
-     *
-     * TODO remove all directories underneath the mountpoint
      */
     fun deleteRepository(name: String) {
         provider.validateRepositoryName(name)
@@ -268,7 +266,7 @@ class ZfsRepositoryManager(val provider: ZfsStorageProvider) {
 
         // Try to delete the directory, but it may not exist if no volumes have been created
         try {
-            provider.executor.exec("rmdir", provider.getMountpoint(name))
+            provider.executor.exec("rm", "-rf", provider.getMountpoint(name))
         } catch (e: CommandException) {
             if (!e.output.contains("No such file or directory")) {
                 throw e

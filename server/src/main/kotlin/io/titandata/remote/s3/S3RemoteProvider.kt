@@ -224,7 +224,6 @@ class S3RemoteProvider(val providers: ProviderModule) : BaseRemoteProvider() {
 
         operation.addProgress(ProgressEntry(type = ProgressEntry.Type.START,
                 message = "Uploading archive for $desc"))
-        // TODO - progress monitoring
         data.s3.putObject(data.bucket, "${data.key}/${volume.name}.tar.gz", File(archive))
         operation.addProgress(ProgressEntry(type = ProgressEntry.Type.END))
     }
@@ -237,7 +236,6 @@ class S3RemoteProvider(val providers: ProviderModule) : BaseRemoteProvider() {
 
         val archive = "$scratchPath/${volume.name}.tar.gz"
         val obj = data.s3.getObject(data.bucket, "${data.key}/${volume.name}.tar.gz")
-        // TODO - progress monitoring
         obj.objectContent.use { input ->
             File(archive).outputStream().use { output ->
                 input.copyTo(output)

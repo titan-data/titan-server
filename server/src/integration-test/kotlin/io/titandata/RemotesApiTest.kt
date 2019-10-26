@@ -226,7 +226,10 @@ class RemotesApiTest : StringSpec() {
         "delete remote succeeds" {
             every { executor.start(*anyVararg()) } returns mockk()
             every { executor.exec(any<Process>(), any()) } returns ""
-            every { executor.exec(*anyVararg()) } returns
+            every { executor.exec(*anyVararg()) } returns ""
+            every { executor.exec("zfs", "list", "-Ho", "name,io.titan-data:metadata",
+                    "test/repo/repo") } returns "test/repo/repo\t{}"
+            every { executor.exec("zfs", "list", "-Ho", "io.titan-data:remotes", "test/repo/repo") } returns
                     "[{\"provider\":\"nop\",\"name\":\"foo\"}," +
                     "{\"provider\":\"engine\",\"name\":\"bar\",\"address\":\"a\"," +
                     "\"username\":\"u\",\"password\":\"p\"}]"

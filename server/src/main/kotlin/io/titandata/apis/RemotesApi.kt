@@ -90,7 +90,13 @@ fun Route.RemotesApi(providers: ProviderModule) {
             if (idx == null) {
                 throw NoSuchObjectException("no such remote '$remoteName' in repository '$repo'")
             }
-            // TODO cancel any in-flight operations
+
+            for (op in providers.operation.listOperations(repo)) {
+                if (op.remote == remoteName) {
+                    providers.operation.abortOperation(repo, op.id)
+                }
+            }
+
             remotes.removeAt(idx)
             providers.storage.updateRemotes(repo, remotes)
             call.respond(HttpStatusCode.NoContent)

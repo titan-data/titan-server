@@ -244,15 +244,6 @@ class EngineWorkflowTest : EndToEndTest() {
             exception.code shouldBe "IllegalArgumentException"
         }
 
-        /* TODO - we're not mapping login errors correctly in the SDK
-        "list commits with incorrect password fails" {
-            val exception = shouldThrow<ServerException> {
-                remoteApi.listRemoteCommits("foo", "origin", EngineParameters(password = "bar"))
-            }
-            exception.code shouldBe "CommandException"
-        }
-         */
-
         "delete volume succeeds" {
             volumeApi.unmountVolume(VolumeMountRequest(name = "foo/vol"))
             volumeApi.removeVolume(VolumeRequest(name = "foo/vol"))

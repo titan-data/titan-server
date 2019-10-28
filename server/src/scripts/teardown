@@ -10,21 +10,23 @@
 #   * Uninstall ZFS modules, if we were responsible for installing them in the first place
 #   * Remove the local, including the underlying datafile
 #
-# It should be run as part of 'titan uninstall', as well as after endtoend tests. It is up to
-# the user to make sure all repositories are destroyed prior to invoking this, otherwise it
-# could get an EBUSY error.
+# It should be run as part of 'titan uninstall', as well as after endtoend tests.
 
 source $(dirname $0)/zfs.sh
 source $(dirname $0)/titan.sh
 source $(dirname $0)/util.sh
 
 if pool_exists $POOL; then
+  echo "Unmounting all ZFS filesystems"
+  unmount_filesystems $POOL
   echo "Destroying pool $POOL"
   destroy_pool $POOL  || log_error "Failed to destroy storage pool"
   rm -f $POOL_DIR/data || log_error "Failed to remove pool data file"
   rm -f $POOL_DIR/cachefile || log_error "Failed to remove pool cache file"
 fi
 
+echo "Removing titan network"
+remove_network $IDENTITY
 echo "Unbinding mounts"
 unbind_mounts $MNT_DIR
 echo "Unloading ZFS"

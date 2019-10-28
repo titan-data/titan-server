@@ -106,6 +106,9 @@ bind_mounts $MNT_DIR
 check_zfs
 create_import_pool $POOL $POOL_DIR $MNT_DIR
 
+# Create our network
+create_network $IDENTITY
+
 # Launch the server
 launch_server $IDENTITY $POOL $PORT $IMAGE $MNT_DIR
 

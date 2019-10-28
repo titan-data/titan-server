@@ -86,6 +86,24 @@ function unbind_mounts() {
 }
 
 #
+# Creates a bridge network specifically for titan. This is not generally required for normal operation, but provides
+# better isolation and makes endtoend testing easier by providing an isolated network within which to run the
+# SSH server.
+#
+function create_network() {
+  local identity=$1
+  docker network inspect $identity || docker network create $identity || log_error "failed to create $identity network"
+}
+
+#
+# Remove the bridge network created for the titan server.
+#
+function remove_network() {
+  local identity=$1
+  docker network rm $identity
+}
+
+#
 # Launch the actual titan server.
 #
 function launch_server() {
@@ -110,6 +128,7 @@ function launch_server() {
       -v $mount:$mount:rshared \
       -e TITAN_POOL=$pool \
       -p $port:5001 \
+      --network $identity \
       $image \
       /titan/run
 }

@@ -4,10 +4,10 @@
 
 package io.titandata
 
+import com.google.gson.GsonBuilder
 import com.jcraft.jsch.JSch
 import io.titandata.exception.CommandException
 import io.titandata.util.CommandExecutor
-import java.net.InetAddress
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.slf4j.LoggerFactory
@@ -30,8 +30,7 @@ class DockerUtil(
     private val timeout = 1000L
     private val sshUser = "root"
     private val sshPassword = "root"
-    val sshHost: String
-        get() = InetAddress.getLocalHost().hostAddress
+    private val gson = GsonBuilder().create()
 
     fun url(path: String): String {
         return "http://localhost:$port/v1/$path"
@@ -166,7 +165,7 @@ class DockerUtil(
 
     fun startSsh() {
         executor.exec("docker", "run", "-p", "$sshPort:22", "-d", "--name", "$identity-ssh",
-                "titandata/ssh-test-server:latest")
+                "--network", "$identity", "titandata/ssh-test-server:latest")
     }
 
     fun testSsh(): Boolean {
@@ -202,7 +201,12 @@ class DockerUtil(
         }
     }
 
+    fun getSshHost(): String {
+        return executor.exec("docker", "inspect", "-f", "{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}",
+                "$identity-ssh").trim()
+    }
+
     fun getSshUri(): String {
-        return "ssh://root:root@$sshHost:$sshPort"
+        return "ssh://root:root@${getSshHost()}"
     }
 }

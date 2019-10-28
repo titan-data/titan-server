@@ -85,10 +85,10 @@ class SshWorkflowTest : EndToEndTest() {
 
             val remote = RemoteUtil().parseUri("${dockerUtil.getSshUri()}/bar", "origin", mapOf())
             val sshRemote = remote as SshRemote
-            sshRemote.address shouldBe dockerUtil.sshHost
+            sshRemote.address shouldBe dockerUtil.getSshHost()
             sshRemote.password shouldBe "root"
             sshRemote.username shouldBe "root"
-            sshRemote.port shouldBe 6003
+            sshRemote.port shouldBe null
             sshRemote.name shouldBe "origin"
 
             remoteApi.createRemote("foo", remote)
@@ -209,12 +209,12 @@ class SshWorkflowTest : EndToEndTest() {
         }
 
         "add remote without password succeeds" {
-            val remote = SshRemote(address = dockerUtil.sshHost, username = "root",
-                    port = 6003, name = "origin", path = "/bar")
-            remote.address shouldBe dockerUtil.sshHost
+            val remote = SshRemote(address = dockerUtil.getSshHost(), username = "root",
+                    name = "origin", path = "/bar")
+            remote.address shouldBe dockerUtil.getSshHost()
             remote.password shouldBe null
             remote.username shouldBe "root"
-            remote.port shouldBe 6003
+            remote.port shouldBe null
             remote.name shouldBe "origin"
 
             remoteApi.createRemote("foo", remote)

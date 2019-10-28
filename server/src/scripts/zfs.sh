@@ -341,3 +341,14 @@ function unload_zfs() {
   fi
   return 0
 }
+
+#
+# Unmounts all filesystems within the pool. This is only used during teardown, as a stopgap measure
+#
+function unmount_filesystems() {
+  local pool=$1
+  local dirs=$(mount -t zfs | grep ^$pool | awk '{print $3}')
+  for dir in $dirs; do
+     nsenter -m -u -t 1 -n -i umount $dir
+  done
+}

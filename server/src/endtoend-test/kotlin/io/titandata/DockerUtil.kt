@@ -4,7 +4,6 @@
 
 package io.titandata
 
-import com.google.gson.GsonBuilder
 import com.jcraft.jsch.JSch
 import io.titandata.exception.CommandException
 import io.titandata.util.CommandExecutor
@@ -30,7 +29,6 @@ class DockerUtil(
     private val timeout = 1000L
     private val sshUser = "root"
     private val sshPassword = "root"
-    private val gson = GsonBuilder().create()
 
     fun url(path: String): String {
         return "http://localhost:$port/v1/$path"

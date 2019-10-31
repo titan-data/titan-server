@@ -3,19 +3,27 @@ package io.titandata.orchestrator
 import io.titandata.ProviderModule
 import io.titandata.models.Repository
 import io.titandata.models.RepositoryStatus
+import org.jetbrains.exposed.sql.transactions.transaction
 
 class RepositoryOrchestrator(val providers: ProviderModule) {
 
     fun createRepository(repo: Repository) {
+        transaction {
+            providers.metadata.createRepository(repo)
+        }
         providers.storage.createRepository(repo)
     }
 
     fun listRepositories(): List<Repository> {
-        return providers.storage.listRepositories()
+        return transaction {
+            providers.metadata.listRepositories()
+        }
     }
 
     fun getRepository(name: String): Repository {
-        return providers.storage.getRepository(name)
+        return transaction {
+            providers.metadata.getRepository(name)
+        }
     }
 
     fun getRepositoryStatus(name: String): RepositoryStatus {
@@ -27,6 +35,9 @@ class RepositoryOrchestrator(val providers: ProviderModule) {
     }
 
     fun deleteRepository(name: String) {
+        transaction {
+            providers.metadata.deleteRepository(name)
+        }
         providers.storage.deleteRepository(name)
     }
 }

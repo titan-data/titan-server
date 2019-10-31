@@ -64,6 +64,7 @@ class OperationsApiTest : StringSpec() {
     override fun beforeSpec(spec: Spec) {
         with(engine) {
             start()
+            providers.metadata.init()
             application.mainProvider(providers)
         }
     }

@@ -3,6 +3,8 @@ package io.titandata.metadata
 import com.zaxxer.hikari.HikariConfig
 import com.zaxxer.hikari.HikariDataSource
 import org.jetbrains.exposed.sql.Database
+import org.jetbrains.exposed.sql.SchemaUtils
+import io.titandata.metadata.table.Repositories
 
 /*
  * The metadata provider is responsible for persistence of all metadata to the titan database.
@@ -40,5 +42,8 @@ class MetadataProvider(val inMemory:Boolean = true) {
             Database.connect(persistentConfig())
         }
 
+        transaction {
+            SchemaUtils.createMissingTablesAndColumns(Repositories())
+        }
     }
 }

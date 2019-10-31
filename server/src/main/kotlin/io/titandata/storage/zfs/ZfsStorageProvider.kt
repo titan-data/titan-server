@@ -299,24 +299,8 @@ class ZfsStorageProvider(
     }
 
     @Synchronized
-    override fun listRepositories(): List<Repository> {
-        return repositoryManager.listRepositories()
-    }
-
-    @Synchronized
-    override fun getRepository(name: String): Repository {
-        return repositoryManager.getRepository(name)
-    }
-
-    @Synchronized
     override fun getRepositoryStatus(name: String): RepositoryStatus {
         return repositoryManager.getRepositoryStatus(name)
-    }
-
-    @Synchronized
-    override fun updateRepository(name: String, repo: Repository) {
-        log.info("update repository $name")
-        repositoryManager.updateRepository(name, repo)
     }
 
     @Synchronized

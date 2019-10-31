@@ -26,8 +26,11 @@ import io.mockk.every
 import io.mockk.impl.annotations.InjectMockKs
 import io.mockk.impl.annotations.MockK
 import io.mockk.impl.annotations.OverrideMockKs
+import io.mockk.impl.annotations.SpyK
 import io.mockk.mockk
 import io.mockk.verify
+import io.titandata.metadata.MetadataProvider
+import io.titandata.models.Repository
 import io.titandata.remote.engine.EngineRemoteProvider
 import io.titandata.storage.zfs.ZfsStorageProvider
 import io.titandata.util.CommandExecutor
@@ -42,6 +45,9 @@ class RemotesApiTest : StringSpec() {
     @InjectMockKs
     @OverrideMockKs
     var zfsStorageProvider = ZfsStorageProvider("test")
+
+    @SpyK
+    var metadata = MetadataProvider()
 
     @MockK
     lateinit var engineRemoteProvider: EngineRemoteProvider
@@ -225,6 +231,7 @@ class RemotesApiTest : StringSpec() {
         }
 
         "delete remote succeeds" {
+            every { metadata.getRepository("repo") } returns Repository(name = "repo", properties = mapOf())
             every { executor.start(*anyVararg()) } returns mockk()
             every { executor.exec(any<Process>(), any()) } returns ""
             every { executor.exec(*anyVararg()) } returns ""

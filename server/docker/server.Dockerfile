@@ -45,9 +45,6 @@ RUN apt-get -y install postgresql-12 postgresql-client-12
 # Titan software installation and configuration
 ################################################
 
-RUN DEBIAN_FRONTEND=noninteractive apt-get -y install tzdata
-RUN apt-get -y install postgresql-10
-
 COPY build/libs/titan-server.jar /titan/
 COPY src/scripts/* /titan/
 

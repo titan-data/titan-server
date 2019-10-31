@@ -18,6 +18,9 @@ RUN add-apt-repository \
 RUN apt-get -y update --fix-missing
 RUN apt-get -y install docker-ce
 
+RUN DEBIAN_FRONTEND=noninteractive apt-get -y install tzdata
+RUN apt-get -y install postgresql-10
+
 COPY build/libs/titan-server.jar /titan/
 COPY src/scripts/* /titan/
 

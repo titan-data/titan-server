@@ -185,7 +185,19 @@ function create_pool() {
   local cachefile=$4
   zpool create -m $mountpoint -o cachefile=$cachefile $pool $data
   zfs create -o mountpoint=none -o compression=lz4 $pool/repo
-  zfs create -o mountpoint=none $pool/deathrow
+  zfs create -o mountpoint=none $pool/db
+}
+
+#
+# Update an existing pool that may have been created on an ealier version.
+#
+function update_pool() {
+  local pool=$1
+
+  # We didn't end up using this space, remove it now
+  zfs list $pool/deathrow > /dev/null 2>&1 && zfs destroy $pool/deathrow
+  # Create the db filesystem if it doesn't exist
+  zfs list $pool/db > /dev/null 2>&1 || zfs create -o mountpoint=none $pool/db
 }
 
 #

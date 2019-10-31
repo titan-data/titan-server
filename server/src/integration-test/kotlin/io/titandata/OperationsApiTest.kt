@@ -74,7 +74,7 @@ class OperationsApiTest : StringSpec() {
     }
 
     override fun beforeTest(testCase: TestCase) {
-        providers.operation.clearState()
+        providers.operations.clearState()
         return MockKAnnotations.init(this)
     }
 
@@ -106,7 +106,7 @@ class OperationsApiTest : StringSpec() {
                 arrayOf("test/repo/$repo/guid\t-", "test/repo/$repo/guid/v0\t{}", "test/repo/$repo/guid/v1\t{}").joinToString("\n")
         every { executor.exec("zfs", "list", "-Ho", "io.titan-data:metadata",
                 any()) } returns "{\"a\":\"b\"}\n"
-        providers.operation.loadState()
+        providers.operations.loadState()
     }
 
     fun loadTestOperations() {

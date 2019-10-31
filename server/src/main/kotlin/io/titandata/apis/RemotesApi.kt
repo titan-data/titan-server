@@ -15,13 +15,8 @@ import io.ktor.routing.get
 import io.ktor.routing.post
 import io.ktor.routing.route
 import io.titandata.ProviderModule
-import io.titandata.exception.NoSuchObjectException
-import io.titandata.exception.ObjectExistsException
 import io.titandata.models.Remote
 import io.titandata.models.RemoteParameters
-import java.time.Instant
-import java.time.OffsetDateTime
-import java.time.format.DateTimeFormatter
 
 /**
  * The remotes API is slightly more substantial because while we expose a more complete CRUD
@@ -44,30 +39,15 @@ fun Route.RemotesApi(providers: ProviderModule) {
         return call.parameters["commitId"] ?: throw IllegalArgumentException("missing commitId parameter")
     }
 
-    fun findRemote(repo: String, remote: String): Pair<MutableList<Remote>, Int?> {
-        val remotes = providers.storage.getRemotes(repo).toMutableList()
-        remotes.forEachIndexed { idx, r ->
-            if (r.name == remote) {
-                return Pair(remotes, idx)
-            }
-        }
-        return Pair(remotes, null)
-    }
-
     route("/v1/repositories/{repositoryName}/remotes") {
         get {
-            call.respond(providers.storage.getRemotes(getRepoName(call)))
+            call.respond(providers.remotes.listRemotes(getRepoName(call)))
         }
 
         post {
             val repo = getRepoName(call)
             val remote = call.receive(Remote::class)
-            val (remotes, idx) = findRemote(repo, remote.name)
-            if (idx != null) {
-                throw ObjectExistsException("remote '${remote.name}' exists for repository '$repo'")
-            }
-            remotes.add(remote)
-            providers.storage.updateRemotes(repo, remotes)
+            providers.remotes.addRemote(repo, remote)
             call.respond(HttpStatusCode.Created, remote)
         }
     }
@@ -76,29 +56,13 @@ fun Route.RemotesApi(providers: ProviderModule) {
         get {
             val repo = getRepoName(call)
             val remoteName = getRemoteName(call)
-            val (remotes, idx) = findRemote(repo, remoteName)
-            if (idx == null) {
-                throw NoSuchObjectException("no such remote '$remoteName' in repository '$repo'")
-            }
-            call.respond(remotes[idx])
+            call.respond(providers.remotes.getRemote(repo, remoteName))
         }
 
         delete {
             val repo = getRepoName(call)
             val remoteName = getRemoteName(call)
-            val (remotes, idx) = findRemote(repo, remoteName)
-            if (idx == null) {
-                throw NoSuchObjectException("no such remote '$remoteName' in repository '$repo'")
-            }
-
-            for (op in providers.operation.listOperations(repo)) {
-                if (op.remote == remoteName) {
-                    providers.operation.abortOperation(repo, op.id)
-                }
-            }
-
-            remotes.removeAt(idx)
-            providers.storage.updateRemotes(repo, remotes)
+            providers.remotes.removeRemote(repo, remoteName)
             call.respond(HttpStatusCode.NoContent)
         }
 
@@ -106,19 +70,7 @@ fun Route.RemotesApi(providers: ProviderModule) {
             val repo = getRepoName(call)
             val remoteName = getRemoteName(call)
             val remote = call.receive(Remote::class)
-
-            val (remotes, idx) = findRemote(repo, remoteName)
-            if (idx == null) {
-                throw NoSuchObjectException("no such remote '$remoteName' in repository '$repo'")
-            }
-            if (remoteName != remote.name) {
-                val (_, newIdx) = findRemote(repo, remote.name)
-                if (newIdx != null) {
-                    throw ObjectExistsException("remote '$remoteName' already exists for repository '$repo'")
-                }
-            }
-            remotes[idx] = remote
-            providers.storage.updateRemotes(repo, remotes)
+            providers.remotes.updateRemote(repo, remoteName, remote)
             call.respond(remote)
         }
     }
@@ -127,18 +79,10 @@ fun Route.RemotesApi(providers: ProviderModule) {
         get {
             val repo = getRepoName(call)
             val remoteName = getRemoteName(call)
-            val (remotes, idx) = findRemote(repo, remoteName)
-            if (idx == null) {
-                throw NoSuchObjectException("no such remote '$remoteName' in repository '$repo'")
-            }
-            val remote = remotes[idx]
             val params = providers.gson.fromJson(call.request.headers["titan-remote-parameters"],
                     RemoteParameters::class.java)
             val tags = call.request.queryParameters.getAll("tag")
-            val commits = providers.remote(remote.provider).listCommits(remote, params, tags)
-            call.respond(commits.sortedByDescending { OffsetDateTime.parse(it.properties.get("timestamp")?.toString()
-                    ?: DateTimeFormatter.ISO_INSTANT.format(Instant.ofEpochSecond(0)),
-                    DateTimeFormatter.ISO_DATE_TIME) })
+            call.respond(providers.remotes.listRemoteCommits(repo, remoteName, params, tags))
         }
     }
 
@@ -147,15 +91,9 @@ fun Route.RemotesApi(providers: ProviderModule) {
             val repo = getRepoName(call)
             val remoteName = getRemoteName(call)
             val commitId = getCommitId(call)
-            val (remotes, idx) = findRemote(repo, remoteName)
-            if (idx == null) {
-                throw NoSuchObjectException("no such remote '$remoteName' in repository '$repo'")
-            }
-            val remote = remotes[idx]
             val params = providers.gson.fromJson(call.request.headers["titan-remote-parameters"],
                     RemoteParameters::class.java)
-            val commit = providers.remote(remote.provider).getCommit(remote, commitId, params)
-            call.respond(commit)
+            call.respond(providers.remotes.getRemoteCommit(repo, remoteName, params, commitId))
         }
     }
 }

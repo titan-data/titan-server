@@ -38,7 +38,11 @@ import io.titandata.exception.ObjectExistsException
 import io.titandata.metadata.MetadataProvider
 import io.titandata.models.Error
 import io.titandata.models.VolumeResponse
-import io.titandata.operation.OperationProvider
+import io.titandata.orchestrator.CommitOrchestrator
+import io.titandata.orchestrator.OperationOrchestrator
+import io.titandata.orchestrator.RemoteOrchestrator
+import io.titandata.orchestrator.RepositoryOrchestrator
+import io.titandata.orchestrator.VolumeOrchestrator
 import io.titandata.remote.RemoteProvider
 import io.titandata.remote.engine.EngineRemoteProvider
 import io.titandata.remote.nop.NopRemoteProvider
@@ -72,10 +76,15 @@ class ProviderModule(pool: String, inMemory: Boolean = true) {
     private val nopRemoteProvider = NopRemoteProvider()
     private val engineRemoteProvider = EngineRemoteProvider(this)
     private val sshRemoteProvider = SshRemoteProvider(this)
-    private val operationProvider = OperationProvider(this)
     private val s3Provider = S3RemoteProvider(this)
     private val s3WebProvider = S3WebRemoteProvider(this)
     private val metadataProvider = MetadataProvider(inMemory)
+
+    val commits = CommitOrchestrator(this)
+    val repositories = RepositoryOrchestrator(this)
+    val operations = OperationOrchestrator(this)
+    val volumes = VolumeOrchestrator(this)
+    val remotes = RemoteOrchestrator(this)
 
     val gson = ModelTypeAdapters.configure(GsonBuilder()).create()
     val commandExecutor = CommandExecutor()
@@ -83,10 +92,6 @@ class ProviderModule(pool: String, inMemory: Boolean = true) {
     // Return the default storage provider
     val storage: StorageProvider
         get() = zfsStorageProvider
-
-    // Return the operation provider
-    val operation: OperationProvider
-        get() = operationProvider
 
     // Return the metadata provider
     val metadata: MetadataProvider
@@ -130,7 +135,7 @@ fun Application.main() {
     val providers = ProviderModule(System.getenv("TITAN_POOL") ?: "titan", false)
     providers.metadata.init()
     providers.storage.load()
-    providers.operation.loadState()
+    providers.operations.loadState()
     mainProvider(providers)
 }
 

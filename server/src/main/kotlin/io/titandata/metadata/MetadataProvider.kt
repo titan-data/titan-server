@@ -2,16 +2,17 @@ package io.titandata.metadata
 
 import com.zaxxer.hikari.HikariConfig
 import com.zaxxer.hikari.HikariDataSource
+import io.titandata.metadata.table.Repositories
 import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.SchemaUtils
-import io.titandata.metadata.table.Repositories
+import org.jetbrains.exposed.sql.transactions.transaction
 
 /*
  * The metadata provider is responsible for persistence of all metadata to the titan database.
  */
-class MetadataProvider(val inMemory:Boolean = true) {
+class MetadataProvider(val inMemory: Boolean = true) {
 
-    private fun memoryConfig() : HikariDataSource {
+    private fun memoryConfig(): HikariDataSource {
         val config = HikariConfig()
         config.driverClassName = "org.h2.Driver"
         config.jdbcUrl = "jdbc:h2:mem:titan"
@@ -22,7 +23,7 @@ class MetadataProvider(val inMemory:Boolean = true) {
         return HikariDataSource(config)
     }
 
-    private fun persistentConfig() : HikariDataSource {
+    private fun persistentConfig(): HikariDataSource {
         val config = HikariConfig()
         config.driverClassName = "org.postgresql.Driver"
         config.jdbcUrl = "jdbc:postgresql:titan"

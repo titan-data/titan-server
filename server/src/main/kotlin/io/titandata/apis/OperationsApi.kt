@@ -21,7 +21,7 @@ fun Route.OperationsApi(@Suppress("UNUSED_PARAMETER") providers: ProviderModule)
     route("/v1/repositories/{repositoryName}/operations") {
         get {
             val repo = call.parameters["repositoryName"] ?: throw IllegalArgumentException("missing repository name parameter")
-            call.respond(providers.operation.listOperations(repo))
+            call.respond(providers.operations.listOperations(repo))
         }
     }
 
@@ -29,14 +29,14 @@ fun Route.OperationsApi(@Suppress("UNUSED_PARAMETER") providers: ProviderModule)
         delete {
             val repo = call.parameters["repositoryName"] ?: throw IllegalArgumentException("missing repository name parameter")
             val operation = call.parameters["operationId"] ?: throw IllegalArgumentException("missing operation id parameter")
-            providers.operation.abortOperation(repo, operation)
+            providers.operations.abortOperation(repo, operation)
             call.respond(HttpStatusCode.NoContent)
         }
 
         get {
             val repo = call.parameters["repositoryName"] ?: throw IllegalArgumentException("missing repository name parameter")
             val operation = call.parameters["operationId"] ?: throw IllegalArgumentException("missing operation id parameter")
-            call.respond(providers.operation.getOperation(repo, operation))
+            call.respond(providers.operations.getOperation(repo, operation))
         }
     }
 
@@ -44,7 +44,7 @@ fun Route.OperationsApi(@Suppress("UNUSED_PARAMETER") providers: ProviderModule)
         get {
             val repo = call.parameters["repositoryName"] ?: throw IllegalArgumentException("missing repository name parameter")
             val operation = call.parameters["operationId"] ?: throw IllegalArgumentException("missing operation id parameter")
-            call.respond(providers.operation.getProgress(repo, operation))
+            call.respond(providers.operations.getProgress(repo, operation))
         }
     }
 
@@ -59,7 +59,7 @@ fun Route.OperationsApi(@Suppress("UNUSED_PARAMETER") providers: ProviderModule)
             } else {
                 false
             }
-            call.respond(providers.operation.startPull(repo, remote, commitId, params, metadataOnly))
+            call.respond(providers.operations.startPull(repo, remote, commitId, params, metadataOnly))
         }
     }
 
@@ -74,7 +74,7 @@ fun Route.OperationsApi(@Suppress("UNUSED_PARAMETER") providers: ProviderModule)
             } else {
                 false
             }
-            call.respond(providers.operation.startPush(repo, remote, commitId, params, metadataOnly))
+            call.respond(providers.operations.startPush(repo, remote, commitId, params, metadataOnly))
         }
     }
 }

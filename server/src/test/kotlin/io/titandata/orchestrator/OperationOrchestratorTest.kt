@@ -2,7 +2,7 @@
  * Copyright The Titan Project Contributors.
  */
 
-package io.titandata.operation
+package io.titandata.orchestrator
 
 import io.kotlintest.TestCase
 import io.kotlintest.TestCaseOrder
@@ -28,6 +28,7 @@ import io.titandata.models.Operation
 import io.titandata.models.ProgressEntry
 import io.titandata.models.Repository
 import io.titandata.models.Volume
+import io.titandata.operation.OperationExecutor
 import io.titandata.remote.engine.EngineParameters
 import io.titandata.remote.nop.NopParameters
 import io.titandata.remote.nop.NopRemote
@@ -36,7 +37,7 @@ import io.titandata.storage.OperationData
 import io.titandata.storage.zfs.ZfsStorageProvider
 import io.titandata.util.GuidGenerator
 
-class OperationProviderTest : StringSpec() {
+class OperationOrchestratorTest : StringSpec() {
 
     @SpyK
     var generator: GuidGenerator = GuidGenerator()
@@ -53,10 +54,10 @@ class OperationProviderTest : StringSpec() {
 
     @InjectMockKs
     @OverrideMockKs
-    lateinit var provider: OperationProvider
+    lateinit var provider: OperationOrchestrator
 
     override fun beforeTest(testCase: TestCase) {
-        provider = OperationProvider(providers)
+        provider = OperationOrchestrator(providers)
         return MockKAnnotations.init(this)
     }
 

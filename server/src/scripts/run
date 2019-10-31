@@ -32,15 +32,19 @@ function start_database() {
   if [[ ! -f $DB_DIR/postgresql.conf ]]; then
     echo "Initializing database at $DB_DIR"
     chown postgres $DB_DIR
-    su - postgres -c "/usr/lib/postgresql/10/bin/pg_ctl -D $DB_DIR initdb" || exit 1
+    su - postgres -c "/usr/lib/postgresql/12/bin/pg_ctl -D $DB_DIR initdb" || exit 1
     CREATE_DB=true
   fi
 
   # Start postgres
   echo "Starting postgres"
   rm -f $DB_DIR/postmaster.pid
-  su - postgres -c "/usr/lib/postgresql/10/bin/pg_ctl -D $DB_DIR -l /var/log/postgresql/logfile start" || exit 1
-  [[ $CREATE_DB == "true" ]] && su - postgres -c "/usr/lib/postgresql/10/bin/createdb titan"
+  su - postgres -c "/usr/lib/postgresql/12/bin/pg_ctl -D $DB_DIR -l /var/log/postgresql/logfile start"
+  if [[ $? == 1 ]]; then
+    cat /var/log/postgresql/logfile
+    exit 1
+  fi
+  [[ $CREATE_DB == "true" ]] && su - postgres -c "/usr/lib/postgresql/12/bin/createdb titan"
   echo "Postgres started"
 }
 

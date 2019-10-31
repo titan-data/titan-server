@@ -1,7 +1,7 @@
 val ktlint by configurations.creating
 
 dependencies {
-    ktlint("com.pinterest:ktlint:0.34.2")
+    ktlint("com.pinterest:ktlint:0.35.0")
 }
 
 var ktlintTask = tasks.register<JavaExec>("ktlint") {

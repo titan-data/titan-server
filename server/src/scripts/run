@@ -4,6 +4,55 @@
 # Main entry point for the titan server.
 #
 
+DB_DIR=/var/lib/$TITAN_POOL/mnt/_db
+
+#
+# Mount the database filesystem for the titan server. We only do this if the pool is configured, so that titan-server
+# can run without ZFS if needed.
+#
+function mount_database() {
+  zfs list $TITAN_POOL >/dev/null 2>&1
+  if [[ $? == 0 ]]; then
+    mount | grep ^$TITAN_POOL/db > /dev/null
+    if [[ $? != 0 ]]; then
+      echo "Mounting $TITAN_POOL/db at $DB_DIR"
+      mkdir -p $DB_DIR
+      mount -t zfs $TITAN_POOL/db $DB_DIR || log_error "failed to mount database directory"
+    fi
+  fi
+}
+
+
+#
+# Initialize the database
+#
+function start_database() {
+  CREATE_DB=false
+  mkdir -p $DB_DIR
+  if [[ ! -f $DB_DIR/postgresql.conf ]]; then
+    echo "Initializing database at $DB_DIR"
+    chown postgres $DB_DIR
+    su - postgres -c "/usr/lib/postgresql/12/bin/pg_ctl -D $DB_DIR initdb" || exit 1
+    CREATE_DB=true
+  fi
+
+  # Start postgres
+  echo "Starting postgres"
+  rm -f $DB_DIR/postmaster.pid
+  su - postgres -c "/usr/lib/postgresql/12/bin/pg_ctl -D $DB_DIR -l /var/log/postgresql/logfile start"
+  if [[ $? == 1 ]]; then
+    cat /var/log/postgresql/logfile
+    exit 1
+  fi
+  [[ $CREATE_DB == "true" ]] && su - postgres -c "/usr/lib/postgresql/12/bin/createdb titan"
+  echo "Postgres started"
+}
+
+mount_database
+start_database
+
 # Run socat to pipe from unix socket to server port
 socat -v -d -lf /var/log/socat.log UNIX-LISTEN:/run/docker/plugins/titan.sock,reuseaddr,fork TCP:localhost:5001 2>/var/log/socat.trace &
+
+# Run the main titan server
 exec java -jar /titan/titan-server.jar

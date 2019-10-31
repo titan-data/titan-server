@@ -45,6 +45,8 @@ function create_import_pool() {
     fi
     log_end
   fi
+  # Update any existing pool
+  update_pool $pool
   return 0
 }
 
@@ -92,7 +94,7 @@ function unbind_mounts() {
 #
 function create_network() {
   local identity=$1
-  docker network inspect $identity || docker network create $identity || log_error "failed to create $identity network"
+  docker network inspect $identity >/dev/null || docker network create $identity || log_error "failed to create $identity network"
 }
 
 #

@@ -35,6 +35,7 @@ import io.titandata.apis.RepositoriesApi
 import io.titandata.apis.VolumeApi
 import io.titandata.exception.NoSuchObjectException
 import io.titandata.exception.ObjectExistsException
+import io.titandata.metadata.MetadataProvider
 import io.titandata.models.Error
 import io.titandata.models.VolumeResponse
 import io.titandata.operation.OperationProvider
@@ -66,7 +67,7 @@ fun exceptionToError(request: ApplicationRequest, t: Throwable): Any {
     }
 }
 
-class ProviderModule(val pool: String) {
+class ProviderModule(pool: String, inMemory: Boolean = true) {
     private val zfsStorageProvider = ZfsStorageProvider(pool)
     private val nopRemoteProvider = NopRemoteProvider()
     private val engineRemoteProvider = EngineRemoteProvider(this)
@@ -74,6 +75,7 @@ class ProviderModule(val pool: String) {
     private val operationProvider = OperationProvider(this)
     private val s3Provider = S3RemoteProvider(this)
     private val s3WebProvider = S3WebRemoteProvider(this)
+    private val metadataProvider = MetadataProvider(inMemory)
 
     val gson = ModelTypeAdapters.configure(GsonBuilder()).create()
     val commandExecutor = CommandExecutor()
@@ -85,6 +87,10 @@ class ProviderModule(val pool: String) {
     // Return the operation provider
     val operation: OperationProvider
         get() = operationProvider
+
+    // Return the metadata provider
+    val metadata: MetadataProvider
+        get() = metadataProvider
 
     // Get a storage provider by name (only ZFS is supported)
     fun storage(type: String): StorageProvider {
@@ -121,7 +127,8 @@ internal fun ApplicationCompressionConfiguration(): Compression.Configuration.()
 
 @KtorExperimentalAPI
 fun Application.main() {
-    val providers = ProviderModule(System.getenv("TITAN_POOL") ?: "titan")
+    val providers = ProviderModule(System.getenv("TITAN_POOL") ?: "titan", false)
+    providers.metadata.init()
     providers.storage.load()
     providers.operation.loadState()
     mainProvider(providers)

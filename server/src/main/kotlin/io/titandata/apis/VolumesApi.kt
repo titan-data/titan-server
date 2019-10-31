@@ -43,7 +43,7 @@ fun Route.VolumeApi(providers: ProviderModule) {
             val request = call.receive(VolumeCreateRequest::class)
             val opts = request.opts ?: mapOf()
             val (repo, volname) = getVolumeName(request.name)
-            providers.storage.createVolume(repo, volname, opts)
+            providers.volumes.createVolume(repo, volname, opts)
             call.respond(VolumeResponse())
         }
     }
@@ -64,7 +64,7 @@ fun Route.VolumeApi(providers: ProviderModule) {
         post {
             val request = call.receive(VolumeRequest::class)
             val (repo, volname) = getVolumeName(request.name)
-            val result = providers.storage.getVolume(repo, volname)
+            val result = providers.volumes.getVolume(repo, volname)
             call.respond(VolumeGetResponse(volume = result.copy(name = "$repo/$volname")))
         }
     }
@@ -73,7 +73,7 @@ fun Route.VolumeApi(providers: ProviderModule) {
         post {
             val request = call.receive(VolumeRequest::class)
             val (repo, volname) = getVolumeName(request.name)
-            val result = providers.storage.getVolume(repo, volname)
+            val result = providers.volumes.getVolume(repo, volname)
             call.respond(VolumePathResponse(mountpoint = result.mountpoint))
         }
     }
@@ -81,8 +81,8 @@ fun Route.VolumeApi(providers: ProviderModule) {
     route("/VolumeDriver.List") {
         post {
             val result = mutableListOf<Volume>()
-            for (repo in providers.storage.listRepositories()) {
-                for (vol in providers.storage.listVolumes(repo.name)) {
+            for (repo in providers.repositories.listRepositories()) {
+                for (vol in providers.volumes.listVolumes(repo.name)) {
                     result.add(vol.copy(name = "${repo.name}/${vol.name}"))
                 }
             }
@@ -94,7 +94,7 @@ fun Route.VolumeApi(providers: ProviderModule) {
         post {
             val request = call.receive(VolumeMountRequest::class)
             val (repo, volname) = getVolumeName(request.name)
-            val result = providers.storage.mountVolume(repo, volname)
+            val result = providers.volumes.mountVolume(repo, volname)
             call.respond(VolumePathResponse(mountpoint = result.mountpoint))
         }
     }
@@ -103,7 +103,7 @@ fun Route.VolumeApi(providers: ProviderModule) {
         post {
             val request = call.receive(VolumeRequest::class)
             val (repo, volname) = getVolumeName(request.name)
-            providers.storage.deleteVolume(repo, volname)
+            providers.volumes.deleteVolume(repo, volname)
             call.respond(VolumeResponse())
         }
     }
@@ -112,7 +112,7 @@ fun Route.VolumeApi(providers: ProviderModule) {
         post {
             val request = call.receive(VolumeMountRequest::class)
             val (repo, volname) = getVolumeName(request.name)
-            providers.storage.unmountVolume(repo, volname)
+            providers.volumes.unmountVolume(repo, volname)
             call.respond(VolumeResponse())
         }
     }

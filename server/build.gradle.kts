@@ -32,6 +32,7 @@ dependencies {
     compile("com.squareup.okhttp3:okhttp:4.2.2")
     compile("org.jetbrains.exposed:exposed:0.17.6")
     compile("org.postgresql:postgresql:42.2.8")
+    compile("com.zaxxer:HikariCP:3.4.1")
 
     // S3 Provider dependencies
     compile("com.amazonaws:aws-java-sdk-s3:1.11.650")

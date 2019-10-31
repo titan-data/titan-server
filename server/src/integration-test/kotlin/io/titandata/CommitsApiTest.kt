@@ -30,7 +30,7 @@ import io.mockk.impl.annotations.OverrideMockKs
 import io.mockk.verify
 import io.titandata.exception.CommandException
 import io.titandata.models.Error
-import io.titandata.operation.OperationProvider
+import io.titandata.orchestrator.OperationOrchestrator
 import io.titandata.storage.zfs.ZfsStorageProvider
 import io.titandata.util.CommandExecutor
 import io.titandata.util.GuidGenerator
@@ -46,7 +46,7 @@ class CommitsApiTest : StringSpec() {
     lateinit var generator: GuidGenerator
 
     @MockK(relaxed = true)
-    lateinit var operationProvider: OperationProvider
+    lateinit var operationProvider: OperationOrchestrator
 
     @InjectMockKs
     @OverrideMockKs
@@ -61,6 +61,7 @@ class CommitsApiTest : StringSpec() {
     override fun beforeSpec(spec: Spec) {
         with(engine) {
             start()
+            providers.metadata.init()
             application.mainProvider(providers)
         }
     }

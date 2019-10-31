@@ -2,7 +2,7 @@
  * Copyright The Titan Project Contributors.
  */
 
-package io.titandata.operation
+package io.titandata.orchestrator
 
 import io.titandata.ProviderModule
 import io.titandata.exception.NoSuchObjectException
@@ -11,6 +11,7 @@ import io.titandata.models.Operation
 import io.titandata.models.ProgressEntry
 import io.titandata.models.Remote
 import io.titandata.models.RemoteParameters
+import io.titandata.operation.OperationExecutor
 import io.titandata.util.GuidGenerator
 import org.slf4j.LoggerFactory
 
@@ -41,10 +42,10 @@ import org.slf4j.LoggerFactory
  * happen automatically. But in the event that the CLI command fails, or the user puts the
  * operation in the background, they can explicitly mark it completed.
  */
-class OperationProvider(val providers: ProviderModule) {
+class OperationOrchestrator(val providers: ProviderModule) {
 
     companion object {
-        val log = LoggerFactory.getLogger(OperationProvider::class.java)
+        val log = LoggerFactory.getLogger(OperationOrchestrator::class.java)
     }
 
     private val operationsByRepo: MutableMap<String, MutableList<OperationExecutor>> = mutableMapOf()

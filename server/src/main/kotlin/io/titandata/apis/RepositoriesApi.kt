@@ -20,31 +20,31 @@ fun Route.RepositoriesApi(providers: ProviderModule) {
     route("/v1/repositories") {
         post {
             val repo = call.receive(Repository::class)
-            providers.storage.createRepository(repo)
+            providers.repositories.createRepository(repo)
             call.respond(HttpStatusCode.Created, repo)
         }
 
         get {
-            call.respond(providers.storage.listRepositories())
+            call.respond(providers.repositories.listRepositories())
         }
     }
 
     route("/v1/repositories/{repositoryName}") {
         get {
             val name = call.parameters["repositoryName"] ?: throw IllegalArgumentException("missing repositoryName parameter")
-            call.respond(providers.storage.getRepository(name))
+            call.respond(providers.repositories.getRepository(name))
         }
 
         post {
             val name = call.parameters["repositoryName"] ?: throw IllegalArgumentException("missing repositoryName parameter")
             val repo = call.receive(Repository::class)
-            providers.storage.updateRepository(name, repo)
+            providers.repositories.updateRepository(name, repo)
             call.respond(repo)
         }
 
         delete {
             val name = call.parameters["repositoryName"] ?: throw IllegalArgumentException("missing repositoryName parameter")
-            providers.storage.deleteRepository(name)
+            providers.repositories.deleteRepository(name)
             call.respond(HttpStatusCode.NoContent)
         }
     }
@@ -52,7 +52,7 @@ fun Route.RepositoriesApi(providers: ProviderModule) {
     route("/v1/repositories/{repositoryName}/status") {
         get {
             val name = call.parameters["repositoryName"] ?: throw IllegalArgumentException("missing repositoryName parameter")
-            call.respond(providers.storage.getRepositoryStatus(name))
+            call.respond(providers.repositories.getRepositoryStatus(name))
         }
     }
 }

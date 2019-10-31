@@ -174,6 +174,7 @@ class RepositoriesApiTest : StringSpec() {
         }
 
         "create repository succeeds" {
+            every { metadata.createRepository(any()) } just runs
             every { executor.exec(*anyVararg()) } returns ""
             with(engine.handleRequest(HttpMethod.Post, "/v1/repositories") {
                 addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())

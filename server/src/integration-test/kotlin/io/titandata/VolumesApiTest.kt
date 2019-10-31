@@ -25,8 +25,11 @@ import io.mockk.every
 import io.mockk.impl.annotations.InjectMockKs
 import io.mockk.impl.annotations.MockK
 import io.mockk.impl.annotations.OverrideMockKs
+import io.mockk.impl.annotations.SpyK
 import io.mockk.verify
 import io.titandata.exception.CommandException
+import io.titandata.metadata.MetadataProvider
+import io.titandata.models.Repository
 import io.titandata.storage.zfs.ZfsStorageProvider
 import io.titandata.util.CommandExecutor
 import java.util.concurrent.TimeUnit
@@ -41,6 +44,9 @@ class VolumesApiTest : StringSpec() {
     @InjectMockKs
     @OverrideMockKs
     var zfsStorageProvider = ZfsStorageProvider("test")
+
+    @SpyK
+    var metadata = MetadataProvider()
 
     @InjectMockKs
     @OverrideMockKs
@@ -223,8 +229,7 @@ class VolumesApiTest : StringSpec() {
         }
 
         "list volumes succeeds" {
-            every { executor.exec("zfs", "list", "-Ho", "name,io.titan-data:metadata",
-                    "-d", "1", "test/repo") } returns "test/repo/foo\t{}"
+            every { metadata.listRepositories() } returns listOf(Repository(name = "foo", properties = mapOf()))
             every { executor.exec("zfs", "list", "-Hpo", "io.titan-data:active",
                     "test/repo/foo") } returns "guid"
             every { executor.exec("zfs", "list", "-Ho", "name,io.titan-data:metadata",

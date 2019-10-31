@@ -16,11 +16,11 @@ class MetadataProviderTest : StringSpec() {
         var dbIdentifier = 0
     }
 
-    lateinit var md : MetadataProvider
+    lateinit var md: MetadataProvider
 
     override fun beforeTest(testCase: TestCase) {
         dbIdentifier++
-        md = MetadataProvider(true, "db${dbIdentifier}")
+        md = MetadataProvider(true, "db$dbIdentifier")
         md.init()
     }
 
@@ -33,7 +33,7 @@ class MetadataProviderTest : StringSpec() {
 
         "create repository succeeds" {
             transaction {
-                val repo = Repository(name="foo", properties=mapOf("a" to "b"))
+                val repo = Repository(name = "foo", properties = mapOf("a" to "b"))
                 md.createRepository(repo)
             }
         }
@@ -129,5 +129,4 @@ class MetadataProviderTest : StringSpec() {
             }
         }
     }
-
 }

@@ -24,7 +24,7 @@ import org.jetbrains.exposed.sql.update
  * The metadata provider is responsible for persistence of all metadata to the titan database. With the exception of
  * init(), it's up to the caller to manage transactions.
  */
-class MetadataProvider(val inMemory: Boolean = true, val databaseName:String = "titan") {
+class MetadataProvider(val inMemory: Boolean = true, val databaseName: String = "titan") {
 
     internal val gson = ModelTypeAdapters.configure(GsonBuilder()).create()
 
@@ -101,7 +101,7 @@ class MetadataProvider(val inMemory: Boolean = true, val databaseName:String = "
             if (count == 0) {
                 throw NoSuchObjectException("no such repository '$repoName'")
             }
-        } catch (e:ExposedSQLException) {
+        } catch (e: ExposedSQLException) {
             throw ObjectExistsException("repository '${repo.name}' already exists")
         }
     }

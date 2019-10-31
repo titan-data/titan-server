@@ -28,8 +28,11 @@ import io.mockk.every
 import io.mockk.impl.annotations.InjectMockKs
 import io.mockk.impl.annotations.MockK
 import io.mockk.impl.annotations.OverrideMockKs
+import io.mockk.impl.annotations.SpyK
+import io.titandata.metadata.MetadataProvider
 import io.titandata.models.Error
 import io.titandata.models.Operation
+import io.titandata.models.Repository
 import io.titandata.remote.nop.NopParameters
 import io.titandata.serialization.ModelTypeAdapters
 import io.titandata.storage.OperationData
@@ -52,6 +55,9 @@ class OperationsApiTest : StringSpec() {
     @InjectMockKs
     @OverrideMockKs
     var zfsStorageProvider = ZfsStorageProvider("test")
+
+    @SpyK
+    var metadata = MetadataProvider()
 
     @InjectMockKs
     @OverrideMockKs
@@ -85,6 +91,8 @@ class OperationsApiTest : StringSpec() {
     override fun testCaseOrder() = TestCaseOrder.Random
 
     fun loadOperations(repo: String, vararg operations: OperationData) {
+        every { metadata.getRepository("foo") } returns Repository(name = "foo", properties = mapOf())
+        every { metadata.listRepositories() } returns listOf(Repository(name = "foo", properties = mapOf()))
         every { executor.exec(*anyVararg()) } returns ""
         every { executor.exec("zfs", "list", "-Ho", "name,io.titan-data:metadata",
                 "test/repo/$repo") } returns "test/repo/$repo\t{}"
@@ -123,8 +131,7 @@ class OperationsApiTest : StringSpec() {
 
     init {
         "list empty operations succeeds" {
-            every { executor.exec("zfs", "list", "-Ho", "name,io.titan-data:metadata",
-                    "test/repo/foo") } returns "test/repo/foo\t{}"
+            every { metadata.getRepository("foo") } returns Repository(name = "foo", properties = mapOf())
             with(engine.handleRequest(HttpMethod.Get, "/v1/repositories/foo/operations")) {
                 response.status() shouldBe HttpStatusCode.OK
                 response.contentType().toString() shouldBe "application/json; charset=UTF-8"

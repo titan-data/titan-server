@@ -84,77 +84,6 @@ class ZfsRepositoryTest : StringSpec() {
             }
         }
 
-        "empty zfs list generates empty repository list" {
-            every { executor.exec(*anyVararg()) } returns ""
-            val result = provider.listRepositories()
-            result.size shouldBe 0
-            verify {
-                executor.exec("zfs", "list", "-Ho", "name,io.titan-data:metadata",
-                        "-d", "1", "test/repo")
-            }
-            confirmVerified()
-        }
-
-        "zfs list generates list of one repository" {
-            every { executor.exec(*anyVararg()) } returns
-                    "test\t-\n" +
-                    "test/repo/repo\t{\"a\": \"b\"}\n"
-            val result = provider.listRepositories()
-            result.size shouldBe 1
-            result[0].name shouldBe "repo"
-            result[0].properties["a"] shouldBe "b"
-        }
-
-        "zfs list generates list of two repositories" {
-            every { executor.exec(*anyVararg()) } returns
-                    "test\t-\n" +
-                    "test/repo/repo1\t{}\n" +
-                    "test/repo/repo2\t{}\n"
-            val result = provider.listRepositories()
-            result.size shouldBe 2
-            result[0].name shouldBe "repo1"
-            result[1].name shouldBe "repo2"
-        }
-
-        "get repository succeeds" {
-            every { executor.exec(*anyVararg()) } returns "test/repo/repo\t{\"a\": \"b\"}"
-            val result = provider.getRepository("repo")
-            result.name shouldBe "repo"
-            result.properties["a"] shouldBe "b"
-            verify {
-                executor.exec("zfs", "list", "-Ho",
-                        "name,io.titan-data:metadata", "test/repo/repo")
-            }
-            confirmVerified()
-        }
-
-        "get repository fails with invalid name" {
-            shouldThrow<IllegalArgumentException> {
-                provider.getRepository("not/valid")
-            }
-        }
-
-        "object not found thrown if repository doesn't exist" {
-            every { executor.exec(*anyVararg()) } throws CommandException("", 1, "dataset does not exist")
-            shouldThrow<NoSuchObjectException> {
-                provider.getRepository("foo")
-            }
-        }
-
-        "get repository throws command exception for other reasons" {
-            every { executor.exec(*anyVararg()) } throws CommandException("", 1, "")
-            shouldThrow<CommandException> {
-                provider.getRepository("foo")
-            }
-        }
-
-        "get repository fails with invalid state" {
-            every { executor.exec(*anyVararg()) } returns "test/repo/foo\t-"
-            shouldThrow<InvalidStateException> {
-                provider.getRepository("foo")
-            }
-        }
-
         "get repository status succeeds" {
             every { executor.exec(*anyVararg()) } returns ""
             every { executor.exec("zfs", "list", "-Ho", "name,defer_destroy,io.titan-data:metadata", "-t", "snapshot",
@@ -209,53 +138,6 @@ class ZfsRepositoryTest : StringSpec() {
             ).joinToString("\n")
             val status = provider.getRepositoryStatus("foo")
             status.sourceCommit shouldBe "two"
-        }
-
-        "update fails with invalid name" {
-            val repo = Repository(name = "not/a/name", properties = mapOf("a" to "b"))
-            shouldThrow<IllegalArgumentException> {
-                provider.updateRepository("foo", repo)
-            }
-        }
-
-        "metadata is converted to json on update" {
-            val repo = Repository(name = "foo", properties = mapOf("a" to "b"))
-            every { executor.exec(*anyVararg()) } returns ""
-            provider.updateRepository("foo", repo)
-            verify {
-                executor.exec("zfs", "set", "io.titan-data:metadata={\"a\":\"b\"}",
-                        "test/repo/foo")
-            }
-            confirmVerified()
-        }
-
-        "filesystems are renamed when name is updated" {
-            val repo = Repository(name = "bar", properties = mapOf("a" to "b"))
-            every { executor.exec(*anyVararg()) } returns ""
-            provider.updateRepository("foo", repo)
-
-            verifySequence {
-                executor.exec("zfs", "set", "io.titan-data:metadata={\"a\":\"b\"}",
-                        "test/repo/foo")
-                executor.exec("zfs", "rename", "test/repo/foo", "test/repo/bar")
-            }
-            confirmVerified()
-        }
-
-        "rename to an existing repository throws an exception" {
-            val repo = Repository(name = "bar", properties = mapOf("a" to "b"))
-            every { executor.exec(*anyVararg()) } throws CommandException("", 1, "already exists")
-            shouldThrow<ObjectExistsException> {
-                provider.updateRepository("foo", repo)
-            }
-        }
-
-        "no such object thrown when updating a non-existent repo" {
-            val repo = Repository(name = "foo", properties = mapOf("a" to "b"))
-            every { executor.exec(*anyVararg()) } throws CommandException("", 1, "does not exist")
-            shouldThrow<NoSuchObjectException> {
-                provider.updateRepository("foo", repo)
-            }
         }
 
         "delete repository fails with invalid name" {

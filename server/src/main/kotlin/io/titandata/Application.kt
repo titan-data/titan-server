@@ -78,8 +78,8 @@ class ProviderModule(pool: String, inMemory: Boolean = true) {
     private val sshRemoteProvider = SshRemoteProvider(this)
     private val s3Provider = S3RemoteProvider(this)
     private val s3WebProvider = S3WebRemoteProvider(this)
-    private val metadataProvider = MetadataProvider(inMemory)
 
+    val metadata = MetadataProvider(inMemory)
     val commits = CommitOrchestrator(this)
     val repositories = RepositoryOrchestrator(this)
     val operations = OperationOrchestrator(this)
@@ -92,10 +92,6 @@ class ProviderModule(pool: String, inMemory: Boolean = true) {
     // Return the default storage provider
     val storage: StorageProvider
         get() = zfsStorageProvider
-
-    // Return the metadata provider
-    val metadata: MetadataProvider
-        get() = metadataProvider
 
     // Get a storage provider by name (only ZFS is supported)
     fun storage(type: String): StorageProvider {

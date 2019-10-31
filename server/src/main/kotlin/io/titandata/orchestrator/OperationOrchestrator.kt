@@ -13,6 +13,7 @@ import io.titandata.models.Remote
 import io.titandata.models.RemoteParameters
 import io.titandata.operation.OperationExecutor
 import io.titandata.util.GuidGenerator
+import org.jetbrains.exposed.sql.transactions.transaction
 import org.slf4j.LoggerFactory
 
 /**
@@ -112,16 +113,18 @@ class OperationOrchestrator(val providers: ProviderModule) {
     @Synchronized
     fun loadState() {
         log.debug("loading operation state")
-        for (r in providers.storage.listRepositories()) {
-            for (op in providers.storage.listOperations(r.name)) {
-                val exec = OperationExecutor(providers, op.operation, r.name,
-                        getRemote(r.name, op.operation.remote), op.params, true, op.metadataOnly)
-                addOperation(exec)
-                if (op.operation.state == Operation.State.RUNNING) {
-                    log.info("retrying operation ${op.operation.id} after restart")
-                    exec.addProgress(ProgressEntry(ProgressEntry.Type.MESSAGE,
-                            "Retrying operation after restart"))
-                    exec.start()
+        transaction {
+            for (r in providers.metadata.listRepositories()) {
+                for (op in providers.storage.listOperations(r.name)) {
+                    val exec = OperationExecutor(providers, op.operation, r.name,
+                            getRemote(r.name, op.operation.remote), op.params, true, op.metadataOnly)
+                    addOperation(exec)
+                    if (op.operation.state == Operation.State.RUNNING) {
+                        log.info("retrying operation ${op.operation.id} after restart")
+                        exec.addProgress(ProgressEntry(ProgressEntry.Type.MESSAGE,
+                                "Retrying operation after restart"))
+                        exec.start()
+                    }
                 }
             }
         }
@@ -154,7 +157,9 @@ class OperationOrchestrator(val providers: ProviderModule) {
 
     @Synchronized
     fun listOperations(repository: String): List<Operation> {
-        providers.storage.getRepository(repository)
+        transaction {
+            providers.metadata.getRepository(repository)
+        }
         val operations = operationsByRepo[repository] ?: mutableListOf()
         return operations.map { op -> op.operation }
     }

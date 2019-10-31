@@ -95,8 +95,6 @@ class ZfsOperationManager(val provider: ZfsStorageProvider) {
     }
 
     fun getOperation(repo: String, id: String): OperationData {
-        // Call this separately so we can distinguish no such repo from no such operation
-        provider.getRepository(repo)
         try {
             val output = provider.executor.exec("zfs", "list", "-Ho", "name,$OPERATION_PROP",
                     "$poolName/repo/$repo/$id")

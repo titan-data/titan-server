@@ -23,6 +23,7 @@ import io.mockk.verify
 import io.titandata.ProviderModule
 import io.titandata.exception.NoSuchObjectException
 import io.titandata.exception.ObjectExistsException
+import io.titandata.metadata.MetadataProvider
 import io.titandata.models.Commit
 import io.titandata.models.Operation
 import io.titandata.models.ProgressEntry
@@ -44,6 +45,9 @@ class OperationOrchestratorTest : StringSpec() {
 
     @MockK
     lateinit var zfsStorageProvider: ZfsStorageProvider
+
+    @MockK
+    lateinit var metadata: MetadataProvider
 
     @SpyK
     var nopRemoteProvider = NopRemoteProvider()
@@ -76,14 +80,14 @@ class OperationOrchestratorTest : StringSpec() {
 
     init {
         "list operations for non-existent repository fails" {
-            every { zfsStorageProvider.getRepository(any()) } throws NoSuchObjectException("")
+            every { metadata.getRepository(any()) } throws NoSuchObjectException("")
             shouldThrow<NoSuchObjectException> {
                 provider.listOperations("foo")
             }
         }
 
         "list operations returns empty list" {
-            every { zfsStorageProvider.getRepository(any()) } returns Repository("foo", properties = mapOf())
+            every { metadata.getRepository(any()) } returns Repository("foo", properties = mapOf())
             val result = provider.listOperations("foo")
             result.size shouldBe 0
         }
@@ -91,7 +95,7 @@ class OperationOrchestratorTest : StringSpec() {
         "list operations returns list of current operations" {
             every { generator.get() } returns "id"
             addOperation()
-            every { zfsStorageProvider.getRepository(any()) } returns Repository("foo", properties = mapOf())
+            every { metadata.getRepository(any()) } returns Repository("foo", properties = mapOf())
 
             val result = provider.listOperations("foo")
             result.size shouldBe 1
@@ -424,15 +428,14 @@ class OperationOrchestratorTest : StringSpec() {
         }
 
         "loading completed operations populates operation list" {
-            every { zfsStorageProvider.listRepositories() } returns listOf(
-                    Repository(name = "foo", properties = mapOf()))
             every { zfsStorageProvider.listOperations("foo") } returns listOf(
                     OperationData(operation = Operation(id = "op1", type = Operation.Type.PULL, state = Operation.State.COMPLETE,
                             remote = "remote", commitId = "commit1"), params = NopParameters()),
                     OperationData(operation = Operation(id = "op2", type = Operation.Type.PULL, state = Operation.State.COMPLETE,
                             remote = "remote", commitId = "commit2"), params = NopParameters())
             )
-            every { zfsStorageProvider.getRepository("foo") } returns Repository(name = "foo", properties = mapOf())
+            every { metadata.listRepositories() } returns listOf(Repository(name = "foo", properties = mapOf()))
+            every { metadata.getRepository("foo") } returns Repository(name = "foo", properties = mapOf())
             every { zfsStorageProvider.getRemotes("foo") } returns listOf(
                     NopRemote(name = "remote"))
             provider.loadState()
@@ -450,13 +453,12 @@ class OperationOrchestratorTest : StringSpec() {
         }
 
         "loading running operation restarts operation" {
-            every { zfsStorageProvider.listRepositories() } returns listOf(
-                    Repository(name = "foo", properties = mapOf()))
             every { zfsStorageProvider.listOperations("foo") } returns listOf(
                     OperationData(operation = Operation(id = "id", type = Operation.Type.PUSH, state = Operation.State.RUNNING,
                             remote = "remote", commitId = "commit"), params = NopParameters())
             )
-            every { zfsStorageProvider.getRepository("foo") } returns Repository(name = "foo", properties = mapOf())
+            every { metadata.getRepository("foo") } returns Repository(name = "foo", properties = mapOf())
+            every { metadata.listRepositories() } returns listOf(Repository(name = "foo", properties = mapOf()))
             every { zfsStorageProvider.getRemotes("foo") } returns listOf(
                     NopRemote(name = "remote"))
             every { zfsStorageProvider.createOperationScratch("foo", any()) } returns ""

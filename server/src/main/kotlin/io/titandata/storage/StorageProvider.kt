@@ -17,10 +17,7 @@ interface StorageProvider {
     fun load()
 
     fun createRepository(repo: Repository)
-    fun listRepositories(): List<Repository>
-    fun getRepository(name: String): Repository
     fun getRepositoryStatus(name: String): RepositoryStatus
-    fun updateRepository(name: String, repo: Repository)
     fun deleteRepository(name: String)
 
     fun getRemotes(repo: String): List<Remote>

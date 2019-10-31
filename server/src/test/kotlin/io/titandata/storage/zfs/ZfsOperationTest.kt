@@ -100,14 +100,6 @@ class ZfsOperationTest : StringSpec() {
             }
         }
 
-        "create operation fails for unknown repository" {
-            every { executor.exec(*anyVararg()) } throws CommandException("", 1, "does not exist")
-            val exception = shouldThrow<NoSuchObjectException> {
-                provider.createOperation("foo", getOperation(), null)
-            }
-            exception.message shouldContain "repository"
-        }
-
         "create operation succeeds" {
             every { executor.exec(*anyVararg()) } returns ""
             every { executor.exec("zfs", "list", "-Ho", "name,defer_destroy", "-t", "snapshot",
@@ -173,15 +165,6 @@ class ZfsOperationTest : StringSpec() {
             result[1].operation.commitId shouldBe op2.operation.commitId
         }
 
-        "get operation for non existent repo fails" {
-            every { executor.exec("zfs", "list", "-Ho", "name,io.titan-data:metadata",
-                    "test/repo/foo") } throws CommandException("", 1, "does not exist")
-            val exception = shouldThrow<NoSuchObjectException> {
-                provider.getOperation("foo", "op")
-            }
-            exception.message shouldContain "repository"
-        }
-
         "get operation for non existent operation fails" {
             every { executor.exec("zfs", "list", "-Ho", "name,io.titan-data:metadata",
                     "test/repo/foo") } returns "test/repo/foo\t{}"
@@ -211,15 +194,6 @@ class ZfsOperationTest : StringSpec() {
             op.operation.commitId shouldBe "commit"
         }
 
-        "commit operation fails for unknown repo" {
-            every { executor.exec(*anyVararg()) } throws CommandException("", 1, "does not exist")
-            val exception = shouldThrow<NoSuchObjectException> {
-                val commit = Commit(id = "commit", properties = mapOf("a" to "b"))
-                provider.commitOperation("foo", "id", commit)
-            }
-            exception.message shouldContain "repository"
-        }
-
         "commit operation succeeds" {
             mockOperation()
             every { executor.exec("zfs", "snapshot", "-r", "-o",
@@ -238,14 +212,6 @@ class ZfsOperationTest : StringSpec() {
             }
         }
 
-        "discard operation fails for unknown repo" {
-            every { executor.exec(*anyVararg()) } throws CommandException("", 1, "does not exist")
-            val exception = shouldThrow<NoSuchObjectException> {
-                provider.discardOperation("foo", "id")
-            }
-            exception.message shouldContain "repository"
-        }
-
         "discard operation succeeds" {
             mockOperation()
             every { executor.exec("zfs", "destroy", "-r", "test/repo/foo/id") } returns ""
@@ -255,14 +221,6 @@ class ZfsOperationTest : StringSpec() {
             verify {
                 executor.exec("zfs", "destroy", "-r", "test/repo/foo/id")
             }
-        }
-
-        "update operation state fails for unknown repo" {
-            every { executor.exec(*anyVararg()) } throws CommandException("", 1, "does not exist")
-            val exception = shouldThrow<NoSuchObjectException> {
-                provider.updateOperationState("foo", "id", Operation.State.COMPLETE)
-            }
-            exception.message shouldContain "repository"
         }
 
         "update operation state succeeds" {
@@ -279,14 +237,6 @@ class ZfsOperationTest : StringSpec() {
                 executor.start("zfs", "set", "io.titan-data:operation=$newJson",
                         "test/repo/foo/id")
             }
-        }
-
-        "mount operation volumes fail for unknown repo" {
-            every { executor.exec(*anyVararg()) } throws CommandException("", 1, "does not exist")
-            val exception = shouldThrow<NoSuchObjectException> {
-                provider.mountOperationVolumes("foo", "id")
-            }
-            exception.message shouldContain "repository"
         }
 
         "mount operation volumes succeeds" {
@@ -313,14 +263,6 @@ class ZfsOperationTest : StringSpec() {
                 executor.exec("mount", "-t", "zfs",
                         "test/repo/foo/id/two", "/var/lib/test/mnt/id/two")
             }
-        }
-
-        "unmount operation volumes fail for unknown repo" {
-            every { executor.exec(*anyVararg()) } throws CommandException("", 1, "does not exist")
-            val exception = shouldThrow<NoSuchObjectException> {
-                provider.unmountOperationVolumes("foo", "id")
-            }
-            exception.message shouldContain "repository"
         }
 
         "unmount operation volumes succeeds" {

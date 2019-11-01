@@ -27,15 +27,12 @@ import io.mockk.every
 import io.mockk.impl.annotations.InjectMockKs
 import io.mockk.impl.annotations.MockK
 import io.mockk.impl.annotations.OverrideMockKs
-import io.mockk.impl.annotations.SpyK
-import io.mockk.just
-import io.mockk.runs
-import io.titandata.metadata.MetadataProvider
 import io.titandata.models.Error
 import io.titandata.models.Repository
 import io.titandata.storage.zfs.ZfsStorageProvider
 import io.titandata.util.CommandExecutor
 import java.util.concurrent.TimeUnit
+import org.jetbrains.exposed.sql.transactions.transaction
 
 @UseExperimental(KtorExperimentalAPI::class)
 class RepositoriesApiTest : StringSpec() {
@@ -47,9 +44,6 @@ class RepositoriesApiTest : StringSpec() {
     @OverrideMockKs
     var zfsStorageProvider = ZfsStorageProvider("test")
 
-    @SpyK
-    var metadata = MetadataProvider()
-
     @InjectMockKs
     @OverrideMockKs
     var providers = ProviderModule("test")
@@ -59,7 +53,7 @@ class RepositoriesApiTest : StringSpec() {
     override fun beforeSpec(spec: Spec) {
         with(engine) {
             start()
-            MetadataProvider().init()
+            providers.metadata.init()
             application.mainProvider(providers)
         }
     }
@@ -69,6 +63,7 @@ class RepositoriesApiTest : StringSpec() {
     }
 
     override fun beforeTest(testCase: TestCase) {
+        providers.metadata.clear()
         return MockKAnnotations.init(this)
     }
 
@@ -80,7 +75,6 @@ class RepositoriesApiTest : StringSpec() {
 
     init {
         "list empty repositories succeeds" {
-            every { metadata.listRepositories() } returns listOf()
             with(engine.handleRequest(HttpMethod.Get, "/v1/repositories")) {
                 response.status() shouldBe HttpStatusCode.OK
                 response.contentType().toString() shouldBe "application/json; charset=UTF-8"
@@ -89,10 +83,10 @@ class RepositoriesApiTest : StringSpec() {
         }
 
         "list repositories succeeds" {
-            every { metadata.listRepositories() } returns listOf(
-                    Repository(name = "repo1", properties = mapOf("a" to "b")),
-                    Repository(name = "repo2", properties = mapOf())
-            )
+            transaction {
+                providers.metadata.createRepository(Repository(name = "repo1", properties = mapOf("a" to "b")))
+                providers.metadata.createRepository(Repository(name = "repo2", properties = mapOf()))
+            }
             with(engine.handleRequest(HttpMethod.Get, "/v1/repositories")) {
                 response.status() shouldBe HttpStatusCode.OK
                 response.content shouldBe "[{\"name\":\"repo1\",\"properties\":{\"a\":\"b\"}}," +
@@ -101,8 +95,9 @@ class RepositoriesApiTest : StringSpec() {
         }
 
         "get repository succeeds" {
-            every { metadata.getRepository(any()) } returns
-                    Repository(name = "repo", properties = mapOf("a" to "b"))
+            transaction {
+                providers.metadata.createRepository(Repository(name = "repo", properties = mapOf("a" to "b")))
+            }
             with(engine.handleRequest(HttpMethod.Get, "/v1/repositories/repo")) {
                 response.status() shouldBe HttpStatusCode.OK
                 response.contentType().toString() shouldBe "application/json; charset=UTF-8"
@@ -156,7 +151,9 @@ class RepositoriesApiTest : StringSpec() {
         }
 
         "delete repository succeeds" {
-            every { metadata.deleteRepository(any()) } just runs
+            transaction {
+                providers.metadata.createRepository(Repository(name = "repo", properties = mapOf("a" to "b")))
+            }
             every { executor.exec(*anyVararg()) } returns ""
             with(engine.handleRequest(HttpMethod.Delete, "/v1/repositories/repo")) {
                 response.status() shouldBe HttpStatusCode.NoContent
@@ -174,7 +171,6 @@ class RepositoriesApiTest : StringSpec() {
         }
 
         "create repository succeeds" {
-            every { metadata.createRepository(any()) } just runs
             every { executor.exec(*anyVararg()) } returns ""
             with(engine.handleRequest(HttpMethod.Post, "/v1/repositories") {
                 addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
@@ -211,7 +207,9 @@ class RepositoriesApiTest : StringSpec() {
         }
 
         "update repository succeeds" {
-            every { metadata.updateRepository(any(), any()) } just runs
+            transaction {
+                providers.metadata.createRepository(Repository(name = "repo1", properties = mapOf("a" to "b")))
+            }
             with(engine.handleRequest(HttpMethod.Post, "/v1/repositories/repo1") {
                 addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
                 setBody("{\"name\":\"repo2\",\"properties\":{\"a\":\"b\"}}")

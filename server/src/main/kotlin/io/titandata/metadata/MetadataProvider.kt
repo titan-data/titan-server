@@ -171,14 +171,18 @@ class MetadataProvider(val inMemory: Boolean = true, val databaseName: String = 
 
     fun updateRemote(repoName: String, remoteName: String, remote: Remote) {
         getRepository(repoName) // check existence
-        val count = Remotes.update({
-            (Remotes.name eq remoteName) and (Remotes.repo eq repoName)
-        }) {
-            it[name] = remote.name
-            it[metadata] = gson.toJson(remote)
-        }
-        if (count == 0) {
-            throw NoSuchObjectException("no such remote '$remoteName' in repository '$repoName'")
+        try {
+            val count = Remotes.update({
+                (Remotes.name eq remoteName) and (Remotes.repo eq repoName)
+            }) {
+                it[name] = remote.name
+                it[metadata] = gson.toJson(remote)
+            }
+            if (count == 0) {
+                throw NoSuchObjectException("no such remote '$remoteName' in repository '$repoName'")
+            }
+        } catch (e: ExposedSQLException) {
+            throw ObjectExistsException("remote '${remote.name}' already exists in repository '$repoName'")
         }
     }
 }

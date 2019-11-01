@@ -26,15 +26,15 @@ import io.mockk.every
 import io.mockk.impl.annotations.InjectMockKs
 import io.mockk.impl.annotations.MockK
 import io.mockk.impl.annotations.OverrideMockKs
-import io.mockk.impl.annotations.SpyK
 import io.mockk.mockk
-import io.mockk.verify
-import io.titandata.metadata.MetadataProvider
 import io.titandata.models.Repository
+import io.titandata.remote.engine.EngineRemote
 import io.titandata.remote.engine.EngineRemoteProvider
+import io.titandata.remote.nop.NopRemote
 import io.titandata.storage.zfs.ZfsStorageProvider
 import io.titandata.util.CommandExecutor
 import java.util.concurrent.TimeUnit
+import org.jetbrains.exposed.sql.transactions.transaction
 
 @UseExperimental(KtorExperimentalAPI::class)
 class RemotesApiTest : StringSpec() {
@@ -45,9 +45,6 @@ class RemotesApiTest : StringSpec() {
     @InjectMockKs
     @OverrideMockKs
     var zfsStorageProvider = ZfsStorageProvider("test")
-
-    @SpyK
-    var metadata = MetadataProvider()
 
     @MockK
     lateinit var engineRemoteProvider: EngineRemoteProvider
@@ -71,6 +68,7 @@ class RemotesApiTest : StringSpec() {
     }
 
     override fun beforeTest(testCase: TestCase) {
+        providers.metadata.clear()
         return MockKAnnotations.init(this)
     }
 
@@ -86,7 +84,9 @@ class RemotesApiTest : StringSpec() {
      */
     init {
         "get empty remote list succeeds" {
-            every { executor.exec(*anyVararg()) } returns "-"
+            transaction {
+                providers.metadata.createRepository(Repository(name = "repo", properties = mapOf()))
+            }
             with(engine.handleRequest(HttpMethod.Get, "/v1/repositories/repo/remotes")) {
                 response.status() shouldBe HttpStatusCode.OK
                 response.contentType().toString() shouldBe "application/json; charset=UTF-8"
@@ -95,61 +95,51 @@ class RemotesApiTest : StringSpec() {
         }
 
         "get remote list succeeds" {
-            every { executor.exec(*anyVararg()) } returns
-                    "[{\"provider\":\"nop\",\"name\":\"foo\"}," +
-                    "{\"provider\":\"engine\",\"name\":\"bar\",\"address\":\"a\"," +
-                    "\"username\":\"u\",\"password\":\"p\"}]"
+            transaction {
+                providers.metadata.createRepository(Repository(name = "repo", properties = mapOf()))
+                providers.metadata.addRemote("repo", NopRemote(name = "foo"))
+                providers.metadata.addRemote("repo", EngineRemote(name = "bar", address = "a", username = "u", password = "p", repository = "r"))
+            }
             with(engine.handleRequest(HttpMethod.Get, "/v1/repositories/repo/remotes")) {
                 response.status() shouldBe HttpStatusCode.OK
                 response.contentType().toString() shouldBe "application/json; charset=UTF-8"
                 response.content shouldBe "[{\"provider\":\"nop\",\"name\":\"foo\"}," +
                         "{\"provider\":\"engine\",\"name\":\"bar\",\"address\":\"a\"," +
-                        "\"username\":\"u\",\"password\":\"p\"}]"
+                        "\"username\":\"u\",\"password\":\"p\",\"repository\":\"r\"}]"
             }
         }
 
         "create remote succeeds" {
-            every { executor.start(*anyVararg()) } returns mockk()
-            every { executor.exec(any<Process>(), any()) } returns ""
-            every { executor.exec(*anyVararg()) } returns "-"
+            transaction {
+                providers.metadata.createRepository(Repository(name = "repo", properties = mapOf()))
+            }
             with(engine.handleRequest(HttpMethod.Post, "/v1/repositories/repo/remotes") {
                 addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
                 setBody("{\"provider\":\"nop\",\"name\":\"a\"}")
             }) {
                 response.status() shouldBe HttpStatusCode.Created
                 response.content shouldBe "{\"provider\":\"nop\",\"name\":\"a\"}"
-
-                verify {
-                    executor.start("zfs", "set",
-                            "io.titan-data:remotes=[{\"provider\":\"nop\",\"name\":\"a\"}]",
-                            "test/repo/repo")
-                }
             }
         }
 
         "add remote succeeds" {
-            every { executor.start(*anyVararg()) } returns mockk()
-            every { executor.exec(any<Process>(), any()) } returns ""
-            every { executor.exec(*anyVararg()) } returns "[{\"provider\":\"nop\",\"name\":\"a\"}]"
+            transaction {
+                providers.metadata.createRepository(Repository(name = "repo", properties = mapOf()))
+            }
             with(engine.handleRequest(HttpMethod.Post, "/v1/repositories/repo/remotes") {
                 addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
                 setBody("{\"provider\":\"engine\",\"name\":\"bar\",\"address\":\"a\"," +
                         "\"username\":\"u\",\"password\":\"p\"}")
             }) {
                 response.status() shouldBe HttpStatusCode.Created
-
-                verify {
-                    executor.start("zfs", "set",
-                            "io.titan-data:remotes=[{\"provider\":\"nop\",\"name\":\"a\"}," +
-                                    "{\"provider\":\"engine\",\"name\":\"bar\",\"address\":\"a\"," +
-                                    "\"username\":\"u\",\"password\":\"p\"}]",
-                            "test/repo/repo")
-                }
             }
         }
 
         "add duplicate remote fails" {
-            every { executor.exec(*anyVararg()) } returns "[{\"provider\":\"nop\",\"name\":\"a\"}]"
+            transaction {
+                providers.metadata.createRepository(Repository(name = "repo", properties = mapOf()))
+                providers.metadata.addRemote("repo", NopRemote(name = "a"))
+            }
             with(engine.handleRequest(HttpMethod.Post, "/v1/repositories/repo/remotes") {
                 addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
                 setBody("{\"provider\":\"nop\",\"name\":\"a\"}")
@@ -159,7 +149,9 @@ class RemotesApiTest : StringSpec() {
         }
 
         "update non-existent remote fails" {
-            every { executor.exec(*anyVararg()) } returns "[]"
+            transaction {
+                providers.metadata.createRepository(Repository(name = "repo", properties = mapOf()))
+            }
             with(engine.handleRequest(HttpMethod.Post, "/v1/repositories/repo/remotes/foo") {
                 addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
                 setBody("{\"provider\":\"nop\",\"name\":\"a\"}")
@@ -169,12 +161,12 @@ class RemotesApiTest : StringSpec() {
         }
 
         "update remote succeeds" {
+            transaction {
+                providers.metadata.createRepository(Repository(name = "repo", properties = mapOf()))
+                providers.metadata.addRemote("repo", NopRemote(name = "foo"))
+                providers.metadata.addRemote("repo", EngineRemote(name = "bar", address = "a", username = "u", password = "p", repository = "r"))
+            }
             every { executor.start(*anyVararg()) } returns mockk()
-            every { executor.exec(any<Process>(), any()) } returns ""
-            every { executor.exec(*anyVararg()) } returns
-                    "[{\"provider\":\"nop\",\"name\":\"foo\"}," +
-                    "{\"provider\":\"engine\",\"name\":\"bar\",\"address\":\"a\"," +
-                    "\"username\":\"u\",\"password\":\"p\"}]"
             with(engine.handleRequest(HttpMethod.Post, "/v1/repositories/repo/remotes/bar") {
                 addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
                 setBody("{\"provider\":\"engine\",\"name\":\"bar\",\"address\":\"b\"," +
@@ -183,44 +175,31 @@ class RemotesApiTest : StringSpec() {
                 response.status() shouldBe HttpStatusCode.OK
                 response.content shouldBe "{\"provider\":\"engine\",\"name\":\"bar\",\"address\":\"b\"," +
                         "\"username\":\"u\",\"password\":\"p\"}"
-                verify {
-                    executor.start("zfs", "set",
-                            "io.titan-data:remotes=[{\"provider\":\"nop\",\"name\":\"foo\"}," +
-                                    "{\"provider\":\"engine\",\"name\":\"bar\",\"address\":\"b\"," +
-                                    "\"username\":\"u\",\"password\":\"p\"}]",
-                            "test/repo/repo")
-                }
             }
         }
 
         "rename remote succeeds" {
+            transaction {
+                providers.metadata.createRepository(Repository(name = "repo", properties = mapOf()))
+                providers.metadata.addRemote("repo", NopRemote(name = "foo"))
+                providers.metadata.addRemote("repo", EngineRemote(name = "bar", address = "a", username = "u", password = "p", repository = "r"))
+            }
             every { executor.start(*anyVararg()) } returns mockk()
-            every { executor.exec(any<Process>(), any()) } returns ""
-            every { executor.exec(*anyVararg()) } returns
-                    "[{\"provider\":\"nop\",\"name\":\"foo\"}," +
-                    "{\"provider\":\"engine\",\"name\":\"bar\",\"address\":\"a\"," +
-                    "\"username\":\"u\",\"password\":\"p\"}]"
             with(engine.handleRequest(HttpMethod.Post, "/v1/repositories/repo/remotes/bar") {
                 addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
                 setBody("{\"provider\":\"engine\",\"name\":\"baz\",\"address\":\"b\"," +
                         "\"username\":\"u\",\"password\":\"p\"}")
             }) {
                 response.status() shouldBe HttpStatusCode.OK
-                verify {
-                    executor.start("zfs", "set",
-                            "io.titan-data:remotes=[{\"provider\":\"nop\",\"name\":\"foo\"}," +
-                                    "{\"provider\":\"engine\",\"name\":\"baz\",\"address\":\"b\"," +
-                                    "\"username\":\"u\",\"password\":\"p\"}]",
-                            "test/repo/repo")
-                }
             }
         }
 
         "rename remote to existing name fails" {
-            every { executor.exec(*anyVararg()) } returns
-                    "[{\"provider\":\"nop\",\"name\":\"foo\"}," +
-                    "{\"provider\":\"engine\",\"name\":\"bar\",\"address\":\"a\"," +
-                    "\"username\":\"u\",\"password\":\"p\"}]"
+            transaction {
+                providers.metadata.createRepository(Repository(name = "repo", properties = mapOf()))
+                providers.metadata.addRemote("repo", NopRemote(name = "foo"))
+                providers.metadata.addRemote("repo", EngineRemote(name = "bar", address = "a", username = "u", password = "p", repository = "r"))
+            }
             with(engine.handleRequest(HttpMethod.Post, "/v1/repositories/repo/remotes/bar") {
                 addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
                 setBody("{\"provider\":\"engine\",\"name\":\"foo\",\"address\":\"b\"," +
@@ -231,29 +210,22 @@ class RemotesApiTest : StringSpec() {
         }
 
         "delete remote succeeds" {
-            every { metadata.getRepository("repo") } returns Repository(name = "repo", properties = mapOf())
+            transaction {
+                providers.metadata.createRepository(Repository(name = "repo", properties = mapOf()))
+                providers.metadata.addRemote("repo", NopRemote(name = "foo"))
+                providers.metadata.addRemote("repo", EngineRemote(name = "bar", address = "a", username = "u", password = "p", repository = "r"))
+            }
             every { executor.start(*anyVararg()) } returns mockk()
-            every { executor.exec(any<Process>(), any()) } returns ""
-            every { executor.exec(*anyVararg()) } returns ""
-            every { executor.exec("zfs", "list", "-Ho", "name,io.titan-data:metadata",
-                    "test/repo/repo") } returns "test/repo/repo\t{}"
-            every { executor.exec("zfs", "list", "-Ho", "io.titan-data:remotes", "test/repo/repo") } returns
-                    "[{\"provider\":\"nop\",\"name\":\"foo\"}," +
-                    "{\"provider\":\"engine\",\"name\":\"bar\",\"address\":\"a\"," +
-                    "\"username\":\"u\",\"password\":\"p\"}]"
             with(engine.handleRequest(HttpMethod.Delete, "/v1/repositories/repo/remotes/bar")) {
                 response.status() shouldBe HttpStatusCode.NoContent
-
-                verify {
-                    executor.start("zfs", "set",
-                            "io.titan-data:remotes=[{\"provider\":\"nop\",\"name\":\"foo\"}]",
-                            "test/repo/repo")
-                }
             }
         }
 
         "list remote commits succeeds" {
-            every { executor.exec(*anyVararg()) } returns "[{\"provider\":\"nop\",\"name\":\"foo\"}]"
+            transaction {
+                providers.metadata.createRepository(Repository(name = "repo", properties = mapOf()))
+                providers.metadata.addRemote("repo", NopRemote(name = "foo"))
+            }
             with(engine.handleRequest(HttpMethod.Get, "/v1/repositories/repo/remotes/foo/commits") {
                 addHeader("titan-remote-parameters", "{\"provider\":\"nop\"}")
             }) {
@@ -264,7 +236,10 @@ class RemotesApiTest : StringSpec() {
         }
 
         "get remote commit succeeds" {
-            every { executor.exec(*anyVararg()) } returns "[{\"provider\":\"nop\",\"name\":\"foo\"}]"
+            transaction {
+                providers.metadata.createRepository(Repository(name = "repo", properties = mapOf()))
+                providers.metadata.addRemote("repo", NopRemote(name = "foo"))
+            }
             with(engine.handleRequest(HttpMethod.Get, "/v1/repositories/repo/remotes/foo/commits/c") {
                 addHeader("titan-remote-parameters", "{\"provider\":\"nop\"}")
             }) {

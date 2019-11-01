@@ -36,7 +36,9 @@ class RepositoryOrchestrator(val providers: ProviderModule) {
     fun updateRepository(name: String, repo: Repository) {
         NameUtil.validateRepoName(name)
         NameUtil.validateRepoName(repo.name)
-        providers.metadata.updateRepository(name, repo)
+        transaction {
+            providers.metadata.updateRepository(name, repo)
+        }
     }
 
     fun deleteRepository(name: String) {

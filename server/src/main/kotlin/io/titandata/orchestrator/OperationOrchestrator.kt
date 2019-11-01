@@ -106,8 +106,9 @@ class OperationOrchestrator(val providers: ProviderModule) {
     }
 
     private fun getRemote(repository: String, remote: String): Remote {
-        val remotes = providers.storage.getRemotes(repository)
-        return remotes.find { r -> r.name == remote } ?: throw NoSuchObjectException("no such remote '$remote' in repository '$repository'")
+        return transaction {
+            providers.metadata.getRemote(repository, remote)
+        }
     }
 
     @Synchronized

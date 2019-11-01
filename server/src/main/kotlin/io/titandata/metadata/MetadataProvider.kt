@@ -6,13 +6,16 @@ import com.zaxxer.hikari.HikariConfig
 import com.zaxxer.hikari.HikariDataSource
 import io.titandata.exception.NoSuchObjectException
 import io.titandata.exception.ObjectExistsException
+import io.titandata.metadata.table.Remotes
 import io.titandata.metadata.table.Repositories
+import io.titandata.models.Remote
 import io.titandata.models.Repository
 import io.titandata.serialization.ModelTypeAdapters
 import org.jetbrains.exposed.exceptions.ExposedSQLException
 import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.ResultRow
 import org.jetbrains.exposed.sql.SchemaUtils
+import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.deleteWhere
 import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.select
@@ -60,7 +63,7 @@ class MetadataProvider(val inMemory: Boolean = true, val databaseName: String = 
         }
 
         transaction {
-            SchemaUtils.createMissingTablesAndColumns(Repositories)
+            SchemaUtils.createMissingTablesAndColumns(Repositories, Remotes)
         }
     }
 
@@ -112,6 +115,57 @@ class MetadataProvider(val inMemory: Boolean = true, val databaseName: String = 
         }
         if (count == 0) {
             throw NoSuchObjectException("no such repository '$repoName'")
+        }
+    }
+
+    private fun convertRemote(it: ResultRow): Remote {
+        return gson.fromJson(it[Remotes.metadata], Remote::class.java)
+    }
+
+    fun addRemote(repoName: String, remote: Remote) {
+        Remotes.insert {
+            it[name] = remote.name
+            it[repo] = repoName
+            it[metadata] = gson.toJson(remote)
+        }
+    }
+
+    fun getRemote(repoName: String, remoteName: String): Remote {
+        getRepository(repoName) // check existence
+        return Remotes.select {
+            (Remotes.name eq remoteName) and (Remotes.repo eq repoName)
+        }.map { convertRemote(it) }
+                .firstOrNull()
+                ?: throw NoSuchObjectException("no such remote '$remoteName' in repository '$repoName'")
+    }
+
+    fun listRemotes(repoName: String): List<Remote> {
+        getRepository(repoName) // check existence
+        return Remotes.select {
+            Remotes.repo eq repoName
+        }.map { convertRemote(it) }
+    }
+
+    fun removeRemote(repoName: String, remoteName: String) {
+        getRepository(repoName) // check existence
+        val count = Remotes.deleteWhere {
+            (Remotes.name eq remoteName) and (Remotes.repo eq repoName)
+        }
+        if (count == 0) {
+            throw NoSuchObjectException("no such remote '$remoteName' in repository '$repoName'")
+        }
+    }
+
+    fun updateRemote(repoName: String, remoteName: String, remote: Remote) {
+        getRepository(repoName) // check existence
+        val count = Remotes.update({
+            (Remotes.name eq remoteName) and (Remotes.repo eq repoName)
+        }) {
+            it[name] = remote.name
+            it[metadata] = gson.toJson(remote)
+        }
+        if (count == 0) {
+            throw NoSuchObjectException("no such remote '$remoteName' in repository '$repoName'")
         }
     }
 }

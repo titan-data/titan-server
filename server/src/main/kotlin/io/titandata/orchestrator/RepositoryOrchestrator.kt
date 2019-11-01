@@ -7,20 +7,8 @@ import org.jetbrains.exposed.sql.transactions.transaction
 
 class RepositoryOrchestrator(val providers: ProviderModule) {
 
-    internal val nameRegex = "^[a-zA-Z0-9_\\-:.]+$".toRegex()
-
-    private fun validateRepoName(repoName: String) {
-        if (!nameRegex.matches(repoName)) {
-            throw IllegalArgumentException("invalid repository name, can only contain " +
-                    "alphanumeric characters, '-', ':', '.', or '_'")
-        }
-        if (repoName.length > 64) {
-            throw IllegalArgumentException("invalid repository name, must be 64 characters or less")
-        }
-    }
-
     fun createRepository(repo: Repository) {
-        validateRepoName(repo.name)
+        NameUtil.validateRepoName(repo.name)
         transaction {
             providers.metadata.createRepository(repo)
         }
@@ -34,25 +22,25 @@ class RepositoryOrchestrator(val providers: ProviderModule) {
     }
 
     fun getRepository(name: String): Repository {
-        validateRepoName(name)
+        NameUtil.validateRepoName(name)
         return transaction {
             providers.metadata.getRepository(name)
         }
     }
 
     fun getRepositoryStatus(name: String): RepositoryStatus {
-        validateRepoName(name)
+        NameUtil.validateRepoName(name)
         return providers.storage.getRepositoryStatus(name)
     }
 
     fun updateRepository(name: String, repo: Repository) {
-        validateRepoName(name)
-        validateRepoName(repo.name)
+        NameUtil.validateRepoName(name)
+        NameUtil.validateRepoName(repo.name)
         providers.metadata.updateRepository(name, repo)
     }
 
     fun deleteRepository(name: String) {
-        validateRepoName(name)
+        NameUtil.validateRepoName(name)
         transaction {
             providers.metadata.deleteRepository(name)
         }

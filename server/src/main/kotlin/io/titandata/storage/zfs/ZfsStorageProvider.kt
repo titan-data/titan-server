@@ -54,7 +54,6 @@ class ZfsStorageProvider(
 
     internal val METADATA_PROP = "io.titan-data:metadata"
     internal val ACTIVE_PROP = "io.titan-data:active"
-    internal val REMOTES_PROP = "io.titan-data:remotes"
     internal val OPERATION_PROP = "io.titan-data:operation"
     internal val REAPER_PROP = "io.titan-data:reaper"
     internal val INITIAL_COMMIT = "initial"
@@ -307,17 +306,6 @@ class ZfsStorageProvider(
     override fun deleteRepository(name: String) {
         log.info("delete repository $name")
         repositoryManager.deleteRepository(name)
-    }
-
-    @Synchronized
-    override fun getRemotes(repo: String): List<Remote> {
-        return repositoryManager.getRemotes(repo)
-    }
-
-    @Synchronized
-    override fun updateRemotes(repo: String, remotes: List<Remote>) {
-        log.info("update remotes for repository $repo")
-        repositoryManager.updateRemotes(repo, remotes)
     }
 
     @Synchronized

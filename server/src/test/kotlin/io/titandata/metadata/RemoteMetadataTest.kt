@@ -1,9 +1,9 @@
 package io.titandata.metadata
 
+import io.kotlintest.Spec
 import io.kotlintest.TestCase
 import io.kotlintest.matchers.types.shouldBeInstanceOf
 import io.kotlintest.shouldBe
-import io.kotlintest.shouldNotBe
 import io.kotlintest.shouldThrow
 import io.kotlintest.specs.StringSpec
 import io.titandata.exception.NoSuchObjectException
@@ -15,16 +15,14 @@ import org.jetbrains.exposed.sql.transactions.transaction
 
 class RemoteMetadataTest : StringSpec() {
 
-    companion object {
-        var dbIdentifier = 0
+    val md = MetadataProvider()
+
+    override fun beforeSpec(spec: Spec) {
+        md.init()
     }
 
-    lateinit var md: MetadataProvider
-
     override fun beforeTest(testCase: TestCase) {
-        dbIdentifier++
-        md = MetadataProvider(true, "db$dbIdentifier")
-        md.init()
+        md.clear()
     }
 
     init {
@@ -143,7 +141,7 @@ class RemoteMetadataTest : StringSpec() {
             val s3 = remote as S3Remote
             s3.bucket shouldBe "bucket"
         }
-        
+
         "rename remote succeeds" {
             val remote = transaction {
                 md.createRepository(Repository(name = "foo", properties = mapOf()))
@@ -153,7 +151,7 @@ class RemoteMetadataTest : StringSpec() {
             }
             remote.name shouldBe "upstream"
         }
-        
+
         "update of non-existent remote fails" {
             shouldThrow<NoSuchObjectException> {
                 transaction {
@@ -162,7 +160,7 @@ class RemoteMetadataTest : StringSpec() {
                 }
             }
         }
-        
+
         "update of remote for non-existent repo fails" {
             shouldThrow<NoSuchObjectException> {
                 transaction {

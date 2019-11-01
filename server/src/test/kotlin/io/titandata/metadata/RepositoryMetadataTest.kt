@@ -1,7 +1,7 @@
 package io.titandata.metadata
 
+import io.kotlintest.Spec
 import io.kotlintest.TestCase
-import io.kotlintest.matchers.types.shouldBeInstanceOf
 import io.kotlintest.shouldBe
 import io.kotlintest.shouldNotBe
 import io.kotlintest.shouldThrow
@@ -9,21 +9,18 @@ import io.kotlintest.specs.StringSpec
 import io.titandata.exception.NoSuchObjectException
 import io.titandata.exception.ObjectExistsException
 import io.titandata.models.Repository
-import io.titandata.remote.nop.NopRemote
 import org.jetbrains.exposed.sql.transactions.transaction
 
 class RepositoryMetadataTest : StringSpec() {
 
-    companion object {
-        var dbIdentifier = 0
+    val md = MetadataProvider()
+
+    override fun beforeSpec(spec: Spec) {
+        md.init()
     }
 
-    lateinit var md: MetadataProvider
-
     override fun beforeTest(testCase: TestCase) {
-        dbIdentifier++
-        md = MetadataProvider(true, "db$dbIdentifier")
-        md.init()
+        md.clear()
     }
 
     init {

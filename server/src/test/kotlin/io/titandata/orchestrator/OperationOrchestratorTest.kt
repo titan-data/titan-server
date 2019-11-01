@@ -4,6 +4,7 @@
 
 package io.titandata.orchestrator
 
+import io.kotlintest.Spec
 import io.kotlintest.TestCase
 import io.kotlintest.TestCaseOrder
 import io.kotlintest.TestResult
@@ -46,8 +47,8 @@ class OperationOrchestratorTest : StringSpec() {
     @MockK
     lateinit var zfsStorageProvider: ZfsStorageProvider
 
-    @SpyK
-    lateinit var metadata: MetadataProvider
+    @MockK
+    var metadata = MetadataProvider()
 
     @SpyK
     var nopRemoteProvider = NopRemoteProvider()
@@ -59,6 +60,10 @@ class OperationOrchestratorTest : StringSpec() {
     @InjectMockKs
     @OverrideMockKs
     lateinit var provider: OperationOrchestrator
+
+    override fun beforeSpec(spec: Spec) {
+        metadata.init()
+    }
 
     override fun beforeTest(testCase: TestCase) {
         provider = OperationOrchestrator(providers)
@@ -142,11 +147,14 @@ class OperationOrchestratorTest : StringSpec() {
 
         "pull for non-existent remote fails" {
             shouldThrow<NoSuchObjectException> {
+                every { metadata.getRemote(any(), any()) } throws NoSuchObjectException("")
                 provider.startPull("foo", "remote", "commit", NopParameters())
             }
         }
 
         "pull fails for mismatched remote fails" {
+            every { metadata.getRepository(any()) } returns Repository(name = "foo", properties = mapOf())
+            every { metadata.getRemote(any(), any()) } returns NopRemote(name = "remote")
             every { metadata.listRemotes(any()) } returns listOf(NopRemote(name = "remote"))
             shouldThrow<IllegalArgumentException> {
                 provider.startPull("foo", "remote", "commit", EngineParameters())
@@ -154,6 +162,8 @@ class OperationOrchestratorTest : StringSpec() {
         }
 
         "pull fails for non-existent remote commit" {
+            every { metadata.getRepository(any()) } returns Repository(name = "foo", properties = mapOf())
+            every { metadata.getRemote(any(), any()) } returns NopRemote(name = "remote")
             every { metadata.listRemotes(any()) } returns listOf(NopRemote(name = "remote"))
             every { nopRemoteProvider.validateOperation(any(), any(), any(), any(), any()) } throws NoSuchObjectException("")
             shouldThrow<NoSuchObjectException> {
@@ -162,6 +172,8 @@ class OperationOrchestratorTest : StringSpec() {
         }
 
         "pull fails if local commit exists" {
+            every { metadata.getRepository(any()) } returns Repository(name = "foo", properties = mapOf())
+            every { metadata.getRemote(any(), any()) } returns NopRemote(name = "remote")
             every { metadata.listRemotes(any()) } returns listOf(NopRemote(name = "remote"))
             every { zfsStorageProvider.getCommit(any(), any()) } returns Commit(id = "commit", properties = mapOf())
             shouldThrow<ObjectExistsException> {
@@ -170,6 +182,8 @@ class OperationOrchestratorTest : StringSpec() {
         }
 
         "pull fails if local commit does not exist and metadata only set" {
+            every { metadata.getRepository(any()) } returns Repository(name = "foo", properties = mapOf())
+            every { metadata.getRemote(any(), any()) } returns NopRemote(name = "remote")
             every { metadata.listRemotes(any()) } returns listOf(NopRemote(name = "remote"))
             every { zfsStorageProvider.getCommit(any(), any()) } throws NoSuchObjectException("")
             shouldThrow<ObjectExistsException> {
@@ -178,6 +192,8 @@ class OperationOrchestratorTest : StringSpec() {
         }
 
         "pull succeeds" {
+            every { metadata.getRepository(any()) } returns Repository(name = "foo", properties = mapOf())
+            every { metadata.getRemote(any(), any()) } returns NopRemote(name = "remote")
             every { metadata.listRemotes(any()) } returns listOf(NopRemote(name = "remote"))
             every { zfsStorageProvider.getCommit(any(), any()) } throws NoSuchObjectException("")
             every { generator.get() } returns "id"
@@ -211,6 +227,8 @@ class OperationOrchestratorTest : StringSpec() {
         }
 
         "error during pull is reported correctly" {
+            every { metadata.getRepository(any()) } returns Repository(name = "foo", properties = mapOf())
+            every { metadata.getRemote(any(), any()) } returns NopRemote(name = "remote")
             every { metadata.listRemotes(any()) } returns listOf(NopRemote(name = "remote"))
             every { zfsStorageProvider.getCommit(any(), any()) } throws NoSuchObjectException("")
             every { generator.get() } returns "id"
@@ -236,6 +254,8 @@ class OperationOrchestratorTest : StringSpec() {
         }
 
         "interrupt during pull is reported correctly" {
+            every { metadata.getRepository(any()) } returns Repository(name = "foo", properties = mapOf())
+            every { metadata.getRemote(any(), any()) } returns NopRemote(name = "remote")
             every { metadata.listRemotes(any()) } returns listOf(NopRemote(name = "remote"))
             every { zfsStorageProvider.getCommit(any(), any()) } throws NoSuchObjectException("")
             every { generator.get() } returns "id"
@@ -259,6 +279,8 @@ class OperationOrchestratorTest : StringSpec() {
 
         "pull fails if conflicting operation is in progress" {
             addOperation()
+            every { metadata.getRepository(any()) } returns Repository(name = "foo", properties = mapOf())
+            every { metadata.getRemote(any(), any()) } returns NopRemote(name = "remote")
             every { metadata.listRemotes(any()) } returns listOf(NopRemote(name = "remote"))
             every { zfsStorageProvider.getCommit(any(), any()) } throws NoSuchObjectException("")
             shouldThrow<ObjectExistsException> {
@@ -268,6 +290,8 @@ class OperationOrchestratorTest : StringSpec() {
 
         "pull succeeds if non-conflicting operation is in progress" {
             addOperation(type = Operation.Type.PUSH)
+            every { metadata.getRepository(any()) } returns Repository(name = "foo", properties = mapOf())
+            every { metadata.getRemote(any(), any()) } returns NopRemote(name = "remote")
             every { metadata.listRemotes(any()) } returns listOf(NopRemote(name = "remote"))
             every { zfsStorageProvider.getCommit(any(), any()) } throws NoSuchObjectException("")
             every { zfsStorageProvider.createOperation("foo", any(), any()) } just Runs
@@ -283,6 +307,8 @@ class OperationOrchestratorTest : StringSpec() {
         }
 
         "push for non-existent remote fails" {
+            every { metadata.getRepository(any()) } returns Repository(name = "foo", properties = mapOf())
+            every { metadata.getRemote(any(), any()) } throws NoSuchObjectException("")
             every { metadata.listRemotes(any()) } returns listOf()
             shouldThrow<NoSuchObjectException> {
                 provider.startPush("foo", "remote", "commit", NopParameters())
@@ -290,6 +316,8 @@ class OperationOrchestratorTest : StringSpec() {
         }
 
         "push fails for mismatched remote fails" {
+            every { metadata.getRepository(any()) } returns Repository(name = "foo", properties = mapOf())
+            every { metadata.getRemote(any(), any()) } returns NopRemote(name = "remote")
             every { metadata.listRemotes(any()) } returns listOf(NopRemote(name = "remote"))
             shouldThrow<IllegalArgumentException> {
                 provider.startPush("foo", "remote", "commit", EngineParameters())
@@ -297,6 +325,8 @@ class OperationOrchestratorTest : StringSpec() {
         }
 
         "push fails if local commit cannot be found" {
+            every { metadata.getRepository(any()) } returns Repository(name = "foo", properties = mapOf())
+            every { metadata.getRemote(any(), any()) } returns NopRemote(name = "remote")
             every { metadata.listRemotes(any()) } returns listOf(NopRemote(name = "remote"))
             every { zfsStorageProvider.getCommit(any(), any()) } throws NoSuchObjectException("")
             shouldThrow<NoSuchObjectException> {
@@ -305,6 +335,8 @@ class OperationOrchestratorTest : StringSpec() {
         }
 
         "push fails if remote commit exists" {
+            every { metadata.getRepository(any()) } returns Repository(name = "foo", properties = mapOf())
+            every { metadata.getRemote(any(), any()) } returns NopRemote(name = "remote")
             every { metadata.listRemotes(any()) } returns listOf(NopRemote(name = "remote"))
             every { zfsStorageProvider.getCommit(any(), any()) } returns Commit(id = "commit", properties = mapOf())
             every { nopRemoteProvider.validateOperation(any(), any(), any(), any(), any()) } throws ObjectExistsException("")
@@ -314,6 +346,8 @@ class OperationOrchestratorTest : StringSpec() {
         }
 
         "push succeeds" {
+            every { metadata.getRepository(any()) } returns Repository(name = "foo", properties = mapOf())
+            every { metadata.getRemote(any(), any()) } returns NopRemote(name = "remote")
             every { metadata.listRemotes(any()) } returns listOf(NopRemote(name = "remote"))
             every { zfsStorageProvider.getCommit(any(), any()) } returns Commit(id = "commit", properties = mapOf())
             every { generator.get() } returns "id"
@@ -348,6 +382,8 @@ class OperationOrchestratorTest : StringSpec() {
         }
 
         "error during push is reported correctly" {
+            every { metadata.getRepository(any()) } returns Repository(name = "foo", properties = mapOf())
+            every { metadata.getRemote(any(), any()) } returns NopRemote(name = "remote")
             every { metadata.listRemotes(any()) } returns listOf(NopRemote(name = "remote"))
             every { zfsStorageProvider.getCommit(any(), any()) } returns Commit(id = "commit", properties = mapOf())
             every { generator.get() } returns "id"
@@ -373,6 +409,8 @@ class OperationOrchestratorTest : StringSpec() {
         }
 
         "interrupt during push is reported correctly" {
+            every { metadata.getRepository(any()) } returns Repository(name = "foo", properties = mapOf())
+            every { metadata.getRemote(any(), any()) } returns NopRemote(name = "remote")
             every { metadata.listRemotes(any()) } returns listOf(NopRemote(name = "remote"))
             every { zfsStorageProvider.getCommit(any(), any()) } returns Commit(id = "commit", properties = mapOf())
             every { generator.get() } returns "id"
@@ -397,6 +435,8 @@ class OperationOrchestratorTest : StringSpec() {
 
         "push fails if conflicting operation is in progress" {
             addOperation(type = Operation.Type.PUSH)
+            every { metadata.getRepository(any()) } returns Repository(name = "foo", properties = mapOf())
+            every { metadata.getRemote(any(), any()) } returns NopRemote(name = "remote")
             every { metadata.listRemotes(any()) } returns listOf(NopRemote(name = "remote"))
             every { zfsStorageProvider.getCommit(any(), any()) } returns Commit(id = "commit", properties = mapOf())
             shouldThrow<ObjectExistsException> {
@@ -406,6 +446,8 @@ class OperationOrchestratorTest : StringSpec() {
 
         "push succeeds if non-conflicting operation is in progress" {
             addOperation(type = Operation.Type.PUSH)
+            every { metadata.getRepository(any()) } returns Repository(name = "foo", properties = mapOf())
+            every { metadata.getRemote(any(), any()) } returns NopRemote(name = "remote")
             every { metadata.listRemotes(any()) } returns listOf(NopRemote(name = "remote"))
             every { zfsStorageProvider.getCommit(any(), any()) } returns Commit(id = "commit2", properties = mapOf())
             every { generator.get() } returns "id"
@@ -435,6 +477,7 @@ class OperationOrchestratorTest : StringSpec() {
             )
             every { metadata.listRepositories() } returns listOf(Repository(name = "foo", properties = mapOf()))
             every { metadata.getRepository("foo") } returns Repository(name = "foo", properties = mapOf())
+            every { metadata.getRemote(any(), any()) } returns NopRemote(name = "remote")
             every { metadata.listRemotes("foo") } returns listOf(
                     NopRemote(name = "remote"))
             provider.loadState()
@@ -458,6 +501,7 @@ class OperationOrchestratorTest : StringSpec() {
             )
             every { metadata.getRepository("foo") } returns Repository(name = "foo", properties = mapOf())
             every { metadata.listRepositories() } returns listOf(Repository(name = "foo", properties = mapOf()))
+            every { metadata.getRemote(any(), any()) } returns NopRemote(name = "remote")
             every { metadata.listRemotes("foo") } returns listOf(
                     NopRemote(name = "remote"))
             every { zfsStorageProvider.createOperationScratch("foo", any()) } returns ""

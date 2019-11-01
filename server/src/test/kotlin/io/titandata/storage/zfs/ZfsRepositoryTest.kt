@@ -7,7 +7,6 @@ package io.titandata.storage.zfs
 import io.kotlintest.TestCase
 import io.kotlintest.TestCaseOrder
 import io.kotlintest.TestResult
-import io.kotlintest.matchers.types.shouldBeInstanceOf
 import io.kotlintest.shouldBe
 import io.kotlintest.shouldNotBe
 import io.kotlintest.shouldThrow
@@ -19,7 +18,6 @@ import io.mockk.every
 import io.mockk.impl.annotations.InjectMockKs
 import io.mockk.impl.annotations.MockK
 import io.mockk.impl.annotations.OverrideMockKs
-import io.mockk.mockk
 import io.mockk.verify
 import io.mockk.verifySequence
 import io.titandata.exception.CommandException
@@ -27,8 +25,6 @@ import io.titandata.exception.InvalidStateException
 import io.titandata.exception.NoSuchObjectException
 import io.titandata.exception.ObjectExistsException
 import io.titandata.models.Repository
-import io.titandata.remote.engine.EngineRemote
-import io.titandata.remote.nop.NopRemote
 import io.titandata.util.CommandExecutor
 import io.titandata.util.GuidGenerator
 

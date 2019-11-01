@@ -29,7 +29,7 @@ import org.jetbrains.exposed.sql.update
  */
 class MetadataProvider(val inMemory: Boolean = true, val databaseName: String = "titan") {
 
-    internal val gson = ModelTypeAdapters.configure(GsonBuilder()).create()
+    private val gson = ModelTypeAdapters.configure(GsonBuilder()).create()
 
     private fun memoryConfig(): HikariDataSource {
         val config = HikariConfig()
@@ -64,6 +64,14 @@ class MetadataProvider(val inMemory: Boolean = true, val databaseName: String = 
 
         transaction {
             SchemaUtils.createMissingTablesAndColumns(Repositories, Remotes)
+        }
+    }
+
+    fun clear() {
+        transaction {
+            for (repo in listRepositories()) {
+                deleteRepository(repo.name)
+            }
         }
     }
 

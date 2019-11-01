@@ -14,7 +14,6 @@ import io.titandata.exception.ObjectExistsException
 import io.titandata.models.Commit
 import io.titandata.models.CommitStatus
 import io.titandata.models.Operation
-import io.titandata.models.Remote
 import io.titandata.models.Repository
 import io.titandata.models.RepositoryStatus
 import io.titandata.models.Volume

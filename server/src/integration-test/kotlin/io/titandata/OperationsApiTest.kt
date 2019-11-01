@@ -28,12 +28,11 @@ import io.mockk.every
 import io.mockk.impl.annotations.InjectMockKs
 import io.mockk.impl.annotations.MockK
 import io.mockk.impl.annotations.OverrideMockKs
-import io.mockk.impl.annotations.SpyK
-import io.titandata.metadata.MetadataProvider
 import io.titandata.models.Error
 import io.titandata.models.Operation
 import io.titandata.models.Repository
 import io.titandata.remote.nop.NopParameters
+import io.titandata.remote.nop.NopRemote
 import io.titandata.serialization.ModelTypeAdapters
 import io.titandata.storage.OperationData
 import io.titandata.storage.zfs.ZfsStorageProvider
@@ -42,6 +41,7 @@ import io.titandata.util.GuidGenerator
 import java.time.Duration
 import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.time.delay
+import org.jetbrains.exposed.sql.transactions.transaction
 
 @UseExperimental(KtorExperimentalAPI::class)
 class OperationsApiTest : StringSpec() {
@@ -55,9 +55,6 @@ class OperationsApiTest : StringSpec() {
     @InjectMockKs
     @OverrideMockKs
     var zfsStorageProvider = ZfsStorageProvider("test")
-
-    @SpyK
-    var metadata = MetadataProvider()
 
     @InjectMockKs
     @OverrideMockKs
@@ -81,6 +78,7 @@ class OperationsApiTest : StringSpec() {
 
     override fun beforeTest(testCase: TestCase) {
         providers.operations.clearState()
+        providers.metadata.clear()
         return MockKAnnotations.init(this)
     }
 
@@ -91,8 +89,10 @@ class OperationsApiTest : StringSpec() {
     override fun testCaseOrder() = TestCaseOrder.Random
 
     fun loadOperations(repo: String, vararg operations: OperationData) {
-        every { metadata.getRepository("foo") } returns Repository(name = "foo", properties = mapOf())
-        every { metadata.listRepositories() } returns listOf(Repository(name = "foo", properties = mapOf()))
+        transaction {
+            providers.metadata.createRepository(Repository(name = "foo", properties = mapOf()))
+            providers.metadata.addRemote("foo", NopRemote(name = "remote"))
+        }
         every { executor.exec(*anyVararg()) } returns ""
         every { executor.exec("zfs", "list", "-Ho", "name,io.titan-data:metadata",
                 "test/repo/$repo") } returns "test/repo/$repo\t{}"
@@ -105,8 +105,6 @@ class OperationsApiTest : StringSpec() {
             every { executor.exec("zfs", "list", "-Ho", "name,io.titan-data:operation", "test/repo/$repo/${o.operation.id}") } returns
                     "test/repo/$repo/${o.operation.id}\t" + gson.toJson(o)
         }
-        every { executor.exec("zfs", "list", "-Ho", "io.titan-data:remotes",
-                "test/repo/$repo") } returns "[{\"name\":\"remote\",\"provider\":\"nop\"}]"
         every { executor.exec("zfs", "list", "-Ho", "name,defer_destroy", "-t", "snapshot",
                 "-d", "2", "test/repo/$repo")
         } returns "test/repo/$repo/guid@initial\toff\ntest/repo/$repo/guid@commit\toff\n"
@@ -131,7 +129,9 @@ class OperationsApiTest : StringSpec() {
 
     init {
         "list empty operations succeeds" {
-            every { metadata.getRepository("foo") } returns Repository(name = "foo", properties = mapOf())
+            transaction {
+                providers.metadata.createRepository(Repository(name = "foo", properties = mapOf()))
+            }
             with(engine.handleRequest(HttpMethod.Get, "/v1/repositories/foo/operations")) {
                 response.status() shouldBe HttpStatusCode.OK
                 response.contentType().toString() shouldBe "application/json; charset=UTF-8"
@@ -230,12 +230,14 @@ class OperationsApiTest : StringSpec() {
         }
 
         "push starts operation" {
+            transaction {
+                providers.metadata.createRepository(Repository(name = "foo", properties = mapOf()))
+                providers.metadata.addRemote("foo", NopRemote(name = "remote"))
+            }
             every { executor.exec("zfs", "list", "-Ho", "name,io.titan-data:metadata",
                     "test/repo/foo") } returns "test/repo/foo\t{}"
             every { executor.exec("zfs", "list", "-Ho", "name,io.titan-data:metadata",
                     "-d", "1", "test/repo") } returns "test/repo/foo\t{}"
-            every { executor.exec("zfs", "list", "-Ho", "io.titan-data:remotes",
-                    "test/repo/foo") } returns "[{\"name\":\"remote\",\"provider\":\"nop\"}]"
             every { executor.exec("zfs", "list", "-Ho", "name,defer_destroy", "-t",
                     "snapshot", "-d", "2", "test/repo/foo") } returns
                     "test/repo/foo/guid@commit\toff"
@@ -258,12 +260,14 @@ class OperationsApiTest : StringSpec() {
         }
 
         "pull starts operation" {
+            transaction {
+                providers.metadata.createRepository(Repository(name = "foo", properties = mapOf()))
+                providers.metadata.addRemote("foo", NopRemote(name = "remote"))
+            }
             every { executor.exec("zfs", "list", "-Ho", "name,io.titan-data:metadata",
                     "test/repo/foo") } returns "test/repo/foo\t{}"
             every { executor.exec("zfs", "list", "-Ho", "name,io.titan-data:metadata",
                     "-d", "1", "test/repo") } returns "test/repo/foo\t{}"
-            every { executor.exec("zfs", "list", "-Ho", "io.titan-data:remotes",
-                    "test/repo/foo") } returns "[{\"name\":\"remote\",\"provider\":\"nop\"}]"
             every { executor.exec("zfs", "list", "-Ho", "name,defer_destroy", "-t",
                     "snapshot", "-d", "2", "test/repo/foo") } returns ""
 

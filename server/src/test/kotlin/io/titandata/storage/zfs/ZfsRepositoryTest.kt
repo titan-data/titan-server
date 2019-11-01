@@ -7,7 +7,6 @@ package io.titandata.storage.zfs
 import io.kotlintest.TestCase
 import io.kotlintest.TestCaseOrder
 import io.kotlintest.TestResult
-import io.kotlintest.matchers.types.shouldBeInstanceOf
 import io.kotlintest.shouldBe
 import io.kotlintest.shouldNotBe
 import io.kotlintest.shouldThrow
@@ -19,7 +18,6 @@ import io.mockk.every
 import io.mockk.impl.annotations.InjectMockKs
 import io.mockk.impl.annotations.MockK
 import io.mockk.impl.annotations.OverrideMockKs
-import io.mockk.mockk
 import io.mockk.verify
 import io.mockk.verifySequence
 import io.titandata.exception.CommandException
@@ -27,8 +25,6 @@ import io.titandata.exception.InvalidStateException
 import io.titandata.exception.NoSuchObjectException
 import io.titandata.exception.ObjectExistsException
 import io.titandata.models.Repository
-import io.titandata.remote.engine.EngineRemote
-import io.titandata.remote.nop.NopRemote
 import io.titandata.util.CommandExecutor
 import io.titandata.util.GuidGenerator
 
@@ -205,42 +201,6 @@ class ZfsRepositoryTest : StringSpec() {
             every { executor.exec(*anyVararg()) } throws CommandException("", 1, "does not exist")
             shouldThrow<NoSuchObjectException> {
                 provider.getActive("foo")
-            }
-        }
-
-        "get remotes with no property set succeeds" {
-            every { executor.exec(*anyVararg()) } returns "-\n"
-            val result = provider.getRemotes("repo")
-            result.size shouldBe 0
-        }
-
-        "get remotes returns success" {
-            every { executor.exec(*anyVararg()) } returns
-                "[{\"provider\":\"nop\",\"name\":\"foo\"}," +
-                        "{\"provider\":\"engine\",\"name\":\"bar\",\"address\":\"a\"," +
-                        "\"username\":\"u\",\"password\":\"p\"}]"
-            val result = provider.getRemotes("repo")
-            result.size shouldBe 2
-            result[0].shouldBeInstanceOf<NopRemote>()
-            result[0].provider shouldBe "nop"
-            result[0].name shouldBe "foo"
-            result[1].shouldBeInstanceOf<EngineRemote>()
-            result[1].provider shouldBe "engine"
-            result[1].name shouldBe "bar"
-            (result[1] as EngineRemote).username shouldBe "u"
-            (result[1] as EngineRemote).address shouldBe "a"
-            (result[1] as EngineRemote).password shouldBe "p"
-        }
-
-        "update remotes succeeds" {
-            every { executor.start(*anyVararg()) } returns mockk()
-            every { executor.exec(any<Process>(), any()) } returns ""
-            every { executor.exec(*anyVararg()) } returns ""
-            provider.updateRemotes("repo", listOf(NopRemote(name = "foo")))
-            verify {
-                executor.start("zfs", "set",
-                        "io.titan-data:remotes=[{\"provider\":\"nop\",\"name\":\"foo\"}]",
-                        "test/repo/repo")
             }
         }
     }

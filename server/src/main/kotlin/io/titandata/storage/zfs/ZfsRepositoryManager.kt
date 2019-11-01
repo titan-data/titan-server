@@ -4,10 +4,8 @@
 
 package io.titandata.storage.zfs
 
-import com.google.gson.reflect.TypeToken
 import io.titandata.exception.CommandException
 import io.titandata.exception.InvalidStateException
-import io.titandata.models.Remote
 import io.titandata.models.Repository
 import io.titandata.models.RepositoryStatus
 import io.titandata.models.RepositoryVolumeStatus
@@ -44,7 +42,6 @@ class ZfsRepositoryManager(val provider: ZfsStorageProvider) {
     private val poolName = provider.poolName
     private val METADATA_PROP = provider.METADATA_PROP
     private val ACTIVE_PROP = provider.ACTIVE_PROP
-    private val REMOTES_PROP = provider.REMOTES_PROP
     private val INITIAL_COMMIT = provider.INITIAL_COMMIT
 
     /**
@@ -271,41 +268,6 @@ class ZfsRepositoryManager(val provider: ZfsStorageProvider) {
             if (!e.output.contains("No such file or directory")) {
                 throw e
             }
-        }
-    }
-
-    /**
-     * Get remotes for the given repository. These are stored as a separate property on the
-     * root repo dataset. Because remotes leverage polymorphism to convert between types, this
-     * requires a bit more gson gymnastics.
-     */
-    fun getRemotes(repo: String): List<Remote> {
-        provider.validateRepositoryName(repo)
-        try {
-            val output = provider.executor.exec("zfs", "list", "-Ho", "$REMOTES_PROP",
-                    "$poolName/repo/$repo").trim()
-            if (output == "-") {
-                return listOf()
-            }
-            val listType = object : TypeToken<List<Remote>>() { }.type
-            return provider.gson.fromJson(output, listType)
-        } catch (e: CommandException) {
-            provider.checkNoSuchRepository(e, repo)
-            throw e
-        }
-    }
-
-    /**
-     * Update the remotes for a given repository.
-     */
-    fun updateRemotes(repo: String, remotes: List<Remote>) {
-        provider.validateRepositoryName(repo)
-        try {
-            val json = provider.gson.toJson(remotes)
-            provider.secureZfsSet(REMOTES_PROP, json, "$poolName/repo/$repo")
-        } catch (e: CommandException) {
-            provider.checkNoSuchRepository(e, repo)
-            throw e
         }
     }
 }

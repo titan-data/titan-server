@@ -207,41 +207,5 @@ class ZfsRepositoryTest : StringSpec() {
                 provider.getActive("foo")
             }
         }
-
-        "get remotes with no property set succeeds" {
-            every { executor.exec(*anyVararg()) } returns "-\n"
-            val result = provider.getRemotes("repo")
-            result.size shouldBe 0
-        }
-
-        "get remotes returns success" {
-            every { executor.exec(*anyVararg()) } returns
-                "[{\"provider\":\"nop\",\"name\":\"foo\"}," +
-                        "{\"provider\":\"engine\",\"name\":\"bar\",\"address\":\"a\"," +
-                        "\"username\":\"u\",\"password\":\"p\"}]"
-            val result = provider.getRemotes("repo")
-            result.size shouldBe 2
-            result[0].shouldBeInstanceOf<NopRemote>()
-            result[0].provider shouldBe "nop"
-            result[0].name shouldBe "foo"
-            result[1].shouldBeInstanceOf<EngineRemote>()
-            result[1].provider shouldBe "engine"
-            result[1].name shouldBe "bar"
-            (result[1] as EngineRemote).username shouldBe "u"
-            (result[1] as EngineRemote).address shouldBe "a"
-            (result[1] as EngineRemote).password shouldBe "p"
-        }
-
-        "update remotes succeeds" {
-            every { executor.start(*anyVararg()) } returns mockk()
-            every { executor.exec(any<Process>(), any()) } returns ""
-            every { executor.exec(*anyVararg()) } returns ""
-            provider.updateRemotes("repo", listOf(NopRemote(name = "foo")))
-            verify {
-                executor.start("zfs", "set",
-                        "io.titan-data:remotes=[{\"provider\":\"nop\",\"name\":\"foo\"}]",
-                        "test/repo/repo")
-            }
-        }
     }
 }

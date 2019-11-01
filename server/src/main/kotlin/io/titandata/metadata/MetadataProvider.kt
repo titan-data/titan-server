@@ -123,10 +123,15 @@ class MetadataProvider(val inMemory: Boolean = true, val databaseName: String = 
     }
 
     fun addRemote(repoName: String, remote: Remote) {
-        Remotes.insert {
-            it[name] = remote.name
-            it[repo] = repoName
-            it[metadata] = gson.toJson(remote)
+        getRepository(repoName) // check existence
+        try {
+            Remotes.insert {
+                it[name] = remote.name
+                it[repo] = repoName
+                it[metadata] = gson.toJson(remote)
+            }
+        } catch (e: ExposedSQLException) {
+            throw ObjectExistsException("remote '${remote.name}' already exists in repository $repoName")
         }
     }
 

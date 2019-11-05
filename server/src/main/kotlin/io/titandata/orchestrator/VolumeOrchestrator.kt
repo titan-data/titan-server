@@ -19,7 +19,7 @@ class VolumeOrchestrator(val providers: ProviderModule) {
      */
     fun convertVolume(repo: String, volume: Volume) : Volume {
         return Volume(
-                name = volume.name,
+                name = "$repo/${volume.name}",
                 properties = volume.properties,
                 mountpoint = providers.storage.getVolumeMountpoint(repo, volume.name),
                 status = mapOf<String, Any>()
@@ -70,11 +70,18 @@ class VolumeOrchestrator(val providers: ProviderModule) {
     fun listVolumes(repo: String) : List<Volume> {
         return transaction {
             val vs = providers.metadata.getActiveVolumeSet(repo)
-            providers.metadata.listVolumes(vs)
+            providers.metadata.listVolumes(vs).map { convertVolume(repo, it) }
         }
     }
 
     fun listAllVolumes(): List<Volume> {
-        return providers.metadata.listAllVolumes()
+        return transaction {
+            val result = mutableListOf<Volume>()
+            for (repo in providers.metadata.listRepositories()) {
+                val vs = providers.metadata.getActiveVolumeSet(repo.name)
+                result.addAll(providers.metadata.listVolumes(vs).map { convertVolume(repo.name, it) })
+            }
+            result
+        }
     }
 }

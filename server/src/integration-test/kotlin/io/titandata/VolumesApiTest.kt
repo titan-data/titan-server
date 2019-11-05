@@ -30,6 +30,7 @@ import io.mockk.verify
 import io.titandata.exception.CommandException
 import io.titandata.metadata.MetadataProvider
 import io.titandata.models.Repository
+import io.titandata.models.Volume
 import io.titandata.storage.zfs.ZfsStorageProvider
 import io.titandata.util.CommandExecutor
 import java.util.concurrent.TimeUnit
@@ -146,7 +147,9 @@ class VolumesApiTest : StringSpec() {
         "remove volume succeeds" {
             val guid = transaction {
                 providers.metadata.createRepository(Repository(name = "foo", properties = emptyMap()))
-                providers.metadata.createVolumeSet("foo", true)
+                val vs = providers.metadata.createVolumeSet("foo", true)
+                providers.metadata.createVolume(vs, Volume(name="vol"))
+                vs
             }
             every { executor.exec("zfs", "destroy", "-R", "test/repo/foo/$guid/vol") } returns ""
             every { executor.exec("rmdir", "/var/lib/test/mnt/foo/vol") } returns ""
@@ -165,10 +168,10 @@ class VolumesApiTest : StringSpec() {
         "mount volume succeeds" {
             val guid = transaction {
                 providers.metadata.createRepository(Repository(name = "foo", properties = emptyMap()))
-                providers.metadata.createVolumeSet("foo", true)
+                val vs = providers.metadata.createVolumeSet("foo", true)
+                providers.metadata.createVolume(vs, Volume(name="vol"))
+                vs
             }
-            every { executor.exec("zfs", "list", "-Ho", "io.titan-data:metadata",
-                    "test/repo/foo/$guid/vol") } returns "{}"
             every { executor.exec("mount", "-t", "zfs", "test/repo/foo/$guid/vol",
                     "/var/lib/test/mnt/foo/vol") } returns ""
             with(engine.handleRequest(HttpMethod.Post, "/VolumeDriver.Mount") {
@@ -186,8 +189,6 @@ class VolumesApiTest : StringSpec() {
         }
 
         "unmount volume succeeds" {
-            every { executor.exec("zfs", "list", "-Hpo", "io.titan-data:active",
-                    "test/repo/foo") } returns "guid"
             every { executor.exec("umount", "/var/lib/test/mnt/foo/vol") } returns ""
             with(engine.handleRequest(HttpMethod.Post, "/VolumeDriver.Unmount") {
                 setBody("{\"Name\":\"foo/vol\"}")
@@ -203,12 +204,11 @@ class VolumesApiTest : StringSpec() {
         }
 
         "get path succeeds" {
-            val guid = transaction {
+            transaction {
                 providers.metadata.createRepository(Repository(name = "foo", properties = emptyMap()))
-                providers.metadata.createVolumeSet("foo", true)
+                val vs = providers.metadata.createVolumeSet("foo", true)
+                providers.metadata.createVolume(vs, Volume(name = "vol", properties=emptyMap()))
             }
-            every { executor.exec("zfs", "list", "-Ho", "io.titan-data:metadata",
-                    "test/repo/foo/$guid/vol") } returns "{\"a\":\"b\"}"
             with(engine.handleRequest(HttpMethod.Post, "/VolumeDriver.Path") {
                 setBody("{\"Name\":\"foo/vol\"}")
             }) {
@@ -219,12 +219,11 @@ class VolumesApiTest : StringSpec() {
         }
 
         "get volume succeeds" {
-            val guid = transaction {
+            transaction {
                 providers.metadata.createRepository(Repository(name = "foo", properties = emptyMap()))
-                providers.metadata.createVolumeSet("foo", true)
+                val vs = providers.metadata.createVolumeSet("foo", true)
+                providers.metadata.createVolume(vs, Volume("vol", properties=mapOf("a" to "b")))
             }
-            every { executor.exec("zfs", "list", "-Ho", "io.titan-data:metadata",
-                    "test/repo/foo/$guid/vol") } returns "{\"a\":\"b\"}"
             with(engine.handleRequest(HttpMethod.Post, "/VolumeDriver.Get") {
                 setBody("{\"Name\":\"foo/vol\"}")
             }) {
@@ -241,16 +240,12 @@ class VolumesApiTest : StringSpec() {
         }
 
         "list volumes succeeds" {
-            val guid = transaction {
+            transaction {
                 providers.metadata.createRepository(Repository(name = "foo", properties = emptyMap()))
-                providers.metadata.createVolumeSet("foo", true)
+                val vs = providers.metadata.createVolumeSet("foo", true)
+                providers.metadata.createVolume(vs, Volume(name="one", properties=mapOf("a" to "b")))
+                providers.metadata.createVolume(vs, Volume(name="two", properties=mapOf("c" to "d")))
             }
-            every { executor.exec("zfs", "list", "-Ho", "name,io.titan-data:metadata",
-                    "-r", "test/repo/foo/$guid") } returns arrayOf(
-                    "test/repo/foo\t{}",
-                    "test/repo/foo/$guid/one\t{\"a\":\"b\"}",
-                    "test/repo/foo/$guid/two\t{\"c\":\"d\"}"
-            ).joinToString("\n")
 
             with(engine.handleRequest(HttpMethod.Post, "/VolumeDriver.List")) {
                 response.status() shouldBe HttpStatusCode.OK

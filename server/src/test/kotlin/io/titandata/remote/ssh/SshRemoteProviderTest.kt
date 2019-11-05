@@ -234,13 +234,14 @@ class SshRemoteProviderTest : StringSpec() {
             every { zfsStorageProvider.createOperation("repo", any(), any()) } just Runs
             every { zfsStorageProvider.createOperationScratch("repo", any()) } returns ""
             every { zfsStorageProvider.destroyOperationScratch("repo", any()) } just Runs
+            every { zfsStorageProvider.getVolumeMountpoint(any(), any())} returns "/"
 
             operationExecutor.run()
 
             val progress = operationExecutor.getProgress()
             progress.size shouldBe 7
             progress[0].type shouldBe ProgressEntry.Type.START
-            progress[0].message shouldBe "Syncing v0"
+            progress[0].message shouldBe "Syncing repo/v0"
             progress[1].type shouldBe ProgressEntry.Type.PROGRESS
             progress[2].type shouldBe ProgressEntry.Type.END
             progress[3].type shouldBe ProgressEntry.Type.START
@@ -282,6 +283,7 @@ class SshRemoteProviderTest : StringSpec() {
             every { zfsStorageProvider.createOperation("repo", any(), any()) } just Runs
             every { zfsStorageProvider.createOperationScratch("repo", any()) } returns ""
             every { zfsStorageProvider.destroyOperationScratch("repo", any()) } just Runs
+            every { zfsStorageProvider.getVolumeMountpoint(any(), any())} returns "/"
 
             operationExecutor.run()
 

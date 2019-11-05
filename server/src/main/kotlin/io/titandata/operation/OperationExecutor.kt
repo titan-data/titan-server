@@ -13,6 +13,7 @@ import io.titandata.models.Remote
 import io.titandata.models.RemoteParameters
 import io.titandata.remote.RemoteProvider
 import io.titandata.storage.OperationData
+import org.jetbrains.exposed.sql.transactions.transaction
 import org.slf4j.LoggerFactory
 
 /*
@@ -133,7 +134,10 @@ class OperationExecutor(
         val operationId = operation.id
         val scratch = providers.storage.createOperationScratch(repo, operationId)
         try {
-            val volumes = providers.volumes.listVolumes(repo)
+            val volumes = transaction {
+                val vs = providers.metadata.getActiveVolumeSet(repo)
+                providers.metadata.listVolumes(vs)
+            }
             val base = providers.storage.mountOperationVolumes(repo, operationId, volumes)
             try {
                 for (volume in volumes) {

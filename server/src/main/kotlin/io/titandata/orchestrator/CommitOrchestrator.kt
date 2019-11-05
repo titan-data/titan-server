@@ -40,8 +40,14 @@ class CommitOrchestrator(val providers: ProviderModule) {
         val newVolumeSet = transaction {
             providers.metadata.createVolumeSet(repo)
         }
+        val volumes = transaction {
+            providers.metadata.listVolumes(activeVolumeSet)
+        }
         providers.storage.checkoutCommit(repo, activeVolumeSet, newVolumeSet, commit)
         transaction {
+            for (v in volumes) {
+                providers.metadata.createVolume(newVolumeSet, v)
+            }
             providers.metadata.activateVolumeSet(repo, newVolumeSet)
             providers.metadata.markVolumeSetDeleting(activeVolumeSet)
         }

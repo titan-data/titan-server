@@ -151,7 +151,7 @@ class ZfsOperationManager(val provider: ZfsStorageProvider) {
         val op = getOperation(repo, id)
         // We use the operation ID as the mountpoint so it can be mounted in parallel
         val base = provider.getMountpoint(op.operation.id)
-        for (v in provider.listVolumes(repo)) {
+        for (v in provider.listVolumes(repo, id)) {
             val mountpoint = "$base/${v.name}"
             provider.executor.exec("mkdir", "-p", mountpoint)
             provider.executor.exec("mount", "-t", "zfs",
@@ -167,7 +167,7 @@ class ZfsOperationManager(val provider: ZfsStorageProvider) {
         val op = getOperation(repo, id)
         // We use the operation ID as the mountpoint so it can be mounted in parallel
         val base = provider.getMountpoint(op.operation.id)
-        for (v in provider.listVolumes(repo)) {
+        for (v in provider.listVolumes(repo, id)) {
             val mountpoint = "$base/${v.name}"
             provider.safeUnmount(mountpoint)
         }

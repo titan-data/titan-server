@@ -37,7 +37,6 @@ import io.titandata.serialization.ModelTypeAdapters
 import io.titandata.storage.OperationData
 import io.titandata.storage.zfs.ZfsStorageProvider
 import io.titandata.util.CommandExecutor
-import io.titandata.util.GuidGenerator
 import java.time.Duration
 import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.time.delay
@@ -48,9 +47,6 @@ class OperationsApiTest : StringSpec() {
 
     @MockK
     lateinit var executor: CommandExecutor
-
-    @MockK
-    lateinit var generator: GuidGenerator
 
     @InjectMockKs
     @OverrideMockKs

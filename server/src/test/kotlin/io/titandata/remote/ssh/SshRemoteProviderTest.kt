@@ -215,7 +215,7 @@ class SshRemoteProviderTest : StringSpec() {
             every { zfsStorageProvider.mountOperationVolumes(any(), any()) } returns
                     "/var/operation"
             every { zfsStorageProvider.getCommit(any(), any()) } returns Commit(id = "commitId", properties = mapOf())
-            every { zfsStorageProvider.listVolumes(any()) } returns
+            every { zfsStorageProvider.listVolumes(any(), any()) } returns
                     listOf(Volume(name = "v0"), Volume(name = "v1", properties = mapOf("path" to "/volume")))
             every { zfsStorageProvider.unmountOperationVolumes(any(), any()) } just Runs
             every { zfsStorageProvider.createOperation("repo", any(), any()) } just Runs
@@ -258,7 +258,7 @@ class SshRemoteProviderTest : StringSpec() {
             every { zfsStorageProvider.mountOperationVolumes(any(), any()) } returns
                     "/var/operation"
             every { zfsStorageProvider.getCommit(any(), any()) } returns Commit(id = "commitId", properties = mapOf())
-            every { zfsStorageProvider.listVolumes(any()) } returns
+            every { zfsStorageProvider.listVolumes(any(), any()) } returns
                     listOf(Volume(name = "v0"), Volume(name = "v1", properties = mapOf("path" to "/volume")))
             every { zfsStorageProvider.unmountOperationVolumes(any(), any()) } just Runs
             every { zfsStorageProvider.createOperation("repo", any(), any()) } just Runs

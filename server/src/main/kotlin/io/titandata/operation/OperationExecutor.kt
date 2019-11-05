@@ -135,7 +135,7 @@ class OperationExecutor(
         try {
             val base = providers.storage.mountOperationVolumes(repo, operationId)
             try {
-                for (volume in providers.storage.listVolumes(repo)) {
+                for (volume in providers.storage.listVolumes(repo, operationId)) {
                     if (operation.type == Operation.Type.PULL) {
                         provider.pullVolume(this, data, volume, base, scratch)
                     } else {

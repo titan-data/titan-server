@@ -21,26 +21,25 @@ class ZfsVolumeManager(val provider: ZfsStorageProvider) {
     /**
      * Helper method to do common validation and return guid.
      */
-    fun getGuid(repo: String, name: String): String {
+    fun validate(repo: String, name: String) {
         provider.validateRepositoryName(repo)
         provider.validateVolumeName(name)
-        return provider.getActive(repo)
     }
 
     /**
      * Create a new volume. This will simply create a dataset with the given name within the
      * current active dataset, storing any metadata properties along with it.
      */
-    fun createVolume(repo: String, name: String, properties: Map<String, Any>): Volume {
-        val guid = getGuid(repo, name)
+    fun createVolume(repo: String, volumeSet: String, name: String, properties: Map<String, Any>): Volume {
+        validate(repo, name)
 
         try {
             val json = provider.gson.toJson(properties)
             provider.executor.exec("zfs", "create", "-o", "$METADATA_PROP=$json",
-                    "$poolName/repo/$repo/$guid/$name")
+                    "$poolName/repo/$repo/$volumeSet/$name")
             // Always create an initial snapshot (see createRepository for why)
             provider.executor.exec("zfs", "snapshot",
-                    "$poolName/repo/$repo/$guid/$name@$INITIAL_COMMIT")
+                    "$poolName/repo/$repo/$volumeSet/$name@$INITIAL_COMMIT")
             // Create the mountpoint
             val mountpoint = provider.getMountpoint(repo, name)
             provider.executor.exec("mkdir", "-p", mountpoint)
@@ -57,12 +56,12 @@ class ZfsVolumeManager(val provider: ZfsStorageProvider) {
      * repository is about to be destroyed. It is invalid to continue to use a repository
      * that has had volumes removed in the middle of its lifecycle.
      */
-    fun deleteVolume(repo: String, name: String) {
-        val guid = getGuid(repo, name)
+    fun deleteVolume(repo: String, volumeSet: String, name: String) {
+        validate(repo, name)
 
         try {
             provider.executor.exec("zfs", "destroy", "-R",
-                    "$poolName/repo/$repo/$guid/$name")
+                    "$poolName/repo/$repo/$volumeSet/$name")
             provider.executor.exec("rmdir", provider.getMountpoint(repo, name))
         } catch (e: CommandException) {
             provider.checkNoSuchVolume(e, name)
@@ -74,12 +73,12 @@ class ZfsVolumeManager(val provider: ZfsStorageProvider) {
      * Get info about a volume. This does a lookup to make sure that it exists, and get any
      * local properties, returning the result.
      */
-    fun getVolume(repo: String, name: String): Volume {
-        val guid = getGuid(repo, name)
+    fun getVolume(repo: String, volumeSet: String, name: String): Volume {
+        validate(repo, name)
 
         try {
             val output = provider.executor.exec("zfs", "list", "-Ho", METADATA_PROP,
-                    "$poolName/repo/$repo/$guid/$name")
+                    "$poolName/repo/$repo/$volumeSet/$name")
             return Volume(name = name, mountpoint = provider.getMountpoint(repo, name),
                     properties = provider.parseMetadata(output), status = mapOf<String, Any>())
         } catch (e: CommandException) {
@@ -92,11 +91,11 @@ class ZfsVolumeManager(val provider: ZfsStorageProvider) {
      * Mount a volume. This is always mounted in a predictable location, independent of what
      * GUID may be active.
      */
-    fun mountVolume(repo: String, name: String): Volume {
-        val guid = getGuid(repo, name)
-        val volume = getVolume(repo, name)
+    fun mountVolume(repo: String, volumeSet: String, name: String): Volume {
+        validate(repo, name)
+        val volume = getVolume(repo, volumeSet, name)
 
-        provider.executor.exec("mount", "-t", "zfs", "$poolName/repo/$repo/$guid/$name",
+        provider.executor.exec("mount", "-t", "zfs", "$poolName/repo/$repo/$volumeSet/$name",
                 provider.getMountpoint(repo, name))
         return volume
     }
@@ -107,7 +106,7 @@ class ZfsVolumeManager(val provider: ZfsStorageProvider) {
      * the CLI and server.
      */
     fun unmountVolume(repo: String, name: String) {
-        getGuid(repo, name)
+        validate(repo, name)
         provider.safeUnmount(provider.getMountpoint(repo, name))
     }
 
@@ -115,14 +114,13 @@ class ZfsVolumeManager(val provider: ZfsStorageProvider) {
      * List all volumes within a given repository. We simply get the current active dataset,
      * and then list any immediate descendants of it, along with their metadata.
      */
-    fun listVolumes(repo: String): List<Volume> {
+    fun listVolumes(repo: String, volumeSet: String): List<Volume> {
         provider.validateRepositoryName(repo)
-        val guid = provider.getActive(repo)
 
         val output = provider.executor.exec("zfs", "list", "-Ho", "name,$METADATA_PROP",
-                "-r", "$poolName/repo/$repo/$guid")
+                "-r", "$poolName/repo/$repo/$volumeSet")
         val volumes = mutableListOf<Volume>()
-        val regex = "$poolName/repo/$repo/$guid/([^/\t]+)\t(.*)$".toRegex()
+        val regex = "$poolName/repo/$repo/$volumeSet/([^/\t]+)\t(.*)$".toRegex()
         for (line in output.lines()) {
             var result = regex.find(line)
             if (result != null) {

@@ -3,11 +3,15 @@ package io.titandata.orchestrator
 import io.titandata.ProviderModule
 import io.titandata.models.Commit
 import io.titandata.models.CommitStatus
+import org.jetbrains.exposed.sql.transactions.transaction
 
 class CommitOrchestrator(val providers: ProviderModule) {
 
     fun createCommit(repo: String, commit: Commit): Commit {
-        return providers.storage.createCommit(repo, commit)
+        val activeVolumeSet = transaction {
+            providers.metadata.getActiveVolumeSet(repo)
+        }
+        return providers.storage.createCommit(repo, activeVolumeSet, commit)
     }
 
     fun getCommit(repo: String, id: String): Commit {
@@ -23,11 +27,24 @@ class CommitOrchestrator(val providers: ProviderModule) {
     }
 
     fun deleteCommit(repo: String, commit: String) {
-        return providers.storage.deleteCommit(repo, commit)
+        val activeVolumeSet = transaction {
+            providers.metadata.getActiveVolumeSet(repo)
+        }
+        return providers.storage.deleteCommit(repo, activeVolumeSet, commit)
     }
 
     fun checkoutCommit(repo: String, commit: String) {
-        providers.storage.checkoutCommit(repo, commit)
+        val activeVolumeSet = transaction {
+            providers.metadata.getActiveVolumeSet(repo)
+        }
+        val newVolumeSet = transaction {
+            providers.metadata.createVolumeSet(repo)
+        }
+        providers.storage.checkoutCommit(repo, activeVolumeSet, newVolumeSet, commit)
+        transaction {
+            providers.metadata.activateVolumeSet(repo, newVolumeSet)
+            providers.metadata.markVolumeSetDeleting(activeVolumeSet)
+        }
     }
 
     fun updateCommit(repo: String, commit: Commit) {

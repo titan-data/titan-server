@@ -18,9 +18,7 @@ import io.mockk.impl.annotations.InjectMockKs
 import io.mockk.impl.annotations.MockK
 import io.mockk.impl.annotations.OverrideMockKs
 import io.mockk.verifySequence
-import io.titandata.exception.CommandException
 import io.titandata.exception.InvalidStateException
-import io.titandata.exception.NoSuchObjectException
 import io.titandata.util.CommandExecutor
 
 class ZfsStorageProviderTest : StringSpec() {
@@ -87,19 +85,6 @@ class ZfsStorageProviderTest : StringSpec() {
         "validate name fails for invalid character" {
             shouldThrow<IllegalArgumentException> {
                 provider.validateName("not/allowed", ZfsStorageProvider.ObjectType.REPOSITORY)
-            }
-        }
-
-        "get active dataset returns correct dataset" {
-            every { executor.exec(*anyVararg()) } returns "guid"
-            val dataset = provider.getActive("foo")
-            dataset shouldBe "guid"
-        }
-
-        "get active dataset throws error for no such dataset" {
-            every { executor.exec(*anyVararg()) } throws CommandException("", 1, "does not exist")
-            shouldThrow<NoSuchObjectException> {
-                provider.getActive("foo")
             }
         }
 

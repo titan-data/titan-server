@@ -139,8 +139,6 @@ class ZfsVolumeTest : StringSpec() {
                     "/var/lib/test/mnt/foo/vol") } returns ""
             provider.mountVolume("foo", "guid", Volume(name="vol", properties=emptyMap()))
             verifySequence {
-                executor.exec("zfs", "list", "-Ho", "io.titan-data:metadata",
-                        "test/repo/foo/guid/vol")
                 executor.exec("mount", "-t", "zfs", "test/repo/foo/guid/vol",
                         "/var/lib/test/mnt/foo/vol")
             }

@@ -38,7 +38,6 @@ class ZfsCommitManager(val provider: ZfsStorageProvider) {
     private val poolName = provider.poolName
     private val timestampProperty = provider.timestampProperty
     private val METADATA_PROP = provider.METADATA_PROP
-    private val ACTIVE_PROP = provider.ACTIVE_PROP
     private val REAPER_PROP = provider.REAPER_PROP
     private val INITIAL_COMMIT = provider.INITIAL_COMMIT
 
@@ -48,13 +47,12 @@ class ZfsCommitManager(val provider: ZfsStorageProvider) {
      * of the snapshot, ensuring the most accurate representation of the commit timestamp. It
      * will return a copy of the Commit object with this new property set.
      */
-    fun createCommit(repo: String, commit: Commit): Commit {
+    fun createCommit(repo: String, volumeSet: String, commit: Commit): Commit {
         provider.validateRepositoryName(repo)
         provider.validateCommitName(commit.id)
 
-        val active = provider.getActive(repo)
         val json = provider.gson.toJson(commit.properties)
-        val dataset = "$poolName/repo/$repo/$active@${commit.id}"
+        val dataset = "$poolName/repo/$repo/$volumeSet@${commit.id}"
 
         // Check to see if the commit exists, even on a different active dataset
         if (provider.getCommitGuid(repo, commit.id) != null) {
@@ -193,7 +191,7 @@ class ZfsCommitManager(val provider: ZfsStorageProvider) {
      * pulled or pushed independently. While they may share storage, they can be independently
      * discarded to free up storage.
      */
-    fun deleteCommit(repo: String, commit: String) {
+    fun deleteCommit(repo: String, activeVolumeSet: String, commit: String) {
         provider.validateRepositoryName(repo)
         provider.validateCommitName(commit)
         val guid = provider.getCommitGuid(repo, commit)
@@ -203,8 +201,7 @@ class ZfsCommitManager(val provider: ZfsStorageProvider) {
 
         // If there are no more commits for this GUID, and this is not the active GUID for
         // the repo, then delete the entire GUID.
-        val active = provider.getActive(repo)
-        if (active != guid) {
+        if (activeVolumeSet != guid) {
             val output = provider.executor.exec("zfs", "list", "-H", "-t", "snapshot", "-d", "1",
                     "$poolName/repo/$repo/$guid").trim()
             if (output == "") {
@@ -232,26 +229,23 @@ class ZfsCommitManager(val provider: ZfsStorageProvider) {
      * To cleanup the guid we do one of two things. First, if the guid has no active snapshots, then we can simply
      * blow it away. Otherwise, we rollback to the most recent commit as we no longer need the head filesystem data.
      */
-    fun checkoutCommit(repo: String, commit: String) {
+    fun checkoutCommit(repo: String, prevVolumeSet: String, newVolumeSet: String, commit: String) {
         provider.validateRepositoryName(repo)
         provider.validateCommitName(commit)
         val guid = provider.getCommitGuid(repo, commit)
         guid ?: throw NoSuchObjectException("no such commit '$commit' in repository '$repo'")
 
-        val newGuid = provider.generator.get()
+        provider.cloneCommit(repo, guid, commit, newVolumeSet)
+        provider.executor.exec("zfs", "set", "$poolName/repo/$repo")
 
-        val active = provider.getActive(repo)
-        provider.cloneCommit(repo, guid, commit, newGuid)
-        provider.executor.exec("zfs", "set", "$ACTIVE_PROP=$newGuid", "$poolName/repo/$repo")
-
-        val snap = provider.getLatestSnapshot("$poolName/repo/$repo/$active")
+        val snap = provider.getLatestSnapshot("$poolName/repo/$repo/$prevVolumeSet")
 
         if (snap == null) {
             // If there were no active snapshots (and hence commits) on the previous active GUID, destroy it now.
-            provider.executor.exec("zfs", "destroy", "-r", "$poolName/repo/$repo/$active")
+            provider.executor.exec("zfs", "destroy", "-r", "$poolName/repo/$repo/$prevVolumeSet")
         } else {
             // Now iterate over all children and rollback
-            val datasets = provider.executor.exec("zfs", "list", "-Ho", "name", "-r", "$poolName/repo/$repo/$active")
+            val datasets = provider.executor.exec("zfs", "list", "-Ho", "name", "-r", "$poolName/repo/$repo/$prevVolumeSet")
             for (dataset in datasets.split("\n")) {
                 if (dataset.trim() != "") {
                     provider.executor.exec("zfs", "rollback", "${dataset.trim()}@$snap")

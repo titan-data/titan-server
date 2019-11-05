@@ -46,58 +46,50 @@ class ZfsVolumeTest : StringSpec() {
     init {
         "create volume fails with invalid repo name" {
             shouldThrow<IllegalArgumentException> {
-                provider.createVolume("not/ok", "ok", mapOf())
+                provider.createVolume("not/ok", "guid", "ok", mapOf())
             }
         }
 
         "create volume fails with invalid volume name" {
             shouldThrow<IllegalArgumentException> {
-                provider.createVolume("ok", "not/ok", mapOf())
+                provider.createVolume("ok", "guid", "not/ok", mapOf())
             }
         }
 
         "create volume fails with leading unsore in volume name" {
             shouldThrow<IllegalArgumentException> {
-                provider.createVolume("ok", "_vol", mapOf())
+                provider.createVolume("ok", "guid", "_vol", mapOf())
             }
         }
 
         "create volume fails with unknown repository" {
-            every { executor.exec("zfs", "list", "-Hpo", "io.titan-data:active",
-                    "test/repo/foo") } throws CommandException("", 1, "does not exist")
             shouldThrow<NoSuchObjectException> {
-                provider.createVolume("foo", "vol", mapOf("a" to "b"))
+                provider.createVolume("foo", "guid", "vol", mapOf("a" to "b"))
             }
         }
 
         "create volume fails with duplicate volume" {
-            every { executor.exec("zfs", "list", "-Hpo", "io.titan-data:active",
-                    "test/repo/foo") } returns "guid"
             every { executor.exec("zfs", "create", "-o",
                     "io.titan-data:metadata={\"a\":\"b\"}", "test/repo/foo/guid/vol") } throws
                     CommandException("", 1, "already exists")
             shouldThrow<ObjectExistsException> {
-                provider.createVolume("foo", "vol", mapOf("a" to "b"))
+                provider.createVolume("foo", "guid", "vol", mapOf("a" to "b"))
             }
         }
 
         "create volume succeeds" {
-            every { executor.exec("zfs", "list", "-Hpo", "io.titan-data:active",
-                    "test/repo/foo") } returns "guid"
             every { executor.exec("zfs", "create", "-o",
                     "io.titan-data:metadata={\"a\":\"b\"}", "test/repo/foo/guid/vol") } returns ""
             every { executor.exec("zfs", "snapshot", "test/repo/foo/guid/vol@initial") } returns ""
             every { executor.exec("mkdir", "-p", "/var/lib/test/mnt/foo/vol") } returns ""
 
-            val vol = provider.createVolume("foo", "vol", mapOf("a" to "b"))
+            val vol = provider.createVolume("foo", "guid", "vol", mapOf("a" to "b"))
             vol.name shouldBe "vol"
             vol.mountpoint shouldBe "/var/lib/test/mnt/foo/vol"
             vol.properties!!["a"] shouldBe "b"
             vol.status shouldNotBe null
 
             verifySequence {
-                executor.exec("zfs", "list", "-Hpo", "io.titan-data:active",
-                        "test/repo/foo")
                 executor.exec("zfs", "create", "-o",
                         "io.titan-data:metadata={\"a\":\"b\"}", "test/repo/foo/guid/vol")
                 executor.exec("zfs", "snapshot", "test/repo/foo/guid/vol@initial")
@@ -108,33 +100,27 @@ class ZfsVolumeTest : StringSpec() {
 
         "delete volume fails with invalid repo name" {
             shouldThrow<IllegalArgumentException> {
-                provider.deleteVolume("not/ok", "ok")
+                provider.deleteVolume("not/ok", "guid", "ok")
             }
         }
 
         "delete volume fails with invalid volume name" {
             shouldThrow<IllegalArgumentException> {
-                provider.deleteVolume("ok", "not/ok")
+                provider.deleteVolume("ok", "guid", "not/ok")
             }
         }
 
         "delete volume fails with unknown repository" {
-            every { executor.exec("zfs", "list", "-Hpo", "io.titan-data:active",
-                    "test/repo/foo") } throws CommandException("", 1, "does not exist")
             shouldThrow<NoSuchObjectException> {
-                provider.deleteVolume("foo", "vol")
+                provider.deleteVolume("foo", "guid", "vol")
             }
         }
 
         "delete volume succeeds" {
-            every { executor.exec("zfs", "list", "-Hpo", "io.titan-data:active",
-                    "test/repo/foo") } returns "guid"
             every { executor.exec("zfs", "destroy", "-R", "test/repo/foo/guid/vol") } returns ""
             every { executor.exec("rmdir", "/var/lib/test/mnt/foo/vol") } returns ""
-            provider.deleteVolume("foo", "vol")
+            provider.deleteVolume("foo", "guid", "vol")
             verifySequence {
-                executor.exec("zfs", "list", "-Hpo", "io.titan-data:active",
-                        "test/repo/foo")
                 executor.exec("zfs", "destroy", "-R", "test/repo/foo/guid/vol")
                 executor.exec("rmdir", "/var/lib/test/mnt/foo/vol")
             }
@@ -142,49 +128,41 @@ class ZfsVolumeTest : StringSpec() {
         }
 
         "delete volume fails for unknown volume" {
-            every { executor.exec("zfs", "list", "-Hpo", "io.titan-data:active",
-                    "test/repo/foo") } returns "guid"
             every { executor.exec("zfs", "destroy", "-R", "test/repo/foo/guid/vol") } throws
                     CommandException("", 1, "does not exist")
             shouldThrow<NoSuchObjectException> {
-                provider.deleteVolume("foo", "vol")
+                provider.deleteVolume("foo", "guid", "vol")
             }
         }
 
         "get volume fails with invalid repo name" {
             shouldThrow<IllegalArgumentException> {
-                provider.getVolume("not/ok", "ok")
+                provider.getVolume("not/ok", "guid", "ok")
             }
         }
 
         "get volume fails with invalid volume name" {
             shouldThrow<IllegalArgumentException> {
-                provider.getVolume("ok", "not/ok")
+                provider.getVolume("ok", "guid", "not/ok")
             }
         }
 
         "get volume fails with unknown repository" {
-            every { executor.exec("zfs", "list", "-Hpo", "io.titan-data:active",
-                    "test/repo/foo") } throws CommandException("", 1, "does not exist")
             shouldThrow<NoSuchObjectException> {
-                provider.getVolume("foo", "vol")
+                provider.getVolume("foo", "guid", "vol")
             }
         }
 
         "get volume succeeds" {
-            every { executor.exec("zfs", "list", "-Hpo", "io.titan-data:active",
-                    "test/repo/foo") } returns "guid"
             every { executor.exec("zfs", "list", "-Ho", "io.titan-data:metadata",
                     "test/repo/foo/guid/vol") } returns "{\"a\":\"b\"}"
-            val vol = provider.getVolume("foo", "vol")
+            val vol = provider.getVolume("foo", "guid", "vol")
             vol.name shouldBe "vol"
             vol.mountpoint shouldBe "/var/lib/test/mnt/foo/vol"
             vol.status shouldNotBe null
             vol.properties!!["a"] shouldBe "b"
 
             verifySequence {
-                executor.exec("zfs", "list", "-Hpo", "io.titan-data:active",
-                        "test/repo/foo")
                 executor.exec("zfs", "list", "-Ho", "io.titan-data:metadata",
                         "test/repo/foo/guid/vol")
             }
@@ -193,39 +171,31 @@ class ZfsVolumeTest : StringSpec() {
 
         "mount volume fails with invalid repo name" {
             shouldThrow<IllegalArgumentException> {
-                provider.mountVolume("not/ok", "ok")
+                provider.mountVolume("not/ok", "guid", "ok")
             }
         }
 
         "mount volume fails with invalid volume name" {
             shouldThrow<IllegalArgumentException> {
-                provider.mountVolume("ok", "not/ok")
+                provider.mountVolume("ok", "guid", "not/ok")
             }
         }
 
         "mount volume fails with unknown repository" {
-            every { executor.exec("zfs", "list", "-Hpo", "io.titan-data:active",
-                    "test/repo/foo") } throws CommandException("", 1, "does not exist")
             shouldThrow<NoSuchObjectException> {
-                provider.mountVolume("foo", "vol")
+                provider.mountVolume("foo", "guid", "vol")
             }
         }
 
         "mount volume succeeds" {
-            every { executor.exec("zfs", "list", "-Hpo", "io.titan-data:active",
-                    "test/repo/foo") } returns "guid"
             every { executor.exec("zfs", "list", "-Ho", "io.titan-data:metadata",
                     "test/repo/foo/guid/vol") } returns "{}"
             every { executor.exec("mount", "-t", "zfs", "test/repo/foo/guid/vol",
                     "/var/lib/test/mnt/foo/vol") } returns ""
-            val vol = provider.mountVolume("foo", "vol")
+            val vol = provider.mountVolume("foo", "guid", "vol")
             vol.name shouldBe "vol"
             vol.mountpoint shouldBe "/var/lib/test/mnt/foo/vol"
             verifySequence {
-                executor.exec("zfs", "list", "-Hpo", "io.titan-data:active",
-                        "test/repo/foo")
-                executor.exec("zfs", "list", "-Hpo", "io.titan-data:active",
-                        "test/repo/foo")
                 executor.exec("zfs", "list", "-Ho", "io.titan-data:metadata",
                         "test/repo/foo/guid/vol")
                 executor.exec("mount", "-t", "zfs", "test/repo/foo/guid/vol",
@@ -247,29 +217,21 @@ class ZfsVolumeTest : StringSpec() {
         }
 
         "unmount volume fails with unknown repository" {
-            every { executor.exec("zfs", "list", "-Hpo", "io.titan-data:active",
-                    "test/repo/foo") } throws CommandException("", 1, "does not exist")
             shouldThrow<NoSuchObjectException> {
                 provider.unmountVolume("foo", "vol")
             }
         }
 
         "unmount volume succeeds" {
-            every { executor.exec("zfs", "list", "-Hpo", "io.titan-data:active",
-                    "test/repo/foo") } returns "guid"
             every { executor.exec("umount", "/var/lib/test/mnt/foo/vol") } returns ""
             provider.unmountVolume("foo", "vol")
             verifySequence {
-                executor.exec("zfs", "list", "-Hpo", "io.titan-data:active",
-                        "test/repo/foo")
                 executor.exec("umount", "/var/lib/test/mnt/foo/vol")
             }
             confirmVerified()
         }
 
         "unmount volume succeeds if not mounted" {
-            every { executor.exec("zfs", "list", "-Hpo", "io.titan-data:active",
-                    "test/repo/foo") } returns "guid"
             every { executor.exec("umount", "/var/lib/test/mnt/foo/vol") } throws
                     CommandException("", 1, "not mounted")
             provider.unmountVolume("foo", "vol")
@@ -277,20 +239,18 @@ class ZfsVolumeTest : StringSpec() {
 
         "list volumes fails with invalid repo name" {
             shouldThrow<IllegalArgumentException> {
-                provider.listVolumes("not/ok")
+                provider.listVolumes("not/ok", "guid")
             }
         }
 
         "list volumes succeeds" {
-            every { executor.exec("zfs", "list", "-Hpo", "io.titan-data:active",
-                    "test/repo/foo") } returns "guid"
             every { executor.exec("zfs", "list", "-Ho", "name,io.titan-data:metadata",
                     "-r", "test/repo/foo/guid") } returns arrayOf(
                     "test/repo/foo\t{}",
                     "test/repo/foo/guid/one\t{\"a\":\"b\"}",
                     "test/repo/foo/guid/two\t{\"c\":\"d\"}"
             ).joinToString("\n")
-            val volumes = provider.listVolumes("foo")
+            val volumes = provider.listVolumes("foo", "guid")
             volumes.size shouldBe 2
             volumes[0].name shouldBe "one"
             volumes[0].mountpoint shouldBe "/var/lib/test/mnt/foo/one"
@@ -301,15 +261,13 @@ class ZfsVolumeTest : StringSpec() {
         }
 
         "list volumes ignores datasets with leading underscores" {
-            every { executor.exec("zfs", "list", "-Hpo", "io.titan-data:active",
-                    "test/repo/foo") } returns "guid"
             every { executor.exec("zfs", "list", "-Ho", "name,io.titan-data:metadata",
                     "-r", "test/repo/foo/guid") } returns arrayOf(
                     "test/repo/foo\t{}",
                     "test/repo/foo/guid/one\t{\"a\":\"b\"}",
                     "test/repo/foo/guid/_two\t{\"c\":\"d\"}"
             ).joinToString("\n")
-            val volumes = provider.listVolumes("foo")
+            val volumes = provider.listVolumes("foo", "guid")
             volumes.size shouldBe 1
             volumes[0].name shouldBe "one"
             volumes[0].mountpoint shouldBe "/var/lib/test/mnt/foo/one"

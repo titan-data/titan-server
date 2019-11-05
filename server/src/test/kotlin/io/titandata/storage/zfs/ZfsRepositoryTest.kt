@@ -26,15 +26,11 @@ import io.titandata.exception.NoSuchObjectException
 import io.titandata.exception.ObjectExistsException
 import io.titandata.models.Repository
 import io.titandata.util.CommandExecutor
-import io.titandata.util.GuidGenerator
 
 class ZfsRepositoryTest : StringSpec() {
 
     @MockK
     lateinit var executor: CommandExecutor
-
-    @MockK
-    lateinit var generator: GuidGenerator
 
     @InjectMockKs
     @OverrideMockKs
@@ -86,8 +82,6 @@ class ZfsRepositoryTest : StringSpec() {
                     "-d", "2", "test/repo/foo") } returns "test/repo/foo/guid@hash\toff\t{}\n"
             every { executor.exec("zfs", "list", "-Ho", "io.titan-data:metadata",
                     "test/repo/foo/guid@hash") } returns "{\"a\":\"b\"}\n"
-            every { executor.exec("zfs", "list", "-Hpo", "io.titan-data:active",
-                    "test/repo/foo") } returns "guid"
             every { executor.exec("zfs", "list", "-pHo", "logicalused,used", "test/repo/foo/guid") } returns "40\t20\n"
             every { executor.exec("zfs", "list", "-Ho", "origin", "-r", "test/repo/foo/guid") } returns
                     "test/repo/foo/guidtwo/v0@sourcehash\n"
@@ -97,7 +91,7 @@ class ZfsRepositoryTest : StringSpec() {
                     "test/repo/foo/guid/v0\t5\t10\t{\"path\":\"/var/a\"}",
                     "test/repo/foo/guid/v1\t8\t16\t{\"path\":\"/var/b\"}"
             ).joinToString("\n")
-            val status = provider.getRepositoryStatus("foo")
+            val status = provider.getRepositoryStatus("foo", "guid")
             status.sourceCommit shouldBe "sourcehash"
             status.lastCommit shouldBe "hash"
             status.logicalSize shouldBe 40L
@@ -118,8 +112,6 @@ class ZfsRepositoryTest : StringSpec() {
                     "-d", "2", "test/repo/foo") } returns "test/repo/foo/guid@hash\toff\t{}\n"
             every { executor.exec("zfs", "list", "-Ho", "io.titan-data:metadata",
                     "test/repo/foo/guid@hash") } returns "{\"a\":\"b\"}\n"
-            every { executor.exec("zfs", "list", "-Hpo", "io.titan-data:active",
-                    "test/repo/foo") } returns "guid"
             every { executor.exec("zfs", "list", "-pHo", "logicalused,used", "test/repo/foo/guid") } returns "40\t20\n"
             every { executor.exec("zfs", "list", "-Ho", "origin", "-r", "test/repo/foo/guid") } returns
                     "test/repo/foo/guidtwo/v0@sourcehash\n"
@@ -132,7 +124,7 @@ class ZfsRepositoryTest : StringSpec() {
                     "test/repo/foo/guid/v0\t5\t10\t{\"path\":\"/var/a\"}",
                     "test/repo/foo/guid/v1\t8\t16\t{\"path\":\"/var/b\"}"
             ).joinToString("\n")
-            val status = provider.getRepositoryStatus("foo")
+            val status = provider.getRepositoryStatus("foo", "guid")
             status.sourceCommit shouldBe "two"
         }
 
@@ -161,19 +153,17 @@ class ZfsRepositoryTest : StringSpec() {
         "create repository fails with invalid name" {
             val repo = Repository(name = "foo/bar", properties = mapOf("a" to "b"))
             shouldThrow<IllegalArgumentException> {
-                provider.createRepository(repo)
+                provider.createRepository(repo, "guid")
             }
         }
 
         "create repository succeeds" {
-            every { generator.get() } returns "guid"
             every { executor.exec(*anyVararg()) } returns ""
             val repo = Repository(name = "foo", properties = mapOf("a" to "b"))
-            provider.createRepository(repo)
+            provider.createRepository(repo, "guid")
 
             verifySequence {
                 executor.exec("zfs", "create", "-o", "mountpoint=legacy", "-o",
-                        "io.titan-data:active=guid", "-o",
                         "io.titan-data:metadata={\"a\":\"b\"}", "test/repo/foo")
                 executor.exec("zfs", "create", "test/repo/foo/guid")
                 executor.exec("zfs", "snapshot", "-o",
@@ -185,22 +175,8 @@ class ZfsRepositoryTest : StringSpec() {
         "create repository fails with object exists exception" {
             val repo = Repository(name = "foo", properties = mapOf("a" to "b"))
             every { executor.exec(*anyVararg()) } throws CommandException("", 1, "already exists")
-            every { generator.get() } returns "guid"
             shouldThrow<ObjectExistsException> {
-                provider.createRepository(repo)
-            }
-        }
-
-        "get active dataset returns correct dataset" {
-            every { executor.exec(*anyVararg()) } returns "guid"
-            val dataset = provider.getActive("foo")
-            dataset shouldBe "guid"
-        }
-
-        "get active dataset throws error for no such dataset" {
-            every { executor.exec(*anyVararg()) } throws CommandException("", 1, "does not exist")
-            shouldThrow<NoSuchObjectException> {
-                provider.getActive("foo")
+                provider.createRepository(repo, "guid")
             }
         }
     }

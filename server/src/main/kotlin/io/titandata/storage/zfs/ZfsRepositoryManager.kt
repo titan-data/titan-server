@@ -13,11 +13,10 @@ import io.titandata.models.RepositoryVolumeStatus
 /**
  * All repositories are placed under the "<pool>/repo" dataset. This is done to provide additional
  * ZFS namespace for titan (such as deathrow for cleaning commits). Within each repo, there can be
- * any number of child datasets, each named by a GUID, that can contain snapshots. Only one of
- * these can be active at any time, however, and is noted by the "io.titan-data:active"
- * property on the root repo dataset. Within each repo dataset there can be any number of named
- * volumes, and snapshots are taken at the root of each repo dataset. The result is a hierarchy as
- * such:
+ * any number of child datasets, each named by a GUID, that can contain snapshots. These are
+ * known as "volumesets" managed by the orchestrator layer. Within each volumeset there can be any
+ * number of named volumes, and snapshots are taken at the root of each repo dataset. The result is a
+ * hierarchy as such:
  *
  *      (pool)
  *      (pool)/repo
@@ -41,7 +40,6 @@ class ZfsRepositoryManager(val provider: ZfsStorageProvider) {
 
     private val poolName = provider.poolName
     private val METADATA_PROP = provider.METADATA_PROP
-    private val ACTIVE_PROP = provider.ACTIVE_PROP
     private val INITIAL_COMMIT = provider.INITIAL_COMMIT
 
     /**
@@ -67,30 +65,28 @@ class ZfsRepositoryManager(val provider: ZfsStorageProvider) {
     /**
      * Create a new repository. This involves three steps:
      *
-     *  1. Create a new root repo dataset, with the io.titan-data:active property pointing to
-     *     a new GUID.
-     *  2. Create a new dataset with that GUID beneath the root repo
+     *  1. Create a new root repo dataset
+     *  2. Create a new dataset with the given volumeSet GUID beneath the root repo
      *  3. Create a default snapshot named 'initial'
      *
      * The third step simplifies subsequent operations by always having a point to clone from,
      * even when no commits exist, so that we don't have to special case creating new datsets.
      */
-    fun createRepository(repo: Repository) {
+    fun createRepository(repo: Repository, volumeSet: String) {
         provider.validateRepositoryName(repo.name)
 
         try {
-            val guid = provider.generator.get()
             val json = provider.gson.toJson(repo.properties)
             val name = repo.name
             provider.executor.exec("zfs", "create", "-o", "mountpoint=legacy", "-o",
-                    "$ACTIVE_PROP=$guid", "-o", "$METADATA_PROP=$json", "$poolName/repo/$name")
-            provider.executor.exec("zfs", "create", "$poolName/repo/$name/$guid")
+                    "-o", "$METADATA_PROP=$json", "$poolName/repo/$name")
+            provider.executor.exec("zfs", "create", "$poolName/repo/$name/$volumeSet")
 
             // We always create a snapshot knows as "initial" that can be used to clone an empty
             // dataset. This keeps other code simple to avoid having to special-case an initial
             // clone
             provider.executor.exec("zfs", "snapshot", "-o", "$METADATA_PROP={}",
-                    "$poolName/repo/$name/$guid@$INITIAL_COMMIT")
+                    "$poolName/repo/$name/$volumeSet@$INITIAL_COMMIT")
         } catch (e: CommandException) {
             provider.checkRepositoryExists(e, repo.name)
         }
@@ -163,22 +159,21 @@ class ZfsRepositoryManager(val provider: ZfsStorageProvider) {
      *                      properties      The client-controlled properties of the volume. This includes, for example,
      *                                      the path of the volume within the container.
      */
-    fun getRepositoryStatus(name: String): RepositoryStatus {
+    fun getRepositoryStatus(name: String, volumeSet: String): RepositoryStatus {
         provider.validateRepositoryName(name)
         // This is not particularly efficient, but we don't have a better way
         val commits = provider.commitManager.listCommits(name, null)
         val latest = commits.getOrNull(0)?.id
-        val guid = provider.getActive(name)
 
         // Get the size from the dataset itself
         val fields = provider.executor.exec("zfs", "list", "-pHo", "logicalused,used",
-                "$poolName/repo/$name/$guid").lines().get(0).split("\t")
+                "$poolName/repo/$name/$volumeSet").lines().get(0).split("\t")
         val logicalSize = fields[0].toLong()
         val actualSize = fields[1].toLong()
 
         var sourceCommit: String? = null
         // Check to see if we have a previous snapshot on this GUID. If so, that's the source commit
-        var lastSnap = provider.getLatestSnapshot("$poolName/repo/$name/$guid")
+        var lastSnap = provider.getLatestSnapshot("$poolName/repo/$name/$volumeSet")
         if (lastSnap != INITIAL_COMMIT) {
             sourceCommit = lastSnap
         }
@@ -186,7 +181,7 @@ class ZfsRepositoryManager(val provider: ZfsStorageProvider) {
         // If there are no commits on this GUID, then the source commit is our origin
         if (sourceCommit == null) {
             val origins = provider.executor.exec("zfs", "list", "-Ho", "origin", "-r",
-                    "$poolName/repo/$name/$guid")
+                    "$poolName/repo/$name/$volumeSet")
             for (line in origins.lines()) {
                 if (line.contains("@")) {
                     val snapshot = line.trim().substringAfterLast("@")
@@ -200,8 +195,8 @@ class ZfsRepositoryManager(val provider: ZfsStorageProvider) {
 
         val volumes = mutableListOf<RepositoryVolumeStatus>()
         val volumeOutput = provider.executor.exec("zfs", "list", "-d", "1", "-pHo",
-                "name,logicalreferenced,referenced,$METADATA_PROP", "$poolName/repo/$name/$guid")
-        val regex = "^$poolName/repo/$name/$guid/([^/\t]+)\t([^\t]+)\t([^\t]+)\t(.*)$".toRegex()
+                "name,logicalreferenced,referenced,$METADATA_PROP", "$poolName/repo/$name/$volumeSet")
+        val regex = "^$poolName/repo/$name/$volumeSet/([^/\t]+)\t([^\t]+)\t([^\t]+)\t(.*)$".toRegex()
         for (line in volumeOutput.lines()) {
             val result = regex.find(line)
             if (result != null) {

@@ -204,12 +204,12 @@ class MetadataProvider(val inMemory: Boolean = true, val databaseName: String = 
         return id.toString()
     }
 
-    fun getActiveVolumeSet(repoName: String) : String? {
+    fun getActiveVolumeSet(repoName: String) : String {
         getRepository(repoName)
         return VolumeSets.select {
             (VolumeSets.repo eq repoName) and (VolumeSets.state eq VolumeState.ACTIVE)
         }.map { it[VolumeSets.id].toString() }
-                .firstOrNull()
+                .firstOrNull()!!
     }
 
     fun activateVolumeSet(repoName: String, volumeSet: String) {

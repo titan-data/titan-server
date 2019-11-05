@@ -12,7 +12,6 @@ import io.titandata.models.ProgressEntry
 import io.titandata.models.Remote
 import io.titandata.models.RemoteParameters
 import io.titandata.operation.OperationExecutor
-import io.titandata.util.GuidGenerator
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.slf4j.LoggerFactory
 
@@ -52,8 +51,6 @@ class OperationOrchestrator(val providers: ProviderModule) {
     private val operationsByRepo: MutableMap<String, MutableList<OperationExecutor>> = mutableMapOf()
     private val operationsById: MutableMap<String, OperationExecutor> = mutableMapOf()
 
-    private val generator = GuidGenerator()
-
     internal fun addOperation(exec: OperationExecutor) {
         operationsById.put(exec.operation.id, exec)
         if (!operationsByRepo.contains(exec.repo)) {
@@ -67,9 +64,9 @@ class OperationOrchestrator(val providers: ProviderModule) {
         operationsByRepo.get(exec.repo)!!.remove(exec)
     }
 
-    internal fun buildOperation(type: Operation.Type, remote: String, commitId: String): Operation {
+    internal fun buildOperation(type: Operation.Type, volumeSet: String, remote: String, commitId: String): Operation {
         return Operation(
-                generator.get(),
+                volumeSet,
                 type,
                 Operation.State.RUNNING,
                 remote,
@@ -80,12 +77,13 @@ class OperationOrchestrator(val providers: ProviderModule) {
     internal fun createAndStartOperation(
         type: Operation.Type,
         repository: String,
+        volumeSet: String,
         remote: Remote,
         commitId: String,
         params: RemoteParameters,
         metadataOnly: Boolean
     ): Operation {
-        val op = buildOperation(type, remote.name, commitId)
+        val op = buildOperation(type, volumeSet, remote.name, commitId)
         val exec = OperationExecutor(providers, op, repository, remote, params, false, metadataOnly)
         addOperation(exec)
         val message = when (type) {
@@ -214,7 +212,11 @@ class OperationOrchestrator(val providers: ProviderModule) {
             }
         }
 
-        return createAndStartOperation(Operation.Type.PULL, repository, r, commitId, params, metadataOnly)
+        val volumeSet = transaction {
+            providers.metadata.createVolumeSet(repository)
+        }
+
+        return createAndStartOperation(Operation.Type.PULL, repository, volumeSet, r, commitId, params, metadataOnly)
     }
 
     @Synchronized
@@ -247,6 +249,10 @@ class OperationOrchestrator(val providers: ProviderModule) {
 
         remoteProvider.validateOperation(r, commitId, Operation.Type.PUSH, params, metadataOnly)
 
-        return createAndStartOperation(Operation.Type.PUSH, repository, r, commitId, params, metadataOnly)
+        val volumeSet = transaction {
+            providers.metadata.createVolumeSet(repository)
+        }
+
+        return createAndStartOperation(Operation.Type.PUSH, repository, volumeSet, r, commitId, params, metadataOnly)
     }
 }

@@ -21,7 +21,6 @@ import io.titandata.serialization.ModelTypeAdapters
 import io.titandata.storage.OperationData
 import io.titandata.storage.StorageProvider
 import io.titandata.util.CommandExecutor
-import io.titandata.util.GuidGenerator
 import org.slf4j.LoggerFactory
 
 /**
@@ -52,13 +51,10 @@ class ZfsStorageProvider(
     }
 
     internal val METADATA_PROP = "io.titan-data:metadata"
-    internal val ACTIVE_PROP = "io.titan-data:active"
     internal val OPERATION_PROP = "io.titan-data:operation"
     internal val REAPER_PROP = "io.titan-data:reaper"
     internal val INITIAL_COMMIT = "initial"
-    internal val TAGS_METADATA = "tags"
     internal val executor = CommandExecutor()
-    internal val generator = GuidGenerator()
 
     internal val volumeManager = ZfsVolumeManager(this)
     internal val operationManager = ZfsOperationManager(this)
@@ -158,20 +154,6 @@ class ZfsStorageProvider(
      */
     fun validateVolumeName(name: String) {
         validateName(name, ObjectType.VOLUME)
-    }
-
-    /**
-     * Helper method to get the current active dataset for a given repo. We accomplish this by
-     * looking at the io.titan-data:active property.
-     */
-    fun getActive(name: String): String {
-        try {
-            return executor.exec("zfs", "list", "-Hpo", "io.titan-data:active",
-                    "$poolName/repo/$name").trim()
-        } catch (e: CommandException) {
-            checkNoSuchRepository(e, name)
-            throw e
-        }
     }
 
     /**
@@ -291,14 +273,14 @@ class ZfsStorageProvider(
      */
 
     @Synchronized
-    override fun createRepository(repo: Repository) {
+    override fun createRepository(repo: Repository, volumeSet: String) {
         log.info("create repository ${repo.name}")
-        repositoryManager.createRepository(repo)
+        repositoryManager.createRepository(repo, volumeSet)
     }
 
     @Synchronized
-    override fun getRepositoryStatus(name: String): RepositoryStatus {
-        return repositoryManager.getRepositoryStatus(name)
+    override fun getRepositoryStatus(name: String, volumeSet: String): RepositoryStatus {
+        return repositoryManager.getRepositoryStatus(name, volumeSet)
     }
 
     @Synchronized
@@ -308,9 +290,9 @@ class ZfsStorageProvider(
     }
 
     @Synchronized
-    override fun createCommit(repo: String, commit: Commit): Commit {
+    override fun createCommit(repo: String, volumeSet: String, commit: Commit): Commit {
         log.info("create commit ${commit.id} in $repo")
-        return commitManager.createCommit(repo, commit)
+        return commitManager.createCommit(repo, volumeSet, commit)
     }
 
     @Synchronized
@@ -329,15 +311,15 @@ class ZfsStorageProvider(
     }
 
     @Synchronized
-    override fun deleteCommit(repo: String, commit: String) {
+    override fun deleteCommit(repo: String, activeVolumeSet: String, commit: String) {
         log.info("delete commit $commit in $repo")
-        commitManager.deleteCommit(repo, commit)
+        commitManager.deleteCommit(repo, activeVolumeSet, commit)
     }
 
     @Synchronized
-    override fun checkoutCommit(repo: String, commit: String) {
+    override fun checkoutCommit(repo: String, prevVolumeSet: String, newVolumeSet: String, commit: String) {
         log.info("checkout commit $commit in $repo")
-        commitManager.checkoutCommit(repo, commit)
+        commitManager.checkoutCommit(repo, prevVolumeSet, newVolumeSet, commit)
     }
 
     @Synchronized
@@ -401,26 +383,26 @@ class ZfsStorageProvider(
     }
 
     @Synchronized
-    override fun createVolume(repo: String, name: String, properties: Map<String, Any>): Volume {
+    override fun createVolume(repo: String, volumeSet: String, name: String, properties: Map<String, Any>): Volume {
         log.info("create volume $name in $repo")
-        return volumeManager.createVolume(repo, name, properties)
+        return volumeManager.createVolume(repo, volumeSet, name, properties)
     }
 
     @Synchronized
-    override fun deleteVolume(repo: String, name: String) {
+    override fun deleteVolume(repo: String, volumeSet: String, name: String) {
         log.info("delete volume $name in $repo")
-        return volumeManager.deleteVolume(repo, name)
+        return volumeManager.deleteVolume(repo, volumeSet, name)
     }
 
     @Synchronized
-    override fun getVolume(repo: String, name: String): Volume {
-        return volumeManager.getVolume(repo, name)
+    override fun getVolume(repo: String, volumeSet: String, name: String): Volume {
+        return volumeManager.getVolume(repo, volumeSet, name)
     }
 
     @Synchronized
-    override fun mountVolume(repo: String, name: String): Volume {
+    override fun mountVolume(repo: String, volumeSet: String, name: String): Volume {
         log.info("mount volume $name in $repo")
-        return volumeManager.mountVolume(repo, name)
+        return volumeManager.mountVolume(repo, volumeSet, name)
     }
 
     @Synchronized
@@ -430,7 +412,7 @@ class ZfsStorageProvider(
     }
 
     @Synchronized
-    override fun listVolumes(repo: String): List<Volume> {
-        return volumeManager.listVolumes(repo)
+    override fun listVolumes(repo: String, volumeSet: String): List<Volume> {
+        return volumeManager.listVolumes(repo, volumeSet)
     }
 }

@@ -26,15 +26,11 @@ import io.titandata.exception.NoSuchObjectException
 import io.titandata.exception.ObjectExistsException
 import io.titandata.models.Commit
 import io.titandata.util.CommandExecutor
-import io.titandata.util.GuidGenerator
 
 class ZfsCommitTest : StringSpec() {
 
     @MockK
     lateinit var executor: CommandExecutor
-
-    @MockK
-    lateinit var generator: GuidGenerator
 
     @InjectMockKs
     @OverrideMockKs
@@ -54,21 +50,21 @@ class ZfsCommitTest : StringSpec() {
         "create commit fails if invalid repo name specified" {
             val commit = Commit(id = "ok", properties = mapOf("a" to "b"))
             shouldThrow<IllegalArgumentException> {
-                provider.createCommit("not/ok", commit)
+                provider.createCommit("not/ok", "guid", commit)
             }
         }
 
         "create commit fails if invalid id used" {
             val commit = Commit(id = "not/ok", properties = mapOf("a" to "b"))
             shouldThrow<IllegalArgumentException> {
-                provider.createCommit("foo", commit)
+                provider.createCommit("foo", "guid", commit)
             }
         }
 
         "create commit fails if reserved initial id used" {
             val commit = Commit(id = "initial", properties = mapOf("a" to "b"))
             shouldThrow<IllegalArgumentException> {
-                provider.createCommit("foo", commit)
+                provider.createCommit("foo", "guid", commit)
             }
         }
 
@@ -76,15 +72,13 @@ class ZfsCommitTest : StringSpec() {
             val commit = Commit(id = "hash", properties = mapOf("a" to "b"))
             every { executor.exec(*anyVararg()) } throws CommandException("", 1, "does not exist")
             val exception = shouldThrow<NoSuchObjectException> {
-                provider.createCommit("foo", commit)
+                provider.createCommit("foo", "guid", commit)
             }
             exception.message shouldContain "repository"
         }
 
         "create commit succeeds" {
             val commit = Commit(id = "hash", properties = mapOf("a" to "b"))
-            every { executor.exec("zfs", "list", "-Hpo", "io.titan-data:active",
-                    "test/repo/foo") } returns "guid\n"
             every { executor.exec("zfs", "list", "-Ho", "name,defer_destroy", "-t", "snapshot",
                     "-d", "2", "test/repo/foo") } returns ""
             every { executor.exec("zfs", "snapshot", "-r", "-o",
@@ -94,34 +88,30 @@ class ZfsCommitTest : StringSpec() {
             every { executor.exec("zfs", "set",
                     "io.titan-data:metadata={\"a\":\"b\",\"timestamp\":\"2019-04-28T23:04:06Z\"}",
                     "test/repo/foo/guid@hash") } returns ""
-            val result = provider.createCommit("foo", commit)
+            val result = provider.createCommit("foo", "guid", commit)
             result.properties["timestamp"] shouldBe "2019-04-28T23:04:06Z"
             result.id shouldBe "hash"
         }
 
         "create commit of existing hash on same dataset throws exception" {
             val commit = Commit(id = "hash", properties = mapOf("a" to "b"))
-            every { executor.exec("zfs", "list", "-Hpo", "io.titan-data:active",
-                    "test/repo/foo") } returns "guid\n"
             every { executor.exec("zfs", "list", "-Ho", "name,defer_destroy", "-t", "snapshot",
                     "-d", "2", "test/repo/foo") } returns ""
             every { executor.exec("zfs", "snapshot", "-r", "-o",
                     "io.titan-data:metadata={\"a\":\"b\"}", "test/repo/foo/guid@hash") } throws
                     CommandException("", 1, "snapshot already exists")
             val exception = shouldThrow<ObjectExistsException> {
-                provider.createCommit("foo", commit)
+                provider.createCommit("foo", "guid", commit)
             }
             exception.message shouldContain "commit"
         }
 
         "create commit of existing hash on different dataset throws exception" {
             val commit = Commit(id = "hash", properties = mapOf("a" to "b"))
-            every { executor.exec("zfs", "list", "-Hpo", "io.titan-data:active",
-                    "test/repo/foo") } returns "guid\n"
             every { executor.exec("zfs", "list", "-Ho", "name,defer_destroy", "-t", "snapshot",
                     "-d", "2", "test/repo/foo") } returns "test/repo/foo/guid2@hash\toff"
             val exception = shouldThrow<ObjectExistsException> {
-                provider.createCommit("foo", commit)
+                provider.createCommit("foo", "guid", commit)
             }
             exception.message shouldContain "commit"
         }
@@ -349,13 +339,13 @@ class ZfsCommitTest : StringSpec() {
 
         "delete commit fails with invalid repo name" {
             shouldThrow<IllegalArgumentException> {
-                provider.deleteCommit("not/ok", "ok")
+                provider.deleteCommit("not/ok", "guid", "ok")
             }
         }
 
         "delete commit fails with invalid commit name" {
             shouldThrow<IllegalArgumentException> {
-                provider.deleteCommit("ok", "not/ok")
+                provider.deleteCommit("ok", "guid", "not/ok")
             }
         }
 
@@ -364,7 +354,7 @@ class ZfsCommitTest : StringSpec() {
                 executor.exec(*anyVararg())
             } returns "test/repo/foo/guid@hash2"
             shouldThrow<NoSuchObjectException> {
-                provider.deleteCommit("foo", "hash")
+                provider.deleteCommit("foo", "guid", "hash")
             }
         }
 
@@ -373,15 +363,11 @@ class ZfsCommitTest : StringSpec() {
                         "-d", "2", "test/repo/foo")
             } returns "test/repo/foo/guid@hash\toff\n"
             every { executor.exec("zfs", "destroy", "-rd", "test/repo/foo/guid@hash") } returns ""
-            every { executor.exec("zfs", "list", "-Hpo", "io.titan-data:active",
-                    "test/repo/foo") } returns "guid"
-            provider.deleteCommit("foo", "hash")
+            provider.deleteCommit("foo", "guid", "hash")
             verifySequence {
                 executor.exec("zfs", "list", "-Ho", "name,defer_destroy", "-t", "snapshot",
                         "-d", "2", "test/repo/foo")
                 executor.exec("zfs", "destroy", "-rd", "test/repo/foo/guid@hash")
-                executor.exec("zfs", "list", "-Hpo", "io.titan-data:active",
-                        "test/repo/foo")
             }
             confirmVerified()
         }
@@ -391,17 +377,13 @@ class ZfsCommitTest : StringSpec() {
                     "-d", "2", "test/repo/foo")
             } returns "test/repo/foo/guid@hash\toff"
             every { executor.exec("zfs", "destroy", "-rd", "test/repo/foo/guid@hash") } returns ""
-            every { executor.exec("zfs", "list", "-Hpo", "io.titan-data:active",
-                    "test/repo/foo") } returns "guid2"
             every { executor.exec("zfs", "list", "-H", "-t", "snapshot", "-d", "1",
                     "test/repo/foo/guid") } returns "blah"
-            provider.deleteCommit("foo", "hash")
+            provider.deleteCommit("foo", "guid2", "hash")
             verifySequence {
                 executor.exec("zfs", "list", "-Ho", "name,defer_destroy", "-t", "snapshot",
                         "-d", "2", "test/repo/foo")
                 executor.exec("zfs", "destroy", "-rd", "test/repo/foo/guid@hash")
-                executor.exec("zfs", "list", "-Hpo", "io.titan-data:active",
-                        "test/repo/foo")
                 executor.exec("zfs", "list", "-H", "-t", "snapshot", "-d", "1",
                         "test/repo/foo/guid")
             }
@@ -413,15 +395,11 @@ class ZfsCommitTest : StringSpec() {
             every { executor.exec("zfs", "list", "-Ho", "name,defer_destroy", "-t", "snapshot",
                     "-d", "2", "test/repo/foo")
             } returns "test/repo/foo/guid@hash\toff"
-            every { executor.exec("zfs", "list", "-Hpo", "io.titan-data:active",
-                    "test/repo/foo") } returns "guid2"
-            provider.deleteCommit("foo", "hash")
+            provider.deleteCommit("foo", "guid2", "hash")
             verifySequence {
                 executor.exec("zfs", "list", "-Ho", "name,defer_destroy", "-t", "snapshot",
                         "-d", "2", "test/repo/foo")
                 executor.exec("zfs", "destroy", "-rd", "test/repo/foo/guid@hash")
-                executor.exec("zfs", "list", "-Hpo", "io.titan-data:active",
-                        "test/repo/foo")
                 executor.exec("zfs", "list", "-H", "-t", "snapshot", "-d", "1",
                         "test/repo/foo/guid")
                 executor.exec("zfs", "set", "io.titan-data:reaper=on", "test/repo/foo/guid")
@@ -431,44 +409,39 @@ class ZfsCommitTest : StringSpec() {
 
         "checkout with invalid repo name fails" {
             shouldThrow<IllegalArgumentException> {
-                provider.checkoutCommit("not/ok", "ok")
+                provider.checkoutCommit("not/ok", "guid", "newguid", "ok")
             }
         }
 
         "checkout with invalid commit name fails" {
             shouldThrow<IllegalArgumentException> {
-                provider.checkoutCommit("ok", "not/ok")
+                provider.checkoutCommit("ok", "guid", "newguid", "not/ok")
             }
         }
 
         "checkout of non-existent commit fails" {
             every { executor.exec(*anyVararg()) } returns ""
             shouldThrow<NoSuchObjectException> {
-                provider.checkoutCommit("foo", "hash")
+                provider.checkoutCommit("foo", "guid", "newguid", "hash")
             }
         }
 
         "checkout sets active dataset correctly" {
             every { executor.exec(*anyVararg()) } returns ""
-            every { generator.get() } returns "newguid"
             every { executor.exec("zfs", "list", "-Ho", "name,defer_destroy", "-t", "snapshot",
                     "-d", "2", "test/repo/foo")
             } returns "test/repo/foo/guid@hash\toff"
             every { executor.exec("zfs", "list", "-rHo", "name,io.titan-data:metadata", "test/repo/foo/guid") } returns
                     arrayOf("test/repo/foo/guid\t-", "test/repo/foo/guid/v0\t{}", "test/repo/foo/guid/v1\t{}").joinToString("\n")
-            every { executor.exec("zfs", "list", "-Hpo", "io.titan-data:active",
-                    "test/repo/foo") } returns "guid\n"
-            provider.checkoutCommit("foo", "hash")
+            provider.checkoutCommit("foo", "guid", "newguid", "hash")
 
             verifySequence {
                 executor.exec("zfs", "list", "-Ho", "name,defer_destroy", "-t", "snapshot",
                         "-d", "2", "test/repo/foo")
-                executor.exec("zfs", "list", "-Hpo", "io.titan-data:active", "test/repo/foo")
                 executor.exec("zfs", "list", "-rHo", "name,io.titan-data:metadata", "test/repo/foo/guid")
                 executor.exec("zfs", "create", "test/repo/foo/newguid")
                 executor.exec("zfs", "clone", "-o", "io.titan-data:metadata={}", "test/repo/foo/guid/v0@hash", "test/repo/foo/newguid/v0")
                 executor.exec("zfs", "clone", "-o", "io.titan-data:metadata={}", "test/repo/foo/guid/v1@hash", "test/repo/foo/newguid/v1")
-                executor.exec("zfs", "set", "io.titan-data:active=newguid", "test/repo/foo")
                 executor.exec("zfs", "list", "-pHo", "name,creation", "-t", "snapshot", "-d", "1", "test/repo/foo/guid")
                 executor.exec("zfs", "destroy", "-r", "test/repo/foo/guid")
             }
@@ -477,29 +450,24 @@ class ZfsCommitTest : StringSpec() {
 
         "checkout rolls back correctly" {
             every { executor.exec(*anyVararg()) } returns ""
-            every { generator.get() } returns "newguid"
             every { executor.exec("zfs", "list", "-Ho", "name,defer_destroy", "-t", "snapshot",
                     "-d", "2", "test/repo/foo")
             } returns "test/repo/foo/guid@hash\toff"
             every { executor.exec("zfs", "list", "-rHo", "name,io.titan-data:metadata", "test/repo/foo/guid") } returns
                     arrayOf("test/repo/foo/guid\t-", "test/repo/foo/guid/v0\t{}", "test/repo/foo/guid/v1\t{}").joinToString("\n")
-            every { executor.exec("zfs", "list", "-Hpo", "io.titan-data:active",
-                    "test/repo/foo") } returns "guid\n"
             every { executor.exec("zfs", "list", "-pHo", "name,creation", "-t", "snapshot", "-d", "1",
                     "test/repo/foo/guid") } returns "test/repo/foo/guid@last\t3984\ntest/repo/foo/guid@first\t3983"
             every { executor.exec("zfs", "list", "-Ho", "name", "-r", "test/repo/foo/guid") } returns
                     "test/repo/foo/guid\ntest/repo/foo/guid/v0\ntest/repo/foo/guid/v1\n"
-            provider.checkoutCommit("foo", "hash")
+            provider.checkoutCommit("foo", "guid", "newguid", "hash")
 
             verifySequence {
                 executor.exec("zfs", "list", "-Ho", "name,defer_destroy", "-t", "snapshot",
                         "-d", "2", "test/repo/foo")
-                executor.exec("zfs", "list", "-Hpo", "io.titan-data:active", "test/repo/foo")
                 executor.exec("zfs", "list", "-rHo", "name,io.titan-data:metadata", "test/repo/foo/guid")
                 executor.exec("zfs", "create", "test/repo/foo/newguid")
                 executor.exec("zfs", "clone", "-o", "io.titan-data:metadata={}", "test/repo/foo/guid/v0@hash", "test/repo/foo/newguid/v0")
                 executor.exec("zfs", "clone", "-o", "io.titan-data:metadata={}", "test/repo/foo/guid/v1@hash", "test/repo/foo/newguid/v1")
-                executor.exec("zfs", "set", "io.titan-data:active=newguid", "test/repo/foo")
                 executor.exec("zfs", "list", "-pHo", "name,creation", "-t", "snapshot", "-d", "1", "test/repo/foo/guid")
                 executor.exec("zfs", "list", "-Ho", "name", "-r", "test/repo/foo/guid")
                 executor.exec("zfs", "rollback", "test/repo/foo/guid@last")

@@ -9,10 +9,11 @@ class RepositoryOrchestrator(val providers: ProviderModule) {
 
     fun createRepository(repo: Repository) {
         NameUtil.validateRepoName(repo.name)
-        transaction {
+        val volumeSet = transaction {
             providers.metadata.createRepository(repo)
+            providers.metadata.createVolumeSet(repo.name, true)
         }
-        providers.storage.createRepository(repo)
+        providers.storage.createRepository(repo, volumeSet)
     }
 
     fun listRepositories(): List<Repository> {
@@ -30,7 +31,10 @@ class RepositoryOrchestrator(val providers: ProviderModule) {
 
     fun getRepositoryStatus(name: String): RepositoryStatus {
         NameUtil.validateRepoName(name)
-        return providers.storage.getRepositoryStatus(name)
+        val volumeSet = transaction {
+            providers.metadata.getActiveVolumeSet(name)
+        }
+        return providers.storage.getRepositoryStatus(name, volumeSet)
     }
 
     fun updateRepository(name: String, repo: Repository) {

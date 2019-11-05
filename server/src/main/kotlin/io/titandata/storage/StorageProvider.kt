@@ -15,16 +15,16 @@ interface StorageProvider {
 
     fun load()
 
-    fun createRepository(repo: Repository)
-    fun getRepositoryStatus(name: String): RepositoryStatus
+    fun createRepository(repo: Repository, volumeSet: String)
+    fun getRepositoryStatus(name: String, volumeSet: String): RepositoryStatus
     fun deleteRepository(name: String)
 
-    fun createCommit(repo: String, commit: Commit): Commit
+    fun createCommit(repo: String, volumeSet: String, commit: Commit): Commit
     fun getCommit(repo: String, id: String): Commit
     fun getCommitStatus(repo: String, id: String): CommitStatus
     fun listCommits(repo: String, tags: List<String>?): List<Commit>
-    fun deleteCommit(repo: String, commit: String)
-    fun checkoutCommit(repo: String, commit: String)
+    fun deleteCommit(repo: String, activeVolumeSet: String, commit: String)
+    fun checkoutCommit(repo: String, prevVolumeSet: String, newVolumeSet: String, commit: String)
     fun updateCommit(repo: String, commit: Commit)
 
     fun createOperation(repo: String, operation: OperationData, localCommit: String? = null)
@@ -38,10 +38,10 @@ interface StorageProvider {
     fun createOperationScratch(repo: String, id: String): String
     fun destroyOperationScratch(repo: String, id: String)
 
-    fun createVolume(repo: String, name: String, properties: Map<String, Any>): Volume
-    fun deleteVolume(repo: String, name: String)
-    fun getVolume(repo: String, name: String): Volume
-    fun mountVolume(repo: String, name: String): Volume
+    fun createVolume(repo: String, volumeSet: String, name: String, properties: Map<String, Any>): Volume
+    fun deleteVolume(repo: String, volumeSet: String, name: String)
+    fun getVolume(repo: String, volumeSet: String, name: String): Volume
+    fun mountVolume(repo: String, volumeSet: String, name: String): Volume
     fun unmountVolume(repo: String, name: String)
-    fun listVolumes(repo: String): List<Volume>
+    fun listVolumes(repo: String, volumeSet: String): List<Volume>
 }

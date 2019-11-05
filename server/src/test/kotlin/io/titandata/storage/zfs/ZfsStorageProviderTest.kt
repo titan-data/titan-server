@@ -90,19 +90,6 @@ class ZfsStorageProviderTest : StringSpec() {
             }
         }
 
-        "get active dataset returns correct dataset" {
-            every { executor.exec(*anyVararg()) } returns "guid"
-            val dataset = provider.getActive("foo")
-            dataset shouldBe "guid"
-        }
-
-        "get active dataset throws error for no such dataset" {
-            every { executor.exec(*anyVararg()) } throws CommandException("", 1, "does not exist")
-            shouldThrow<NoSuchObjectException> {
-                provider.getActive("foo")
-            }
-        }
-
         "clone commit with no volumes creates empty dataset" {
             every { executor.exec(*anyVararg()) } returns ""
             provider.cloneCommit("foo", "guid", "hash", "newguid")

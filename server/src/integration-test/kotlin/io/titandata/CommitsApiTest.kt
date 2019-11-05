@@ -30,10 +30,11 @@ import io.mockk.impl.annotations.OverrideMockKs
 import io.mockk.verify
 import io.titandata.exception.CommandException
 import io.titandata.models.Error
+import io.titandata.models.Repository
 import io.titandata.orchestrator.OperationOrchestrator
 import io.titandata.storage.zfs.ZfsStorageProvider
 import io.titandata.util.CommandExecutor
-import io.titandata.util.GuidGenerator
+import org.jetbrains.exposed.sql.transactions.transaction
 import java.util.concurrent.TimeUnit
 
 @UseExperimental(KtorExperimentalAPI::class)
@@ -41,9 +42,6 @@ class CommitsApiTest : StringSpec() {
 
     @MockK
     lateinit var executor: CommandExecutor
-
-    @MockK
-    lateinit var generator: GuidGenerator
 
     @MockK(relaxed = true)
     lateinit var operationProvider: OperationOrchestrator
@@ -71,6 +69,7 @@ class CommitsApiTest : StringSpec() {
     }
 
     override fun beforeTest(testCase: TestCase) {
+        providers.metadata.clear()
         return MockKAnnotations.init(this)
     }
 
@@ -219,9 +218,12 @@ class CommitsApiTest : StringSpec() {
         }
 
         "delete commit succeeds" {
-            every { executor.exec("zfs", "list", "-Ho", "name,defer_destroy", "-t", "snapshot", "-d", "2", "test/repo/foo") } returns "test/repo/foo/guid@hash\toff"
-            every { executor.exec("zfs", "destroy", "-rd", "test/repo/foo/guid@hash") } returns ""
-            every { executor.exec("zfs", "list", "-Hpo", "io.titan-data:active", "test/repo/foo") } returns "guid"
+            val guid = transaction {
+                providers.metadata.createRepository(Repository(name = "foo", properties = emptyMap()))
+                providers.metadata.createVolumeSet("foo", true)
+            }
+            every { executor.exec("zfs", "list", "-Ho", "name,defer_destroy", "-t", "snapshot", "-d", "2", "test/repo/foo") } returns "test/repo/foo/$guid@hash\toff"
+            every { executor.exec("zfs", "destroy", "-rd", "test/repo/foo/$guid@hash") } returns ""
             with(engine.handleRequest(HttpMethod.Delete, "/v1/repositories/foo/commits/hash")) {
                 response.status() shouldBe HttpStatusCode.NoContent
             }
@@ -238,6 +240,10 @@ class CommitsApiTest : StringSpec() {
         }
 
         "delete non-existent commit returns no such object" {
+            transaction {
+                providers.metadata.createRepository(Repository(name = "foo", properties = emptyMap()))
+                providers.metadata.createVolumeSet("foo", true)
+            }
             every { executor.exec(*anyVararg()) } returns ""
             with(engine.handleRequest(HttpMethod.Delete, "/v1/repositories/foo/commits/hash")) {
                 response.status() shouldBe HttpStatusCode.NotFound
@@ -248,11 +254,14 @@ class CommitsApiTest : StringSpec() {
         }
 
         "create commit succeeds" {
-            every { executor.exec("zfs", "list", "-Hpo", "io.titan-data:active", "test/repo/foo") } returns "guid"
+            val guid = transaction {
+                providers.metadata.createRepository(Repository(name = "foo", properties = emptyMap()))
+                providers.metadata.createVolumeSet("foo", true)
+            }
             every { executor.exec("zfs", "list", "-Ho", "name,defer_destroy", "-t", "snapshot", "-d", "2", "test/repo/foo") } returns ""
-            every { executor.exec("zfs", "snapshot", "-r", "-o", "io.titan-data:metadata={\"a\":\"b\"}", "test/repo/foo/guid@hash") } returns ""
-            every { executor.exec("zfs", "list", "-Hpo", "creation", "test/repo/foo/guid@hash") } returns "1556492646"
-            every { executor.exec("zfs", "set", "io.titan-data:metadata={\"a\":\"b\",\"timestamp\":\"2019-04-28T23:04:06Z\"}", "test/repo/foo/guid@hash") } returns ""
+            every { executor.exec("zfs", "snapshot", "-r", "-o", "io.titan-data:metadata={\"a\":\"b\"}", "test/repo/foo/$guid@hash") } returns ""
+            every { executor.exec("zfs", "list", "-Hpo", "creation", "test/repo/foo/$guid@hash") } returns "1556492646"
+            every { executor.exec("zfs", "set", "io.titan-data:metadata={\"a\":\"b\",\"timestamp\":\"2019-04-28T23:04:06Z\"}", "test/repo/foo/$guid@hash") } returns ""
             with(engine.handleRequest(HttpMethod.Post, "/v1/repositories/foo/commits") {
                 addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
                 setBody("{\"id\":\"hash\",\"properties\":{\"a\":\"b\"}}")
@@ -277,15 +286,14 @@ class CommitsApiTest : StringSpec() {
         }
 
         "checkout commit succeeds" {
+            val guid = transaction {
+                providers.metadata.createRepository(Repository(name = "foo", properties = emptyMap()))
+                providers.metadata.createVolumeSet("foo", true)
+            }
             every { executor.exec(*anyVararg()) } returns ""
-            every { generator.get() } returns "newguid"
             every { executor.exec("zfs", "list", "-Ho", "name,defer_destroy", "-t", "snapshot",
                     "-d", "2", "test/repo/foo")
-            } returns "test/repo/foo/guid@hash\toff"
-            every { executor.exec("zfs", "list", "-rHo", "name,io.titan-data:metadata", "test/repo/foo/guid") } returns
-                    arrayOf("test/repo/foo/guid\t-", "test/repo/foo/guid/v0\t{}", "test/repo/foo/guid/v1\t{}").joinToString("\n")
-            every { executor.exec("zfs", "list", "-Hpo", "io.titan-data:active",
-                    "test/repo/foo") } returns "guid\n"
+            } returns "test/repo/foo/$guid@hash\toff"
 
             with(engine.handleRequest(HttpMethod.Post, "/v1/repositories/foo/commits/hash/checkout")) {
                 response.status() shouldBe HttpStatusCode.NoContent

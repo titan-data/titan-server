@@ -33,6 +33,6 @@ class VolumeOrchestrator(val providers: ProviderModule) {
     }
 
     fun listVolumes(repo: String): List<Volume> {
-        return providers.storage.listVolumes(getVolumeSet(repo), repo)
+        return providers.storage.listVolumes(repo, getVolumeSet(repo))
     }
 }

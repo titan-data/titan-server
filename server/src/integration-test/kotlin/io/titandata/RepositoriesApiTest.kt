@@ -124,21 +124,23 @@ class RepositoriesApiTest : StringSpec() {
         }
 
         "get repository status succeeds" {
+            val guid = transaction {
+                providers.metadata.createRepository(Repository(name="foo", properties=emptyMap()))
+                providers.metadata.createVolumeSet("foo", true)
+            }
             every { executor.exec(*anyVararg()) } returns ""
             every { executor.exec("zfs", "list", "-Ho", "name,defer_destroy,io.titan-data:metadata", "-t", "snapshot",
-                    "-d", "2", "test/repo/foo") } returns "test/repo/foo/guid@hash\toff\t{}\n"
+                    "-d", "2", "test/repo/foo") } returns "test/repo/foo/$guid@hash\toff\t{}\n"
             every { executor.exec("zfs", "list", "-Ho", "io.titan-data:metadata",
-                    "test/repo/foo/guid@hash") } returns "{\"a\":\"b\"}\n"
-            every { executor.exec("zfs", "list", "-Hpo", "io.titan-data:active",
-                    "test/repo/foo") } returns "guid"
-            every { executor.exec("zfs", "list", "-pHo", "logicalused,used", "test/repo/foo/guid") } returns "40\t20\n"
-            every { executor.exec("zfs", "list", "-Ho", "origin", "-r", "test/repo/foo/guid") } returns
+                    "test/repo/foo/$guid@hash") } returns "{\"a\":\"b\"}\n"
+            every { executor.exec("zfs", "list", "-pHo", "logicalused,used", "test/repo/foo/$guid") } returns "40\t20\n"
+            every { executor.exec("zfs", "list", "-Ho", "origin", "-r", "test/repo/foo/$guid") } returns
                     "test/repo/foo/guidtwo/v0@sourcehash\n"
             every { executor.exec("zfs", "list", "-d", "1",
-                    "-pHo", "name,logicalreferenced,referenced,io.titan-data:metadata", "test/repo/foo/guid") } returns arrayOf(
-                    "test/repo/foo/guid\t4\t6\t{}",
-                    "test/repo/foo/guid/v0\t5\t10\t{\"path\":\"/var/a\"}",
-                    "test/repo/foo/guid/v1\t8\t16\t{\"path\":\"/var/b\"}"
+                    "-pHo", "name,logicalreferenced,referenced,io.titan-data:metadata", "test/repo/foo/$guid") } returns arrayOf(
+                    "test/repo/foo/$guid\t4\t6\t{}",
+                    "test/repo/foo/$guid/v0\t5\t10\t{\"path\":\"/var/a\"}",
+                    "test/repo/foo/$guid/v1\t8\t16\t{\"path\":\"/var/b\"}"
             ).joinToString("\n")
             with(engine.handleRequest(HttpMethod.Get, "/v1/repositories/foo/status")) {
                 response.status() shouldBe HttpStatusCode.OK

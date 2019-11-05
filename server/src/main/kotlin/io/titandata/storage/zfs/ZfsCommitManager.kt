@@ -236,7 +236,6 @@ class ZfsCommitManager(val provider: ZfsStorageProvider) {
         guid ?: throw NoSuchObjectException("no such commit '$commit' in repository '$repo'")
 
         provider.cloneCommit(repo, guid, commit, newVolumeSet)
-        provider.executor.exec("zfs", "set", "$poolName/repo/$repo")
 
         val snap = provider.getLatestSnapshot("$poolName/repo/$repo/$prevVolumeSet")
 

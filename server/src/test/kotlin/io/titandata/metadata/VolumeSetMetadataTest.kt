@@ -45,14 +45,6 @@ class VolumeSetMetadataTest : StringSpec() {
             }
         }
 
-        "get active volumeset returns null if none present" {
-            transaction {
-                md.createRepository(Repository(name="foo", properties=mapOf()))
-                md.createVolumeSet("foo")
-                md.getActiveVolumeSet("foo") shouldBe null
-            }
-        }
-
         "get active volumeset returns vs if activate" {
             transaction {
                 md.createRepository(Repository(name="foo", properties=mapOf()))
@@ -84,7 +76,10 @@ class VolumeSetMetadataTest : StringSpec() {
                 md.createRepository(Repository(name="foo", properties=mapOf()))
                 val vs = md.createVolumeSet("foo", true)
                 md.markVolumeSetDeleting(vs)
-                md.getActiveVolumeSet("foo") shouldBe null
+                // Don't really have a way to verify this other than checking this fails
+                shouldThrow<NullPointerException> {
+                    md.getActiveVolumeSet("foo")
+                }
             }
         }
 
@@ -104,7 +99,10 @@ class VolumeSetMetadataTest : StringSpec() {
                 md.createRepository(Repository(name="foo", properties=mapOf()))
                 val vs = md.createVolumeSet("foo", true)
                 md.deleteVolumeSet(vs)
-                md.getActiveVolumeSet("foo") shouldBe null
+                // Don't really have a way to verify this other than checking this fails
+                shouldThrow<NullPointerException> {
+                    md.getActiveVolumeSet("foo")
+                }
             }
         }
     }

@@ -78,7 +78,7 @@ class ZfsRepositoryManager(val provider: ZfsStorageProvider) {
         try {
             val json = provider.gson.toJson(repo.properties)
             val name = repo.name
-            provider.executor.exec("zfs", "create", "-o", "mountpoint=legacy", "-o",
+            provider.executor.exec("zfs", "create", "-o", "mountpoint=legacy",
                     "-o", "$METADATA_PROP=$json", "$poolName/repo/$name")
             provider.executor.exec("zfs", "create", "$poolName/repo/$name/$volumeSet")
 

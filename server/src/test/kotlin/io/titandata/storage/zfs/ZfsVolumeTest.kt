@@ -62,12 +62,6 @@ class ZfsVolumeTest : StringSpec() {
             }
         }
 
-        "create volume fails with unknown repository" {
-            shouldThrow<NoSuchObjectException> {
-                provider.createVolume("foo", "guid", "vol", mapOf("a" to "b"))
-            }
-        }
-
         "create volume fails with duplicate volume" {
             every { executor.exec("zfs", "create", "-o",
                     "io.titan-data:metadata={\"a\":\"b\"}", "test/repo/foo/guid/vol") } throws
@@ -110,12 +104,6 @@ class ZfsVolumeTest : StringSpec() {
             }
         }
 
-        "delete volume fails with unknown repository" {
-            shouldThrow<NoSuchObjectException> {
-                provider.deleteVolume("foo", "guid", "vol")
-            }
-        }
-
         "delete volume succeeds" {
             every { executor.exec("zfs", "destroy", "-R", "test/repo/foo/guid/vol") } returns ""
             every { executor.exec("rmdir", "/var/lib/test/mnt/foo/vol") } returns ""
@@ -147,12 +135,6 @@ class ZfsVolumeTest : StringSpec() {
             }
         }
 
-        "get volume fails with unknown repository" {
-            shouldThrow<NoSuchObjectException> {
-                provider.getVolume("foo", "guid", "vol")
-            }
-        }
-
         "get volume succeeds" {
             every { executor.exec("zfs", "list", "-Ho", "io.titan-data:metadata",
                     "test/repo/foo/guid/vol") } returns "{\"a\":\"b\"}"
@@ -178,12 +160,6 @@ class ZfsVolumeTest : StringSpec() {
         "mount volume fails with invalid volume name" {
             shouldThrow<IllegalArgumentException> {
                 provider.mountVolume("ok", "guid", "not/ok")
-            }
-        }
-
-        "mount volume fails with unknown repository" {
-            shouldThrow<NoSuchObjectException> {
-                provider.mountVolume("foo", "guid", "vol")
             }
         }
 
@@ -213,12 +189,6 @@ class ZfsVolumeTest : StringSpec() {
         "unmount volume fails with invalid volume name" {
             shouldThrow<IllegalArgumentException> {
                 provider.unmountVolume("ok", "not/ok")
-            }
-        }
-
-        "unmount volume fails with unknown repository" {
-            shouldThrow<NoSuchObjectException> {
-                provider.unmountVolume("foo", "vol")
             }
         }
 

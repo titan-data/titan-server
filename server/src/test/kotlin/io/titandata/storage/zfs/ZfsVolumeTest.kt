@@ -22,6 +22,7 @@ import io.mockk.verifySequence
 import io.titandata.exception.CommandException
 import io.titandata.exception.NoSuchObjectException
 import io.titandata.exception.ObjectExistsException
+import io.titandata.models.Volume
 import io.titandata.util.CommandExecutor
 
 class ZfsVolumeTest : StringSpec() {
@@ -46,19 +47,19 @@ class ZfsVolumeTest : StringSpec() {
     init {
         "create volume fails with invalid repo name" {
             shouldThrow<IllegalArgumentException> {
-                provider.createVolume("not/ok", "guid", "ok", mapOf())
+                provider.createVolume("not/ok", "guid", Volume(name="ok", properties=emptyMap()))
             }
         }
 
         "create volume fails with invalid volume name" {
             shouldThrow<IllegalArgumentException> {
-                provider.createVolume("ok", "guid", "not/ok", mapOf())
+                provider.createVolume("ok", "guid", Volume(name="not/ok", properties=emptyMap()))
             }
         }
 
         "create volume fails with leading unsore in volume name" {
             shouldThrow<IllegalArgumentException> {
-                provider.createVolume("ok", "guid", "_vol", mapOf())
+                provider.createVolume("ok", "guid", Volume(name="_vol", properties=emptyMap()))
             }
         }
 
@@ -67,7 +68,7 @@ class ZfsVolumeTest : StringSpec() {
                     "io.titan-data:metadata={\"a\":\"b\"}", "test/repo/foo/guid/vol") } throws
                     CommandException("", 1, "already exists")
             shouldThrow<ObjectExistsException> {
-                provider.createVolume("foo", "guid", "vol", mapOf("a" to "b"))
+                provider.createVolume("foo", "guid", Volume(name="vol", properties=mapOf("a" to "b")))
             }
         }
 
@@ -77,11 +78,7 @@ class ZfsVolumeTest : StringSpec() {
             every { executor.exec("zfs", "snapshot", "test/repo/foo/guid/vol@initial") } returns ""
             every { executor.exec("mkdir", "-p", "/var/lib/test/mnt/foo/vol") } returns ""
 
-            val vol = provider.createVolume("foo", "guid", "vol", mapOf("a" to "b"))
-            vol.name shouldBe "vol"
-            vol.mountpoint shouldBe "/var/lib/test/mnt/foo/vol"
-            vol.properties!!["a"] shouldBe "b"
-            vol.status shouldNotBe null
+            provider.createVolume("foo", "guid", Volume(name="vol", properties=mapOf("a" to "b")))
 
             verifySequence {
                 executor.exec("zfs", "create", "-o",
@@ -123,43 +120,15 @@ class ZfsVolumeTest : StringSpec() {
             }
         }
 
-        "get volume fails with invalid repo name" {
-            shouldThrow<IllegalArgumentException> {
-                provider.getVolume("not/ok", "guid", "ok")
-            }
-        }
-
-        "get volume fails with invalid volume name" {
-            shouldThrow<IllegalArgumentException> {
-                provider.getVolume("ok", "guid", "not/ok")
-            }
-        }
-
-        "get volume succeeds" {
-            every { executor.exec("zfs", "list", "-Ho", "io.titan-data:metadata",
-                    "test/repo/foo/guid/vol") } returns "{\"a\":\"b\"}"
-            val vol = provider.getVolume("foo", "guid", "vol")
-            vol.name shouldBe "vol"
-            vol.mountpoint shouldBe "/var/lib/test/mnt/foo/vol"
-            vol.status shouldNotBe null
-            vol.properties!!["a"] shouldBe "b"
-
-            verifySequence {
-                executor.exec("zfs", "list", "-Ho", "io.titan-data:metadata",
-                        "test/repo/foo/guid/vol")
-            }
-            confirmVerified()
-        }
-
         "mount volume fails with invalid repo name" {
             shouldThrow<IllegalArgumentException> {
-                provider.mountVolume("not/ok", "guid", "ok")
+                provider.mountVolume("not/ok", "guid", Volume(name="ok", properties=emptyMap()))
             }
         }
 
         "mount volume fails with invalid volume name" {
             shouldThrow<IllegalArgumentException> {
-                provider.mountVolume("ok", "guid", "not/ok")
+                provider.mountVolume("ok", "guid", Volume(name="not/ok", properties=emptyMap()))
             }
         }
 
@@ -168,9 +137,7 @@ class ZfsVolumeTest : StringSpec() {
                     "test/repo/foo/guid/vol") } returns "{}"
             every { executor.exec("mount", "-t", "zfs", "test/repo/foo/guid/vol",
                     "/var/lib/test/mnt/foo/vol") } returns ""
-            val vol = provider.mountVolume("foo", "guid", "vol")
-            vol.name shouldBe "vol"
-            vol.mountpoint shouldBe "/var/lib/test/mnt/foo/vol"
+            provider.mountVolume("foo", "guid", Volume(name="vol", properties=emptyMap()))
             verifySequence {
                 executor.exec("zfs", "list", "-Ho", "io.titan-data:metadata",
                         "test/repo/foo/guid/vol")
@@ -205,43 +172,6 @@ class ZfsVolumeTest : StringSpec() {
             every { executor.exec("umount", "/var/lib/test/mnt/foo/vol") } throws
                     CommandException("", 1, "not mounted")
             provider.unmountVolume("foo", "vol")
-        }
-
-        "list volumes fails with invalid repo name" {
-            shouldThrow<IllegalArgumentException> {
-                provider.listVolumes("not/ok", "guid")
-            }
-        }
-
-        "list volumes succeeds" {
-            every { executor.exec("zfs", "list", "-Ho", "name,io.titan-data:metadata",
-                    "-r", "test/repo/foo/guid") } returns arrayOf(
-                    "test/repo/foo\t{}",
-                    "test/repo/foo/guid/one\t{\"a\":\"b\"}",
-                    "test/repo/foo/guid/two\t{\"c\":\"d\"}"
-            ).joinToString("\n")
-            val volumes = provider.listVolumes("foo", "guid")
-            volumes.size shouldBe 2
-            volumes[0].name shouldBe "one"
-            volumes[0].mountpoint shouldBe "/var/lib/test/mnt/foo/one"
-            volumes[0].properties!!["a"] shouldBe "b"
-            volumes[1].name shouldBe "two"
-            volumes[1].mountpoint shouldBe "/var/lib/test/mnt/foo/two"
-            volumes[1].properties!!["c"] shouldBe "d"
-        }
-
-        "list volumes ignores datasets with leading underscores" {
-            every { executor.exec("zfs", "list", "-Ho", "name,io.titan-data:metadata",
-                    "-r", "test/repo/foo/guid") } returns arrayOf(
-                    "test/repo/foo\t{}",
-                    "test/repo/foo/guid/one\t{\"a\":\"b\"}",
-                    "test/repo/foo/guid/_two\t{\"c\":\"d\"}"
-            ).joinToString("\n")
-            val volumes = provider.listVolumes("foo", "guid")
-            volumes.size shouldBe 1
-            volumes[0].name shouldBe "one"
-            volumes[0].mountpoint shouldBe "/var/lib/test/mnt/foo/one"
-            volumes[0].properties!!["a"] shouldBe "b"
         }
     }
 }

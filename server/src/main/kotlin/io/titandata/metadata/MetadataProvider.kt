@@ -260,26 +260,35 @@ class MetadataProvider(val inMemory: Boolean = true, val databaseName: String = 
 
 
     fun createVolume(volumeSet: String, volume: Volume) {
-        // It is a programming error to create a conflicting volume name, so no need to translate into a user exception
-        Volumes.insert {
-            it[Volumes.volumeSet] = UUID.fromString(volumeSet)
-            it[name] = volume.name
-            it[metadata] = gson.toJson(volume.properties)
-            it[state] = VolumeState.INACTIVE
+        try {
+            Volumes.insert {
+                it[Volumes.volumeSet] = UUID.fromString(volumeSet)
+                it[name] = volume.name
+                it[metadata] = gson.toJson(volume.properties)
+                it[state] = VolumeState.INACTIVE
+            }
+        } catch (e: ExposedSQLException) {
+            throw ObjectExistsException("volume '${volume.name}' already exists")
         }
     }
 
     fun markVolumeDeleting(volumeSet: String, volumeName: String) {
-        Volumes.update({
+        val count = Volumes.update({
             (Volumes.volumeSet eq UUID.fromString(volumeSet)) and (Volumes.name eq volumeName)
         }) {
             it[state] = VolumeState.DELETING
         }
+        if (count == 0) {
+            throw NoSuchObjectException("no such volume '$volumeName'")
+        }
     }
 
     fun deleteVolume(volumeSet: String, volumeName: String) {
-        Volumes.deleteWhere {
+        val count = Volumes.deleteWhere {
             (Volumes.volumeSet eq UUID.fromString(volumeSet)) and (Volumes.name eq volumeName)
+        }
+        if (count == 0) {
+            throw NoSuchObjectException("no such volume '$volumeName'")
         }
     }
 

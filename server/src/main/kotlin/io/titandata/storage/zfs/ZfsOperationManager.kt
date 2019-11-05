@@ -10,6 +10,7 @@ import io.titandata.exception.InvalidStateException
 import io.titandata.exception.NoSuchObjectException
 import io.titandata.models.Commit
 import io.titandata.models.Operation
+import io.titandata.models.Volume
 import io.titandata.storage.OperationData
 
 /**
@@ -147,11 +148,11 @@ class ZfsOperationManager(val provider: ZfsStorageProvider) {
      * then mount all volumes within it based on their name ("/v0"). We return the base mountpoint
      * so that the caller can then access the data within those volumes.
      */
-    fun mountOperationVolumes(repo: String, id: String): String {
+    fun mountOperationVolumes(repo: String, id: String, volumes : List<Volume>): String {
         val op = getOperation(repo, id)
         // We use the operation ID as the mountpoint so it can be mounted in parallel
         val base = provider.getMountpoint(op.operation.id)
-        for (v in provider.listVolumes(repo, id)) {
+        for (v in volumes) {
             val mountpoint = "$base/${v.name}"
             provider.executor.exec("mkdir", "-p", mountpoint)
             provider.executor.exec("mount", "-t", "zfs",
@@ -163,11 +164,11 @@ class ZfsOperationManager(val provider: ZfsStorageProvider) {
     /**
      * Unmount volumes.
      */
-    fun unmountOperationVolumes(repo: String, id: String) {
+    fun unmountOperationVolumes(repo: String, id: String, volumes: List<Volume>) {
         val op = getOperation(repo, id)
         // We use the operation ID as the mountpoint so it can be mounted in parallel
         val base = provider.getMountpoint(op.operation.id)
-        for (v in provider.listVolumes(repo, id)) {
+        for (v in volumes) {
             val mountpoint = "$base/${v.name}"
             provider.safeUnmount(mountpoint)
         }

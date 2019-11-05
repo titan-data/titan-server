@@ -23,6 +23,7 @@ import io.titandata.exception.CommandException
 import io.titandata.exception.NoSuchObjectException
 import io.titandata.models.Commit
 import io.titandata.models.Operation
+import io.titandata.models.Volume
 import io.titandata.remote.nop.NopParameters
 import io.titandata.storage.OperationData
 import io.titandata.util.CommandExecutor
@@ -237,18 +238,14 @@ class ZfsOperationTest : StringSpec() {
 
         "mount operation volumes succeeds" {
             mockOperation()
-            every { executor.exec("zfs", "list", "-Ho", "name,io.titan-data:metadata",
-                    "-r", "test/repo/foo/id") } returns arrayOf(
-                    "test/repo/foo/id/one\t{\"a\":\"b\"}",
-                    "test/repo/foo/id/two\t{\"c\":\"d\"}"
-            ).joinToString("\n")
             every { executor.exec("mkdir", "-p", "/var/lib/test/mnt/id/one") } returns ""
             every { executor.exec("mount", "-t", "zfs",
                     "test/repo/foo/id/one", "/var/lib/test/mnt/id/one") } returns ""
             every { executor.exec("mkdir", "-p", "/var/lib/test/mnt/id/two") } returns ""
             every { executor.exec("mount", "-t", "zfs",
                     "test/repo/foo/id/two", "/var/lib/test/mnt/id/two") } returns ""
-            val result = provider.mountOperationVolumes("foo", "id")
+            val result = provider.mountOperationVolumes("foo", "id", listOf(Volume(name="one", properties=mapOf("a" to "b")),
+                    Volume(name="two", properties=mapOf("c" to "d"))))
             result shouldBe "/var/lib/test/mnt/id"
 
             verify {
@@ -261,14 +258,10 @@ class ZfsOperationTest : StringSpec() {
 
         "unmount operation volumes succeeds" {
             mockOperation()
-            every { executor.exec("zfs", "list", "-Ho", "name,io.titan-data:metadata",
-                    "-r", "test/repo/foo/id") } returns arrayOf(
-                    "test/repo/foo/id/one\t{\"a\":\"b\"}",
-                    "test/repo/foo/id/two\t{\"c\":\"d\"}"
-            ).joinToString("\n")
             every { executor.exec("umount", "/var/lib/test/mnt/id/one") } returns ""
             every { executor.exec("umount", "/var/lib/test/mnt/id/two") } returns ""
-            provider.unmountOperationVolumes("foo", "id")
+            provider.unmountOperationVolumes("foo", "id", listOf(Volume(name="one", properties=mapOf("a" to "b")),
+                    Volume(name="two", properties=mapOf("c" to "d"))))
 
             verify {
                 executor.exec("umount", "/var/lib/test/mnt/id/one")

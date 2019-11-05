@@ -6,6 +6,7 @@ import io.kotlintest.shouldBe
 import io.kotlintest.shouldThrow
 import io.kotlintest.specs.StringSpec
 import io.titandata.exception.NoSuchObjectException
+import io.titandata.exception.ObjectExistsException
 import io.titandata.models.Repository
 import io.titandata.models.Volume
 import java.util.UUID
@@ -38,6 +39,16 @@ class VolumeMetadataTest : StringSpec() {
             }
         }
 
+        "create duplicate volume fails" {
+            val vs = createVolumeSet()
+            shouldThrow<ObjectExistsException> {
+                transaction {
+                    md.createVolume(vs, Volume(name = "vol", properties = emptyMap()))
+                    md.createVolume(vs, Volume(name = "vol", properties = emptyMap()))
+                }
+            }
+        }
+
         "get volume succeeds" {
             val vs = createVolumeSet()
             transaction {
@@ -48,11 +59,29 @@ class VolumeMetadataTest : StringSpec() {
             }
         }
 
+        "get non-existent volume fails" {
+            val vs = createVolumeSet()
+            shouldThrow<NoSuchObjectException> {
+                transaction {
+                    md.getVolume(vs, "vol")
+                }
+            }
+        }
+
         "mark volume deleting succeeds" {
             val vs = createVolumeSet()
             transaction {
                 md.createVolume(vs, Volume(name="vol", properties=mapOf("a" to "b")))
                 md.markVolumeDeleting(vs, "vol")
+            }
+        }
+
+        "mark non-existent volume deleting fails" {
+            val vs = createVolumeSet()
+            shouldThrow<NoSuchObjectException> {
+                transaction {
+                    md.markVolumeDeleting(vs, "vol")
+                }
             }
         }
 
@@ -84,13 +113,22 @@ class VolumeMetadataTest : StringSpec() {
             }
         }
 
-        "volume deletion succeeds" {
+        "delete volume succeeds" {
             val vs = createVolumeSet()
             transaction {
                 md.createVolume(vs, Volume(name="vol", properties=emptyMap()))
                 md.deleteVolume(vs, "vol")
-                shouldThrow<Exception> {
+                shouldThrow<NoSuchObjectException> {
                     md.getVolume(vs, "vol")
+                }
+            }
+        }
+
+        "delete non-existent volume succeeds" {
+            val vs = createVolumeSet()
+            shouldThrow<NoSuchObjectException> {
+                transaction {
+                    md.deleteVolume(vs, "vol")
                 }
             }
         }

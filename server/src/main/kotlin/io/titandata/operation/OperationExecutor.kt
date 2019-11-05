@@ -133,9 +133,10 @@ class OperationExecutor(
         val operationId = operation.id
         val scratch = providers.storage.createOperationScratch(repo, operationId)
         try {
-            val base = providers.storage.mountOperationVolumes(repo, operationId)
+            val volumes = providers.volumes.listVolumes(repo)
+            val base = providers.storage.mountOperationVolumes(repo, operationId, volumes)
             try {
-                for (volume in providers.storage.listVolumes(repo, operationId)) {
+                for (volume in providers.metadata.listVolumes(repo)) {
                     if (operation.type == Operation.Type.PULL) {
                         provider.pullVolume(this, data, volume, base, scratch)
                     } else {
@@ -143,7 +144,7 @@ class OperationExecutor(
                     }
                 }
             } finally {
-                providers.storage.unmountOperationVolumes(repo, operationId)
+                providers.storage.unmountOperationVolumes(repo, operationId, volumes)
             }
         } finally {
             providers.storage.destroyOperationScratch(repo, operationId)

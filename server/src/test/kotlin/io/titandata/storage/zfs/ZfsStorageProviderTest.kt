@@ -18,9 +18,7 @@ import io.mockk.impl.annotations.InjectMockKs
 import io.mockk.impl.annotations.MockK
 import io.mockk.impl.annotations.OverrideMockKs
 import io.mockk.verifySequence
-import io.titandata.exception.CommandException
 import io.titandata.exception.InvalidStateException
-import io.titandata.exception.NoSuchObjectException
 import io.titandata.util.CommandExecutor
 
 class ZfsStorageProviderTest : StringSpec() {

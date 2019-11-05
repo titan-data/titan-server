@@ -6,7 +6,7 @@ import org.jetbrains.exposed.sql.transactions.transaction
 
 class VolumeOrchestrator(val providers: ProviderModule) {
 
-    private fun getVolumeSet(repo: String) : String {
+    private fun getVolumeSet(repo: String): String {
         return transaction {
             providers.metadata.getActiveVolumeSet(repo)
         }

@@ -85,7 +85,7 @@ class VolumesApiTest : StringSpec() {
     init {
         "create volume succeeds" {
             val guid = transaction {
-                providers.metadata.createRepository(Repository(name="foo", properties=emptyMap()))
+                providers.metadata.createRepository(Repository(name = "foo", properties = emptyMap()))
                 providers.metadata.createVolumeSet("foo", true)
             }
             every { executor.exec("zfs", "create", "-o",
@@ -145,7 +145,7 @@ class VolumesApiTest : StringSpec() {
 
         "remove volume succeeds" {
             val guid = transaction {
-                providers.metadata.createRepository(Repository(name="foo", properties=emptyMap()))
+                providers.metadata.createRepository(Repository(name = "foo", properties = emptyMap()))
                 providers.metadata.createVolumeSet("foo", true)
             }
             every { executor.exec("zfs", "destroy", "-R", "test/repo/foo/$guid/vol") } returns ""
@@ -164,7 +164,7 @@ class VolumesApiTest : StringSpec() {
 
         "mount volume succeeds" {
             val guid = transaction {
-                providers.metadata.createRepository(Repository(name="foo", properties=emptyMap()))
+                providers.metadata.createRepository(Repository(name = "foo", properties = emptyMap()))
                 providers.metadata.createVolumeSet("foo", true)
             }
             every { executor.exec("zfs", "list", "-Ho", "io.titan-data:metadata",
@@ -204,7 +204,7 @@ class VolumesApiTest : StringSpec() {
 
         "get path succeeds" {
             val guid = transaction {
-                providers.metadata.createRepository(Repository(name="foo", properties=emptyMap()))
+                providers.metadata.createRepository(Repository(name = "foo", properties = emptyMap()))
                 providers.metadata.createVolumeSet("foo", true)
             }
             every { executor.exec("zfs", "list", "-Ho", "io.titan-data:metadata",
@@ -220,7 +220,7 @@ class VolumesApiTest : StringSpec() {
 
         "get volume succeeds" {
             val guid = transaction {
-                providers.metadata.createRepository(Repository(name="foo", properties=emptyMap()))
+                providers.metadata.createRepository(Repository(name = "foo", properties = emptyMap()))
                 providers.metadata.createVolumeSet("foo", true)
             }
             every { executor.exec("zfs", "list", "-Ho", "io.titan-data:metadata",
@@ -242,7 +242,7 @@ class VolumesApiTest : StringSpec() {
 
         "list volumes succeeds" {
             val guid = transaction {
-                providers.metadata.createRepository(Repository(name="foo", properties=emptyMap()))
+                providers.metadata.createRepository(Repository(name = "foo", properties = emptyMap()))
                 providers.metadata.createVolumeSet("foo", true)
             }
             every { executor.exec("zfs", "list", "-Ho", "name,io.titan-data:metadata",

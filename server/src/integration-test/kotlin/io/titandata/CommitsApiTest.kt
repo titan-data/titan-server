@@ -34,8 +34,8 @@ import io.titandata.models.Repository
 import io.titandata.orchestrator.OperationOrchestrator
 import io.titandata.storage.zfs.ZfsStorageProvider
 import io.titandata.util.CommandExecutor
-import org.jetbrains.exposed.sql.transactions.transaction
 import java.util.concurrent.TimeUnit
+import org.jetbrains.exposed.sql.transactions.transaction
 
 @UseExperimental(KtorExperimentalAPI::class)
 class CommitsApiTest : StringSpec() {

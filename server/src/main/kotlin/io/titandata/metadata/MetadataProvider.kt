@@ -12,6 +12,7 @@ import io.titandata.metadata.table.VolumeSets
 import io.titandata.models.Remote
 import io.titandata.models.Repository
 import io.titandata.serialization.ModelTypeAdapters
+import java.util.UUID
 import org.jetbrains.exposed.exceptions.ExposedSQLException
 import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.ResultRow
@@ -24,7 +25,6 @@ import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
-import java.util.*
 
 /*
  * The metadata provider is responsible for persistence of all metadata to the titan database. With the exception of
@@ -194,17 +194,17 @@ class MetadataProvider(val inMemory: Boolean = true, val databaseName: String = 
         }
     }
 
-    fun createVolumeSet(repoName: String, activate: Boolean = false) : String {
+    fun createVolumeSet(repoName: String, activate: Boolean = false): String {
         getRepository(repoName)
 
         val id = VolumeSets.insert {
-           it[repo] = repoName
-           it[state] = if (activate) { VolumeState.ACTIVE } else { VolumeState.INACTIVE }
+            it[repo] = repoName
+            it[state] = if (activate) { VolumeState.ACTIVE } else { VolumeState.INACTIVE }
         } get VolumeSets.id
         return id.toString()
     }
 
-    fun getActiveVolumeSet(repoName: String) : String {
+    fun getActiveVolumeSet(repoName: String): String {
         getRepository(repoName)
         return VolumeSets.select {
             (VolumeSets.repo eq repoName) and (VolumeSets.state eq VolumeState.ACTIVE)
@@ -244,7 +244,7 @@ class MetadataProvider(val inMemory: Boolean = true, val databaseName: String = 
         }
     }
 
-    fun listDeletingVolumeSets() : List<String> {
+    fun listDeletingVolumeSets(): List<String> {
         return VolumeSets.select {
             VolumeSets.state eq VolumeState.DELETING
         }.map { it[VolumeSets.id].toString() }

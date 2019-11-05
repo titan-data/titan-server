@@ -125,7 +125,7 @@ class RepositoriesApiTest : StringSpec() {
 
         "get repository status succeeds" {
             val guid = transaction {
-                providers.metadata.createRepository(Repository(name="foo", properties=emptyMap()))
+                providers.metadata.createRepository(Repository(name = "foo", properties = emptyMap()))
                 providers.metadata.createVolumeSet("foo", true)
             }
             every { executor.exec(*anyVararg()) } returns ""

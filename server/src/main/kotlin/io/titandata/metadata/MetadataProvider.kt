@@ -9,8 +9,10 @@ import io.titandata.exception.ObjectExistsException
 import io.titandata.metadata.table.Remotes
 import io.titandata.metadata.table.Repositories
 import io.titandata.metadata.table.VolumeSets
+import io.titandata.metadata.table.Volumes
 import io.titandata.models.Remote
 import io.titandata.models.Repository
+import io.titandata.models.Volume
 import io.titandata.serialization.ModelTypeAdapters
 import java.util.UUID
 import org.jetbrains.exposed.exceptions.ExposedSQLException
@@ -72,14 +74,15 @@ class MetadataProvider(val inMemory: Boolean = true, val databaseName: String = 
         }
 
         transaction {
-            SchemaUtils.createMissingTablesAndColumns(Repositories, Remotes, VolumeSets)
+            SchemaUtils.createMissingTablesAndColumns(Repositories, Remotes, VolumeSets, Volumes)
         }
     }
 
     fun clear() {
         transaction {
-            Repositories.deleteAll()
+            Volumes.deleteAll()
             VolumeSets.deleteAll()
+            Repositories.deleteAll()
         }
     }
 
@@ -248,5 +251,61 @@ class MetadataProvider(val inMemory: Boolean = true, val databaseName: String = 
         return VolumeSets.select {
             VolumeSets.state eq VolumeState.DELETING
         }.map { it[VolumeSets.id].toString() }
+    }
+
+    private fun convertVolume(it: ResultRow) = Volume(
+            name = it[Volumes.name],
+            properties = gson.fromJson(it[Volumes.metadata], object : TypeToken<Map<String, Any>>() {}.type)
+    )
+
+    fun createVolume(volumeSet: String, volume: Volume) {
+        try {
+            Volumes.insert {
+                it[Volumes.volumeSet] = UUID.fromString(volumeSet)
+                it[name] = volume.name
+                it[metadata] = gson.toJson(volume.properties)
+                it[state] = VolumeState.INACTIVE
+            }
+        } catch (e: ExposedSQLException) {
+            throw ObjectExistsException("volume '${volume.name}' already exists")
+        }
+    }
+
+    fun markVolumeDeleting(volumeSet: String, volumeName: String) {
+        val count = Volumes.update({
+            (Volumes.volumeSet eq UUID.fromString(volumeSet)) and (Volumes.name eq volumeName)
+        }) {
+            it[state] = VolumeState.DELETING
+        }
+        if (count == 0) {
+            throw NoSuchObjectException("no such volume '$volumeName'")
+        }
+    }
+
+    fun deleteVolume(volumeSet: String, volumeName: String) {
+        val count = Volumes.deleteWhere {
+            (Volumes.volumeSet eq UUID.fromString(volumeSet)) and (Volumes.name eq volumeName)
+        }
+        if (count == 0) {
+            throw NoSuchObjectException("no such volume '$volumeName'")
+        }
+    }
+
+    fun getVolume(volumeSet: String, volumeName: String): Volume {
+        return Volumes.select {
+            (Volumes.volumeSet eq UUID.fromString(volumeSet)) and (Volumes.name eq volumeName)
+        }.map { convertVolume(it) }
+                .firstOrNull()
+                ?: throw NoSuchObjectException("no such volume '$volumeName'")
+    }
+
+    fun listVolumes(volumeSet: String): List<Volume> {
+        return Volumes.select {
+            Volumes.volumeSet eq UUID.fromString(volumeSet)
+        }.map { convertVolume(it) }
+    }
+
+    fun listAllVolumes(): List<Volume> {
+        return Volumes.selectAll().map { convertVolume(it) }
     }
 }

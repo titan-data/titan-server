@@ -33,15 +33,14 @@ interface StorageProvider {
     fun commitOperation(repo: String, id: String, commit: Commit)
     fun discardOperation(repo: String, id: String)
     fun updateOperationState(repo: String, id: String, state: Operation.State)
-    fun mountOperationVolumes(repo: String, id: String): String
-    fun unmountOperationVolumes(repo: String, id: String)
+    fun mountOperationVolumes(repo: String, id: String, volumes: List<Volume>): String
+    fun unmountOperationVolumes(repo: String, id: String, volumes: List<Volume>)
     fun createOperationScratch(repo: String, id: String): String
     fun destroyOperationScratch(repo: String, id: String)
 
-    fun createVolume(repo: String, volumeSet: String, name: String, properties: Map<String, Any>): Volume
+    fun createVolume(repo: String, volumeSet: String, volume: Volume)
     fun deleteVolume(repo: String, volumeSet: String, name: String)
-    fun getVolume(repo: String, volumeSet: String, name: String): Volume
-    fun mountVolume(repo: String, volumeSet: String, name: String): Volume
+    fun getVolumeMountpoint(repo: String, volumeName: String): String
+    fun mountVolume(repo: String, volumeSet: String, volume: Volume)
     fun unmountVolume(repo: String, name: String)
-    fun listVolumes(repo: String, volumeSet: String): List<Volume>
 }

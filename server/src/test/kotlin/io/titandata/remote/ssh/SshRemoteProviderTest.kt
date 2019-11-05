@@ -4,6 +4,7 @@
 
 package io.titandata.remote.ssh
 
+import io.kotlintest.Spec
 import io.kotlintest.TestCase
 import io.kotlintest.TestCaseOrder
 import io.kotlintest.TestResult
@@ -29,6 +30,7 @@ import io.titandata.exception.ObjectExistsException
 import io.titandata.models.Commit
 import io.titandata.models.Operation
 import io.titandata.models.ProgressEntry
+import io.titandata.models.Repository
 import io.titandata.models.Volume
 import io.titandata.operation.OperationExecutor
 import io.titandata.storage.zfs.ZfsStorageProvider
@@ -37,6 +39,7 @@ import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.InputStream
+import org.jetbrains.exposed.sql.transactions.transaction
 
 class SshRemoteProviderTest : StringSpec() {
 
@@ -54,8 +57,13 @@ class SshRemoteProviderTest : StringSpec() {
     @OverrideMockKs
     lateinit var sshRemoteProvider: SshRemoteProvider
 
+    override fun beforeSpec(spec: Spec) {
+        providers.metadata.init()
+    }
+
     override fun beforeTest(testCase: TestCase) {
         sshRemoteProvider = SshRemoteProvider(providers)
+        providers.metadata.clear()
         return MockKAnnotations.init(this)
     }
 
@@ -212,22 +220,28 @@ class SshRemoteProviderTest : StringSpec() {
 
             every { executor.start(*anyVararg()) } returns process
 
-            every { zfsStorageProvider.mountOperationVolumes(any(), any()) } returns
+            transaction {
+                providers.metadata.createRepository(Repository(name = "repo", properties = emptyMap()))
+                val vs = providers.metadata.createVolumeSet("repo", true)
+                providers.metadata.createVolume(vs, Volume(name = "v0", properties = emptyMap()))
+                providers.metadata.createVolume(vs, Volume(name = "v1", properties = mapOf("path" to "/volume")))
+            }
+
+            every { zfsStorageProvider.mountOperationVolumes(any(), any(), any()) } returns
                     "/var/operation"
             every { zfsStorageProvider.getCommit(any(), any()) } returns Commit(id = "commitId", properties = mapOf())
-            every { zfsStorageProvider.listVolumes(any(), any()) } returns
-                    listOf(Volume(name = "v0"), Volume(name = "v1", properties = mapOf("path" to "/volume")))
-            every { zfsStorageProvider.unmountOperationVolumes(any(), any()) } just Runs
+            every { zfsStorageProvider.unmountOperationVolumes(any(), any(), any()) } just Runs
             every { zfsStorageProvider.createOperation("repo", any(), any()) } just Runs
             every { zfsStorageProvider.createOperationScratch("repo", any()) } returns ""
             every { zfsStorageProvider.destroyOperationScratch("repo", any()) } just Runs
+            every { zfsStorageProvider.getVolumeMountpoint(any(), any()) } returns "/"
 
             operationExecutor.run()
 
             val progress = operationExecutor.getProgress()
             progress.size shouldBe 7
             progress[0].type shouldBe ProgressEntry.Type.START
-            progress[0].message shouldBe "Syncing v0"
+            progress[0].message shouldBe "Syncing repo/v0"
             progress[1].type shouldBe ProgressEntry.Type.PROGRESS
             progress[2].type shouldBe ProgressEntry.Type.END
             progress[3].type shouldBe ProgressEntry.Type.START
@@ -255,15 +269,21 @@ class SshRemoteProviderTest : StringSpec() {
 
             every { executor.start(*anyVararg()) } returns process
 
-            every { zfsStorageProvider.mountOperationVolumes(any(), any()) } returns
+            transaction {
+                providers.metadata.createRepository(Repository(name = "repo", properties = emptyMap()))
+                val vs = providers.metadata.createVolumeSet("repo", true)
+                providers.metadata.createVolume(vs, Volume(name = "v0", properties = emptyMap()))
+                providers.metadata.createVolume(vs, Volume(name = "v1", properties = mapOf("path" to "/volume")))
+            }
+
+            every { zfsStorageProvider.mountOperationVolumes(any(), any(), any()) } returns
                     "/var/operation"
             every { zfsStorageProvider.getCommit(any(), any()) } returns Commit(id = "commitId", properties = mapOf())
-            every { zfsStorageProvider.listVolumes(any(), any()) } returns
-                    listOf(Volume(name = "v0"), Volume(name = "v1", properties = mapOf("path" to "/volume")))
-            every { zfsStorageProvider.unmountOperationVolumes(any(), any()) } just Runs
+            every { zfsStorageProvider.unmountOperationVolumes(any(), any(), any()) } just Runs
             every { zfsStorageProvider.createOperation("repo", any(), any()) } just Runs
             every { zfsStorageProvider.createOperationScratch("repo", any()) } returns ""
             every { zfsStorageProvider.destroyOperationScratch("repo", any()) } just Runs
+            every { zfsStorageProvider.getVolumeMountpoint(any(), any()) } returns "/"
 
             operationExecutor.run()
 

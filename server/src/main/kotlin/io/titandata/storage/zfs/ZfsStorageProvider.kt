@@ -361,15 +361,15 @@ class ZfsStorageProvider(
     }
 
     @Synchronized
-    override fun mountOperationVolumes(repo: String, id: String): String {
+    override fun mountOperationVolumes(repo: String, id: String, volumes: List<Volume>): String {
         log.info("mount volumes for operation $id in $repo")
-        return operationManager.mountOperationVolumes(repo, id)
+        return operationManager.mountOperationVolumes(repo, id, volumes)
     }
 
     @Synchronized
-    override fun unmountOperationVolumes(repo: String, id: String) {
+    override fun unmountOperationVolumes(repo: String, id: String, volumes: List<Volume>) {
         log.info("unmount volumes for operation $id in $repo")
-        operationManager.unmountOperationVolumes(repo, id)
+        operationManager.unmountOperationVolumes(repo, id, volumes)
     }
 
     override fun createOperationScratch(repo: String, id: String): String {
@@ -383,9 +383,9 @@ class ZfsStorageProvider(
     }
 
     @Synchronized
-    override fun createVolume(repo: String, volumeSet: String, name: String, properties: Map<String, Any>): Volume {
-        log.info("create volume $name in $repo")
-        return volumeManager.createVolume(repo, volumeSet, name, properties)
+    override fun createVolume(repo: String, volumeSet: String, volume: Volume) {
+        log.info("create volume ${volume.name} in $repo")
+        volumeManager.createVolume(repo, volumeSet, volume)
     }
 
     @Synchronized
@@ -394,25 +394,19 @@ class ZfsStorageProvider(
         return volumeManager.deleteVolume(repo, volumeSet, name)
     }
 
-    @Synchronized
-    override fun getVolume(repo: String, volumeSet: String, name: String): Volume {
-        return volumeManager.getVolume(repo, volumeSet, name)
+    override fun getVolumeMountpoint(repo: String, volumeName: String): String {
+        return getMountpoint(repo, volumeName)
     }
 
     @Synchronized
-    override fun mountVolume(repo: String, volumeSet: String, name: String): Volume {
-        log.info("mount volume $name in $repo")
-        return volumeManager.mountVolume(repo, volumeSet, name)
+    override fun mountVolume(repo: String, volumeSet: String, volume: Volume) {
+        log.info("mount volume ${volume.name} in $repo")
+        volumeManager.mountVolume(repo, volumeSet, volume)
     }
 
     @Synchronized
     override fun unmountVolume(repo: String, name: String) {
         log.info("unmount volume $name in $repo")
         volumeManager.unmountVolume(repo, name)
-    }
-
-    @Synchronized
-    override fun listVolumes(repo: String, volumeSet: String): List<Volume> {
-        return volumeManager.listVolumes(repo, volumeSet)
     }
 }

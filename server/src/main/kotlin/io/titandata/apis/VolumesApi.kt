@@ -12,7 +12,6 @@ import io.ktor.routing.post
 import io.ktor.routing.route
 import io.titandata.ProviderModule
 import io.titandata.models.PluginDescription
-import io.titandata.models.Volume
 import io.titandata.models.VolumeCapabilities
 import io.titandata.models.VolumeCapabilitiesResponse
 import io.titandata.models.VolumeCreateRequest
@@ -80,12 +79,7 @@ fun Route.VolumeApi(providers: ProviderModule) {
 
     route("/VolumeDriver.List") {
         post {
-            val result = mutableListOf<Volume>()
-            for (repo in providers.repositories.listRepositories()) {
-                for (vol in providers.volumes.listVolumes(repo.name)) {
-                    result.add(vol.copy(name = "${repo.name}/${vol.name}"))
-                }
-            }
+            val result = providers.volumes.listAllVolumes()
             call.respond(VolumeListResponse(volumes = result.toTypedArray()))
         }
     }
@@ -94,8 +88,9 @@ fun Route.VolumeApi(providers: ProviderModule) {
         post {
             val request = call.receive(VolumeMountRequest::class)
             val (repo, volname) = getVolumeName(request.name)
-            val result = providers.volumes.mountVolume(repo, volname)
-            call.respond(VolumePathResponse(mountpoint = result.mountpoint))
+            providers.volumes.mountVolume(repo, volname)
+            val vol = providers.volumes.getVolume(repo, volname)
+            call.respond(VolumePathResponse(mountpoint = vol.mountpoint))
         }
     }
 

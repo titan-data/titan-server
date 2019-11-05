@@ -27,13 +27,13 @@ import io.titandata.models.VolumeRequest
 import io.titandata.remote.s3.S3Parameters
 import io.titandata.remote.s3.S3Remote
 import io.titandata.remote.s3.S3RemoteProvider
-import io.titandata.util.GuidGenerator
 import java.io.ByteArrayInputStream
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider
+import java.util.*
 
 class S3WebWorkflowTest : EndToEndTest() {
 
-    private val guid = GuidGenerator().get()
+    private val guid = UUID.randomUUID().toString()
 
     fun clearBucket() {
         val remote = getS3Remote()

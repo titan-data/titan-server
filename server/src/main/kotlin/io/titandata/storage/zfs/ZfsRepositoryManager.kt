@@ -93,48 +93,6 @@ class ZfsRepositoryManager(val provider: ZfsStorageProvider) {
     }
 
     /**
-     * List all repositories. We use the '-d 1' option to ZFS to only list direct descendants
-     * of the configured pool. Each response is parsed by the parseRepository() method.
-     */
-    fun listRepositories(): List<Repository> {
-        val output = provider.executor.exec("zfs", "list", "-Ho", "name,$METADATA_PROP",
-                "-d", "1", "$poolName/repo")
-
-        val repos = mutableListOf<Repository>()
-        for (line in output.lines()) {
-            if (line != "") {
-                val repo = parseRepository(line)
-                if (repo != null) {
-                    repos.add(repo)
-                }
-            }
-        }
-        return repos
-    }
-
-    /**
-     * Get a single repository. This will throw a NoSuchObjectException if the repository isn't
-     * found. We choose the route of throwing an exception instead of an optional null because
-     * this will be called frequently in the context where we just want to generate a 404 exception,
-     * and forcing all consumers to check and throw similar errors seems unnecessary.
-     */
-    fun getRepository(name: String): Repository {
-        provider.validateRepositoryName(name)
-        try {
-            val output = provider.executor.exec("zfs", "list", "-Ho", "name,$METADATA_PROP",
-                    "$poolName/repo/$name")
-            val repo = parseRepository(output)
-            if (repo == null) {
-                throw InvalidStateException("failed to parse state for repository '$name'")
-            }
-            return repo
-        } catch (e: CommandException) {
-            provider.checkNoSuchRepository(e, name)
-            throw e
-        }
-    }
-
-    /**
      * Get the status of a repository. This fetches a few additional pieces of information about
      * the repository:
      *
@@ -220,27 +178,6 @@ class ZfsRepositoryManager(val provider: ZfsStorageProvider) {
                 lastCommit = latest,
                 volumeStatus = volumes
         )
-    }
-
-    /**
-     * Update a repository. The most common operation is to simply update the metadata, but this
-     * can also be used to rename a repository.
-     */
-    fun updateRepository(name: String, repo: Repository) {
-        provider.validateRepositoryName(name)
-        provider.validateRepositoryName(repo.name)
-        try {
-            val json = provider.gson.toJson(repo.properties)
-            provider.executor.exec("zfs", "set", "$METADATA_PROP=$json", "$poolName/repo/$name")
-            if (name != repo.name) {
-                provider.executor.exec("zfs", "rename", "$poolName/repo/$name",
-                        "$poolName/repo/${repo.name}")
-            }
-        } catch (e: CommandException) {
-            provider.checkNoSuchRepository(e, name)
-            provider.checkRepositoryExists(e, repo.name)
-            throw e
-        }
     }
 
     /**

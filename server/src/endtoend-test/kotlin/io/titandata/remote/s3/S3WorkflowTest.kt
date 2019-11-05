@@ -26,8 +26,8 @@ import io.titandata.models.VolumeCreateRequest
 import io.titandata.models.VolumeMountRequest
 import io.titandata.models.VolumeRequest
 import java.io.ByteArrayInputStream
+import java.util.UUID
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider
-import java.util.*
 
 class S3WorkflowTest : EndToEndTest() {
 

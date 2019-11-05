@@ -28,8 +28,8 @@ import io.titandata.remote.s3.S3Parameters
 import io.titandata.remote.s3.S3Remote
 import io.titandata.remote.s3.S3RemoteProvider
 import java.io.ByteArrayInputStream
+import java.util.UUID
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider
-import java.util.*
 
 class S3WebWorkflowTest : EndToEndTest() {
 

@@ -148,7 +148,7 @@ class VolumesApiTest : StringSpec() {
             val guid = transaction {
                 providers.metadata.createRepository(Repository(name = "foo", properties = emptyMap()))
                 val vs = providers.metadata.createVolumeSet("foo", true)
-                providers.metadata.createVolume(vs, Volume(name="vol"))
+                providers.metadata.createVolume(vs, Volume(name = "vol"))
                 vs
             }
             every { executor.exec("zfs", "destroy", "-R", "test/repo/foo/$guid/vol") } returns ""
@@ -169,7 +169,7 @@ class VolumesApiTest : StringSpec() {
             val guid = transaction {
                 providers.metadata.createRepository(Repository(name = "foo", properties = emptyMap()))
                 val vs = providers.metadata.createVolumeSet("foo", true)
-                providers.metadata.createVolume(vs, Volume(name="vol"))
+                providers.metadata.createVolume(vs, Volume(name = "vol"))
                 vs
             }
             every { executor.exec("mount", "-t", "zfs", "test/repo/foo/$guid/vol",
@@ -207,7 +207,7 @@ class VolumesApiTest : StringSpec() {
             transaction {
                 providers.metadata.createRepository(Repository(name = "foo", properties = emptyMap()))
                 val vs = providers.metadata.createVolumeSet("foo", true)
-                providers.metadata.createVolume(vs, Volume(name = "vol", properties=emptyMap()))
+                providers.metadata.createVolume(vs, Volume(name = "vol", properties = emptyMap()))
             }
             with(engine.handleRequest(HttpMethod.Post, "/VolumeDriver.Path") {
                 setBody("{\"Name\":\"foo/vol\"}")
@@ -222,7 +222,7 @@ class VolumesApiTest : StringSpec() {
             transaction {
                 providers.metadata.createRepository(Repository(name = "foo", properties = emptyMap()))
                 val vs = providers.metadata.createVolumeSet("foo", true)
-                providers.metadata.createVolume(vs, Volume("vol", properties=mapOf("a" to "b")))
+                providers.metadata.createVolume(vs, Volume("vol", properties = mapOf("a" to "b")))
             }
             with(engine.handleRequest(HttpMethod.Post, "/VolumeDriver.Get") {
                 setBody("{\"Name\":\"foo/vol\"}")
@@ -243,8 +243,8 @@ class VolumesApiTest : StringSpec() {
             transaction {
                 providers.metadata.createRepository(Repository(name = "foo", properties = emptyMap()))
                 val vs = providers.metadata.createVolumeSet("foo", true)
-                providers.metadata.createVolume(vs, Volume(name="one", properties=mapOf("a" to "b")))
-                providers.metadata.createVolume(vs, Volume(name="two", properties=mapOf("c" to "d")))
+                providers.metadata.createVolume(vs, Volume(name = "one", properties = mapOf("a" to "b")))
+                providers.metadata.createVolume(vs, Volume(name = "two", properties = mapOf("c" to "d")))
             }
 
             with(engine.handleRequest(HttpMethod.Post, "/VolumeDriver.List")) {

@@ -148,7 +148,7 @@ class ZfsOperationManager(val provider: ZfsStorageProvider) {
      * then mount all volumes within it based on their name ("/v0"). We return the base mountpoint
      * so that the caller can then access the data within those volumes.
      */
-    fun mountOperationVolumes(repo: String, id: String, volumes : List<Volume>): String {
+    fun mountOperationVolumes(repo: String, id: String, volumes: List<Volume>): String {
         val op = getOperation(repo, id)
         // We use the operation ID as the mountpoint so it can be mounted in parallel
         val base = provider.getMountpoint(op.operation.id)

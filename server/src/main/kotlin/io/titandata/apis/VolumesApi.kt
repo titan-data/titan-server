@@ -12,7 +12,6 @@ import io.ktor.routing.post
 import io.ktor.routing.route
 import io.titandata.ProviderModule
 import io.titandata.models.PluginDescription
-import io.titandata.models.Volume
 import io.titandata.models.VolumeCapabilities
 import io.titandata.models.VolumeCapabilitiesResponse
 import io.titandata.models.VolumeCreateRequest

@@ -258,7 +258,6 @@ class MetadataProvider(val inMemory: Boolean = true, val databaseName: String = 
             properties = gson.fromJson(it[Volumes.metadata], object : TypeToken<Map<String, Any>>() {}.type)
     )
 
-
     fun createVolume(volumeSet: String, volume: Volume) {
         try {
             Volumes.insert {

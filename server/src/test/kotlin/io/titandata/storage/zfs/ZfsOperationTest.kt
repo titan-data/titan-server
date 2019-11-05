@@ -244,8 +244,8 @@ class ZfsOperationTest : StringSpec() {
             every { executor.exec("mkdir", "-p", "/var/lib/test/mnt/id/two") } returns ""
             every { executor.exec("mount", "-t", "zfs",
                     "test/repo/foo/id/two", "/var/lib/test/mnt/id/two") } returns ""
-            val result = provider.mountOperationVolumes("foo", "id", listOf(Volume(name="one", properties=mapOf("a" to "b")),
-                    Volume(name="two", properties=mapOf("c" to "d"))))
+            val result = provider.mountOperationVolumes("foo", "id", listOf(Volume(name = "one", properties = mapOf("a" to "b")),
+                    Volume(name = "two", properties = mapOf("c" to "d"))))
             result shouldBe "/var/lib/test/mnt/id"
 
             verify {
@@ -260,8 +260,8 @@ class ZfsOperationTest : StringSpec() {
             mockOperation()
             every { executor.exec("umount", "/var/lib/test/mnt/id/one") } returns ""
             every { executor.exec("umount", "/var/lib/test/mnt/id/two") } returns ""
-            provider.unmountOperationVolumes("foo", "id", listOf(Volume(name="one", properties=mapOf("a" to "b")),
-                    Volume(name="two", properties=mapOf("c" to "d"))))
+            provider.unmountOperationVolumes("foo", "id", listOf(Volume(name = "one", properties = mapOf("a" to "b")),
+                    Volume(name = "two", properties = mapOf("c" to "d"))))
 
             verify {
                 executor.exec("umount", "/var/lib/test/mnt/id/one")

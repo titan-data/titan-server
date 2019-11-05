@@ -35,11 +35,11 @@ import io.titandata.models.Volume
 import io.titandata.operation.OperationExecutor
 import io.titandata.storage.zfs.ZfsStorageProvider
 import io.titandata.util.CommandExecutor
-import org.jetbrains.exposed.sql.transactions.transaction
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.InputStream
+import org.jetbrains.exposed.sql.transactions.transaction
 
 class SshRemoteProviderTest : StringSpec() {
 
@@ -221,10 +221,10 @@ class SshRemoteProviderTest : StringSpec() {
             every { executor.start(*anyVararg()) } returns process
 
             transaction {
-                providers.metadata.createRepository(Repository(name = "repo", properties=emptyMap()))
+                providers.metadata.createRepository(Repository(name = "repo", properties = emptyMap()))
                 val vs = providers.metadata.createVolumeSet("repo", true)
-                providers.metadata.createVolume(vs, Volume(name="v0", properties=emptyMap()))
-                providers.metadata.createVolume(vs, Volume(name="v1", properties=mapOf("path" to "/volume")))
+                providers.metadata.createVolume(vs, Volume(name = "v0", properties = emptyMap()))
+                providers.metadata.createVolume(vs, Volume(name = "v1", properties = mapOf("path" to "/volume")))
             }
 
             every { zfsStorageProvider.mountOperationVolumes(any(), any(), any()) } returns
@@ -234,7 +234,7 @@ class SshRemoteProviderTest : StringSpec() {
             every { zfsStorageProvider.createOperation("repo", any(), any()) } just Runs
             every { zfsStorageProvider.createOperationScratch("repo", any()) } returns ""
             every { zfsStorageProvider.destroyOperationScratch("repo", any()) } just Runs
-            every { zfsStorageProvider.getVolumeMountpoint(any(), any())} returns "/"
+            every { zfsStorageProvider.getVolumeMountpoint(any(), any()) } returns "/"
 
             operationExecutor.run()
 
@@ -270,10 +270,10 @@ class SshRemoteProviderTest : StringSpec() {
             every { executor.start(*anyVararg()) } returns process
 
             transaction {
-                providers.metadata.createRepository(Repository(name = "repo", properties=emptyMap()))
+                providers.metadata.createRepository(Repository(name = "repo", properties = emptyMap()))
                 val vs = providers.metadata.createVolumeSet("repo", true)
-                providers.metadata.createVolume(vs, Volume(name="v0", properties=emptyMap()))
-                providers.metadata.createVolume(vs, Volume(name="v1", properties=mapOf("path" to "/volume")))
+                providers.metadata.createVolume(vs, Volume(name = "v0", properties = emptyMap()))
+                providers.metadata.createVolume(vs, Volume(name = "v1", properties = mapOf("path" to "/volume")))
             }
 
             every { zfsStorageProvider.mountOperationVolumes(any(), any(), any()) } returns
@@ -283,7 +283,7 @@ class SshRemoteProviderTest : StringSpec() {
             every { zfsStorageProvider.createOperation("repo", any(), any()) } just Runs
             every { zfsStorageProvider.createOperationScratch("repo", any()) } returns ""
             every { zfsStorageProvider.destroyOperationScratch("repo", any()) } just Runs
-            every { zfsStorageProvider.getVolumeMountpoint(any(), any())} returns "/"
+            every { zfsStorageProvider.getVolumeMountpoint(any(), any()) } returns "/"
 
             operationExecutor.run()
 

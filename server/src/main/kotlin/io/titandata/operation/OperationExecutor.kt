@@ -13,7 +13,6 @@ import io.titandata.models.Remote
 import io.titandata.models.RemoteParameters
 import io.titandata.remote.RemoteProvider
 import io.titandata.storage.OperationData
-import org.jetbrains.exposed.sql.transactions.transaction
 import org.slf4j.LoggerFactory
 
 /*

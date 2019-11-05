@@ -17,7 +17,7 @@ class VolumeOrchestrator(val providers: ProviderModule) {
      * Things like 'mountpoint' would only exist in the latter. For now, to minimize disruption as we go through
      * the metadata transition, we simply supplment the volume definition we get from the storage provider.
      */
-    fun convertVolume(repo: String, volume: Volume) : Volume {
+    fun convertVolume(repo: String, volume: Volume): Volume {
         return Volume(
                 name = "$repo/${volume.name}",
                 properties = volume.properties,
@@ -67,7 +67,7 @@ class VolumeOrchestrator(val providers: ProviderModule) {
         providers.storage.unmountVolume(repo, name)
     }
 
-    fun listVolumes(repo: String) : List<Volume> {
+    fun listVolumes(repo: String): List<Volume> {
         return transaction {
             val vs = providers.metadata.getActiveVolumeSet(repo)
             providers.metadata.listVolumes(vs).map { convertVolume(repo, it) }

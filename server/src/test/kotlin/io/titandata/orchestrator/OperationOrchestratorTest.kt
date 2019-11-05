@@ -24,12 +24,10 @@ import io.mockk.verify
 import io.titandata.ProviderModule
 import io.titandata.exception.NoSuchObjectException
 import io.titandata.exception.ObjectExistsException
-import io.titandata.metadata.MetadataProvider
 import io.titandata.models.Commit
 import io.titandata.models.Operation
 import io.titandata.models.ProgressEntry
 import io.titandata.models.Repository
-import io.titandata.models.Volume
 import io.titandata.operation.OperationExecutor
 import io.titandata.remote.engine.EngineParameters
 import io.titandata.remote.nop.NopParameters
@@ -63,7 +61,7 @@ class OperationOrchestratorTest : StringSpec() {
         provider = OperationOrchestrator(providers)
         providers.metadata.clear()
         transaction {
-            providers.metadata.createRepository(Repository(name="foo",properties=emptyMap()))
+            providers.metadata.createRepository(Repository(name = "foo", properties = emptyMap()))
             providers.metadata.createVolumeSet("foo", true)
         }
         return MockKAnnotations.init(this)

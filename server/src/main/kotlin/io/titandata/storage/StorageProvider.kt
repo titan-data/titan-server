@@ -40,7 +40,7 @@ interface StorageProvider {
 
     fun createVolume(repo: String, volumeSet: String, volume: Volume)
     fun deleteVolume(repo: String, volumeSet: String, name: String)
-    fun getVolumeMountpoint(repo: String, volumeName: String) : String
+    fun getVolumeMountpoint(repo: String, volumeName: String): String
     fun mountVolume(repo: String, volumeSet: String, volume: Volume)
     fun unmountVolume(repo: String, name: String)
 }

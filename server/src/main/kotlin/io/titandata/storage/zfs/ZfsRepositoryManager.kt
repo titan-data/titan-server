@@ -5,7 +5,6 @@
 package io.titandata.storage.zfs
 
 import io.titandata.exception.CommandException
-import io.titandata.exception.InvalidStateException
 import io.titandata.models.Repository
 import io.titandata.models.RepositoryStatus
 import io.titandata.models.RepositoryVolumeStatus

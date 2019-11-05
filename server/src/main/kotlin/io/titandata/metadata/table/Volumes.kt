@@ -3,8 +3,6 @@ package io.titandata.metadata.table
 import io.titandata.metadata.MetadataProvider
 import io.titandata.metadata.table.Remotes.primaryKey
 import io.titandata.metadata.table.Remotes.references
-import org.jetbrains.exposed.dao.UUIDTable
-import org.jetbrains.exposed.sql.ReferenceOption
 import org.jetbrains.exposed.sql.Table
 
 /*

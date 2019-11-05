@@ -7,8 +7,6 @@ package io.titandata.storage.zfs
 import io.kotlintest.TestCase
 import io.kotlintest.TestCaseOrder
 import io.kotlintest.TestResult
-import io.kotlintest.shouldBe
-import io.kotlintest.shouldNotBe
 import io.kotlintest.shouldThrow
 import io.kotlintest.specs.StringSpec
 import io.mockk.MockKAnnotations
@@ -47,19 +45,19 @@ class ZfsVolumeTest : StringSpec() {
     init {
         "create volume fails with invalid repo name" {
             shouldThrow<IllegalArgumentException> {
-                provider.createVolume("not/ok", "guid", Volume(name="ok", properties=emptyMap()))
+                provider.createVolume("not/ok", "guid", Volume(name = "ok", properties = emptyMap()))
             }
         }
 
         "create volume fails with invalid volume name" {
             shouldThrow<IllegalArgumentException> {
-                provider.createVolume("ok", "guid", Volume(name="not/ok", properties=emptyMap()))
+                provider.createVolume("ok", "guid", Volume(name = "not/ok", properties = emptyMap()))
             }
         }
 
         "create volume fails with leading unsore in volume name" {
             shouldThrow<IllegalArgumentException> {
-                provider.createVolume("ok", "guid", Volume(name="_vol", properties=emptyMap()))
+                provider.createVolume("ok", "guid", Volume(name = "_vol", properties = emptyMap()))
             }
         }
 
@@ -68,7 +66,7 @@ class ZfsVolumeTest : StringSpec() {
                     "io.titan-data:metadata={\"a\":\"b\"}", "test/repo/foo/guid/vol") } throws
                     CommandException("", 1, "already exists")
             shouldThrow<ObjectExistsException> {
-                provider.createVolume("foo", "guid", Volume(name="vol", properties=mapOf("a" to "b")))
+                provider.createVolume("foo", "guid", Volume(name = "vol", properties = mapOf("a" to "b")))
             }
         }
 
@@ -78,7 +76,7 @@ class ZfsVolumeTest : StringSpec() {
             every { executor.exec("zfs", "snapshot", "test/repo/foo/guid/vol@initial") } returns ""
             every { executor.exec("mkdir", "-p", "/var/lib/test/mnt/foo/vol") } returns ""
 
-            provider.createVolume("foo", "guid", Volume(name="vol", properties=mapOf("a" to "b")))
+            provider.createVolume("foo", "guid", Volume(name = "vol", properties = mapOf("a" to "b")))
 
             verifySequence {
                 executor.exec("zfs", "create", "-o",
@@ -122,13 +120,13 @@ class ZfsVolumeTest : StringSpec() {
 
         "mount volume fails with invalid repo name" {
             shouldThrow<IllegalArgumentException> {
-                provider.mountVolume("not/ok", "guid", Volume(name="ok", properties=emptyMap()))
+                provider.mountVolume("not/ok", "guid", Volume(name = "ok", properties = emptyMap()))
             }
         }
 
         "mount volume fails with invalid volume name" {
             shouldThrow<IllegalArgumentException> {
-                provider.mountVolume("ok", "guid", Volume(name="not/ok", properties=emptyMap()))
+                provider.mountVolume("ok", "guid", Volume(name = "not/ok", properties = emptyMap()))
             }
         }
 
@@ -137,7 +135,7 @@ class ZfsVolumeTest : StringSpec() {
                     "test/repo/foo/guid/vol") } returns "{}"
             every { executor.exec("mount", "-t", "zfs", "test/repo/foo/guid/vol",
                     "/var/lib/test/mnt/foo/vol") } returns ""
-            provider.mountVolume("foo", "guid", Volume(name="vol", properties=emptyMap()))
+            provider.mountVolume("foo", "guid", Volume(name = "vol", properties = emptyMap()))
             verifySequence {
                 executor.exec("mount", "-t", "zfs", "test/repo/foo/guid/vol",
                         "/var/lib/test/mnt/foo/vol")

@@ -6,10 +6,13 @@ import com.zaxxer.hikari.HikariConfig
 import com.zaxxer.hikari.HikariDataSource
 import io.titandata.exception.NoSuchObjectException
 import io.titandata.exception.ObjectExistsException
+import io.titandata.metadata.table.Commits
 import io.titandata.metadata.table.Remotes
 import io.titandata.metadata.table.Repositories
+import io.titandata.metadata.table.Tags
 import io.titandata.metadata.table.VolumeSets
 import io.titandata.metadata.table.Volumes
+import io.titandata.models.Commit
 import io.titandata.models.Remote
 import io.titandata.models.Repository
 import io.titandata.models.Volume
@@ -74,7 +77,7 @@ class MetadataProvider(val inMemory: Boolean = true, val databaseName: String = 
         }
 
         transaction {
-            SchemaUtils.createMissingTablesAndColumns(Repositories, Remotes, VolumeSets, Volumes)
+            SchemaUtils.createMissingTablesAndColumns(Repositories, Remotes, VolumeSets, Volumes, Commits, Tags)
         }
     }
 

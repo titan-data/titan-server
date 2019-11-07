@@ -23,7 +23,10 @@ import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.ResultRow
 import org.jetbrains.exposed.sql.SchemaUtils
 import org.jetbrains.exposed.sql.SortOrder
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.inList
 import org.jetbrains.exposed.sql.and
+import org.jetbrains.exposed.sql.andWhere
 import org.jetbrains.exposed.sql.deleteAll
 import org.jetbrains.exposed.sql.deleteWhere
 import org.jetbrains.exposed.sql.insert
@@ -330,13 +333,24 @@ class MetadataProvider(val inMemory: Boolean = true, val databaseName: String = 
     }
 
     fun createCommit(repo: String, volumeSet: String, commit: Commit) {
-        Commits.insert {
+        val id = Commits.insert {
             it[Commits.repo] = repo
             it[Commits.volumeSet] = UUID.fromString(volumeSet)
             it[timestamp] = getTimestamp(commit)
             it[guid] = commit.id
             it[metadata] = gson.toJson(commit.properties)
             it[state] = VolumeState.ACTIVE
+        } get Commits.id
+        @Suppress("UNCHECKED_CAST")
+        val tags = commit.properties["tags"] as Map<String, String>?
+        if (tags != null) {
+            for ((key, value) in tags) {
+                Tags.insert {
+                    it[Tags.commit] = id.value
+                    it[Tags.key] = key
+                    it[Tags.value] = value
+                }
+            }
         }
     }
 
@@ -349,22 +363,63 @@ class MetadataProvider(val inMemory: Boolean = true, val databaseName: String = 
                 ?: throw NoSuchObjectException("no such commit '$commitId' in repository '$repo'")
     }
 
-    fun listCommits(repo: String): List<Commit> {
-        return Commits.select {
-            (Commits.repo eq repo) and (Commits.state eq VolumeState.ACTIVE)
-        }.orderBy(Commits.timestamp, SortOrder.DESC)
+    fun listCommits(repo: String, tags: List<String>? = null): List<Commit> {
+        val query = if (!tags.isNullOrEmpty()) {
+            val q = (Commits innerJoin Tags)
+                    .slice(Commits.guid, Commits.volumeSet, Commits.metadata)
+                    .select { (Commits.id eq Tags.commit) and (Commits.repo eq repo) and (Commits.state eq VolumeState.ACTIVE)}
+
+            val existList = mutableListOf<String>()
+            for (tag in tags) {
+                if (tag.contains("=")) {
+                    val key = tag.substringBefore("=")
+                    val value = tag.substringAfter("=")
+                    q.andWhere {
+                        (Tags.key eq key) and (Tags.value eq value)
+                    }
+                } else {
+                    existList.add(tag)
+                }
+            }
+            if (existList.size != 0) {
+                q.andWhere {
+                    Tags.key inList existList
+                }
+            }
+            q
+        } else {
+            Commits.select { (Commits.repo eq repo) and (Commits.state eq VolumeState.ACTIVE)}
+        }
+
+        return query.orderBy(Commits.timestamp, SortOrder.DESC)
                 .map { convertCommit(it) }
     }
 
     fun updateCommit(repo: String, commit: Commit) {
-        val count = Commits.update({
+        val id = Commits.select {
             (Commits.repo eq repo) and (Commits.guid eq commit.id) and (Commits.state eq VolumeState.ACTIVE)
+        }.map { it[Commits.id].value }
+                .firstOrNull()
+                ?: throw NoSuchObjectException("no such commit '${commit.id}' in repository '$repo'")
+        Commits.update({
+            Commits.id eq id
         }) {
             it[timestamp] = getTimestamp(commit)
             it[metadata] = gson.toJson(commit.properties)
         }
-        if (count == 0) {
-            throw NoSuchObjectException("no such commit '${commit.id}' in repository '$repo'")
+        Tags.deleteWhere {
+            Tags.commit eq id
+        }
+        @Suppress("UNCHECKED_CAST")
+        val tags = commit.properties["tags"] as Map<String, String>?
+        if (tags != null) {
+            for ((key, value) in tags) {
+                Tags.insert {
+                    it[Tags.commit] = id
+                    it[Tags.key] = key
+                    it[Tags.value] = value
+                }
+            }
         }
     }
 

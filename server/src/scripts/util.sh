@@ -90,6 +90,15 @@ function log_end {
 }
 
 #
+# Log the end of the launch sequence. The will indicate to the CLI that is should stop waiting for
+# any further log_start()
+#
+function log_finished {
+  local ts=$(timestamp)
+  echo "$ts $log_delimiter FINISHED"
+}
+
+#
 # Log an error. This will automatically exit the container with an error code, and the CLI will
 # display the error prior to failing the command.
 #

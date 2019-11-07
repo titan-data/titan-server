@@ -109,10 +109,10 @@ create_import_pool $POOL $POOL_DIR $MNT_DIR
 # Create our network
 create_network $IDENTITY
 
+log_finished
+
 # Launch the server
 launch_server $IDENTITY $POOL $PORT $IMAGE $MNT_DIR
-
-log_finished
 
 exit 0
 

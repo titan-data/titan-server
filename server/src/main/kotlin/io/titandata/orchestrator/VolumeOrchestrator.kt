@@ -27,6 +27,9 @@ class VolumeOrchestrator(val providers: ProviderModule) {
     }
 
     fun createVolume(repo: String, name: String, properties: Map<String, Any>): Volume {
+        NameUtil.validateRepoName(repo)
+        NameUtil.validateVolumeName(name)
+
         val vol = Volume(name = name, properties = properties)
         val vs = transaction {
             val vs = providers.metadata.getActiveVolumeSet(repo)
@@ -38,6 +41,9 @@ class VolumeOrchestrator(val providers: ProviderModule) {
     }
 
     fun deleteVolume(repo: String, name: String) {
+        NameUtil.validateRepoName(repo)
+        NameUtil.validateVolumeName(name)
+
         transaction {
             val vs = providers.metadata.getActiveVolumeSet(repo)
             providers.metadata.deleteVolume(vs, name)
@@ -46,6 +52,8 @@ class VolumeOrchestrator(val providers: ProviderModule) {
     }
 
     fun getVolume(repo: String, name: String): Volume {
+        NameUtil.validateRepoName(repo)
+        NameUtil.validateVolumeName(name)
         val vol = transaction {
             val vs = providers.metadata.getActiveVolumeSet(repo)
             providers.metadata.getVolume(vs, name)
@@ -54,6 +62,8 @@ class VolumeOrchestrator(val providers: ProviderModule) {
     }
 
     fun mountVolume(repo: String, name: String) {
+        NameUtil.validateRepoName(repo)
+        NameUtil.validateVolumeName(name)
         val vs = transaction {
             providers.metadata.getActiveVolumeSet(repo)
         }
@@ -64,10 +74,13 @@ class VolumeOrchestrator(val providers: ProviderModule) {
     }
 
     fun unmountVolume(repo: String, name: String) {
+        NameUtil.validateRepoName(repo)
+        NameUtil.validateVolumeName(name)
         providers.storage.unmountVolume(repo, name)
     }
 
     fun listVolumes(repo: String): List<Volume> {
+        NameUtil.validateRepoName(repo)
         return transaction {
             val vs = providers.metadata.getActiveVolumeSet(repo)
             providers.metadata.listVolumes(vs).map { convertVolume(repo, it) }

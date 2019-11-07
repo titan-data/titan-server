@@ -53,7 +53,6 @@ class ZfsStorageProvider(
     internal val METADATA_PROP = "io.titan-data:metadata"
     internal val OPERATION_PROP = "io.titan-data:operation"
     internal val REAPER_PROP = "io.titan-data:reaper"
-    internal val INITIAL_COMMIT = "initial"
     internal val executor = CommandExecutor()
 
     internal val volumeManager = ZfsVolumeManager(this)
@@ -113,68 +112,6 @@ class ZfsStorageProvider(
             return gson.fromJson(metadata, object : TypeToken<Map<String, Any>>() {}.type)
         } catch (e: JsonSyntaxException) {
             throw InvalidStateException("metadata must be valid JSON")
-        }
-    }
-
-    /**
-     * Validate that the given name (for repository or commit hash) is a valid ZFS dataset name.
-     * The underlying commands would fail if we didn't do this, but this provides a much nicer
-     * error message to the user.
-     */
-    fun validateName(name: String, type: ObjectType, allowInitialCommit: Boolean = false) {
-        val regex = "^[a-zA-Z0-9_\\-:.]+$".toRegex()
-        if (!regex.matches(name)) {
-            throw IllegalArgumentException("invalid ${type.displayName} name, can only contain " +
-                    "alphanumeric characters, '-', ':', '.', or '_'")
-        }
-        if (type == ObjectType.COMMIT && name == INITIAL_COMMIT && !allowInitialCommit) {
-            throw IllegalArgumentException("commit id cannot be reserved id '$INITIAL_COMMIT'")
-        }
-        if (type == ObjectType.VOLUME && name.startsWith("_")) {
-            throw IllegalArgumentException("volume names cannot start with '_'")
-        }
-    }
-
-    /**
-     * Helper method to wrap validateName() for repositories
-     */
-    fun validateRepositoryName(name: String) {
-        validateName(name, ObjectType.REPOSITORY)
-    }
-
-    /**
-     * Helper method to wrap validateName() for commits
-     */
-    fun validateCommitName(name: String, allowInitialCommit: Boolean = false) {
-        validateName(name, ObjectType.COMMIT, allowInitialCommit)
-    }
-
-    /**
-     * Helper method to wrap validateName() for volumes
-     */
-    fun validateVolumeName(name: String) {
-        validateName(name, ObjectType.VOLUME)
-    }
-
-    /**
-     * Helper function that returns the GUID of the active dataset within the repo that contains
-     * the commit. We invoke 'zfs list -t snapshot -d 2' to print out all datasets a depth of two
-     * beneath the repository. We then parse each name, looking for the matching hash, and then
-     * breaking up the dataset name into components to find the guid. This will return null if no
-     * matching snapshot is found.
-     */
-    fun getCommitGuid(repo: String, id: String, allowInitialCommit: Boolean = false): String? {
-        validateRepositoryName(repo)
-        validateCommitName(id, allowInitialCommit)
-        try {
-            val output = executor.exec("zfs", "list", "-Ho", "name,defer_destroy",
-                    "-t", "snapshot", "-d", "2", "$poolName/repo/$repo")
-            val regex = "^$poolName/repo/$repo/([^@]+)@$id\toff$".toRegex(RegexOption.MULTILINE)
-            val result = regex.find(output)
-            return result?.groupValues?.get(1)
-        } catch (e: CommandException) {
-            checkNoSuchRepository(e, repo)
-            throw e
         }
     }
 
@@ -290,42 +227,26 @@ class ZfsStorageProvider(
     }
 
     @Synchronized
-    override fun createCommit(repo: String, volumeSet: String, commit: Commit): Commit {
+    override fun createCommit(repo: String, volumeSet: String, commit: Commit) {
         log.info("create commit ${commit.id} in $repo")
-        return commitManager.createCommit(repo, volumeSet, commit)
+        commitManager.createCommit(repo, volumeSet, commit)
     }
 
     @Synchronized
-    override fun getCommit(repo: String, id: String): Commit {
-        return commitManager.getCommit(repo, id)
+    override fun getCommitStatus(repo: String, volumeSet: String, id: String): CommitStatus {
+        return commitManager.getCommitStatus(repo, volumeSet, id)
     }
 
     @Synchronized
-    override fun getCommitStatus(repo: String, id: String): CommitStatus {
-        return commitManager.getCommitStatus(repo, id)
-    }
-
-    @Synchronized
-    override fun listCommits(repo: String, tags: List<String>?): List<Commit> {
-        return commitManager.listCommits(repo, tags)
-    }
-
-    @Synchronized
-    override fun deleteCommit(repo: String, activeVolumeSet: String, commit: String) {
+    override fun deleteCommit(repo: String, activeVolumeSet: String, commitVolumeSet: String, commit: String) {
         log.info("delete commit $commit in $repo")
-        commitManager.deleteCommit(repo, activeVolumeSet, commit)
+        commitManager.deleteCommit(repo, activeVolumeSet, commitVolumeSet, commit)
     }
 
     @Synchronized
-    override fun checkoutCommit(repo: String, prevVolumeSet: String, newVolumeSet: String, commit: String) {
+    override fun checkoutCommit(repo: String, prevVolumeSet: String, newVolumeSet: String, commitVolumeSet: String, commit: String) {
         log.info("checkout commit $commit in $repo")
-        commitManager.checkoutCommit(repo, prevVolumeSet, newVolumeSet, commit)
-    }
-
-    @Synchronized
-    override fun updateCommit(repo: String, commit: Commit) {
-        log.info("updating commit ${commit.id} in $repo")
-        commitManager.updateCommit(repo, commit)
+        commitManager.checkoutCommit(repo, prevVolumeSet, newVolumeSet, commitVolumeSet, commit)
     }
 
     @Synchronized

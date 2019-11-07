@@ -249,7 +249,7 @@ class EngineRemoteProvider(val providers: ProviderModule) : BaseRemoteProvider()
         parameters["operationType"] = operation.operation.type
         parameters["repository"] = remote.repository
         if (operation.operation.type == Operation.Type.PUSH) {
-            val commit = providers.storage.getCommit(operation.repo, operation.operation.commitId)
+            val commit = providers.commits.getCommit(operation.repo, operation.operation.commitId)
             parameters["hash"] = operation.operation.commitId
             parameters["metadata"] = commit.properties
         }

@@ -18,6 +18,7 @@ import org.jetbrains.exposed.dao.IntIdTable
 object Commits : IntIdTable("commits") {
     val repo = varchar("repo", 64)
     val guid = varchar("guid", 64)
+    val sourceCommit = varchar("source_commit", 64).nullable()
     val timestamp = datetime("timestamp")
     val volumeSet = uuid("volume_set").references(VolumeSets.id)
     val metadata = varchar("metadata", 8192)

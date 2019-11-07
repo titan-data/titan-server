@@ -184,7 +184,7 @@ function create_pool() {
   local mountpoint=$3
   local cachefile=$4
   zpool create -m $mountpoint -o cachefile=$cachefile $pool $data
-  zfs create -o mountpoint=none -o compression=lz4 $pool/repo
+  zfs create -o mountpoint=none -o compression=lz4 $pool/data
   zfs create -o mountpoint=none $pool/db
 }
 
@@ -196,6 +196,10 @@ function update_pool() {
 
   # We didn't end up using this space, remove it now
   zfs list $pool/deathrow > /dev/null 2>&1 && zfs destroy $pool/deathrow
+  # As part of migrating away from repositories and just to volumesets, we got rid of the repo namespace
+  zfs list $pool/repo > /dev/null 2>&1 && zfs destroy -R $pool/repo
+  # Create the data filesystem (replacing repo) if it doesn't exist
+  zfs list $pool/data > /dev/null 2>&1 || zfs create -o mountpoint=none $pool/data
   # Create the db filesystem if it doesn't exist
   zfs list $pool/db > /dev/null 2>&1 || zfs create -o mountpoint=none $pool/db
 }

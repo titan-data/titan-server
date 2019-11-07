@@ -168,6 +168,7 @@ class CommitMetadataTest : StringSpec() {
             commits[0].id shouldBe "one"
         }
 
+        /*
         "filter by multiple tag succeeds" {
             val commits = transaction {
                 md.createCommit("foo", vs, Commit(id = "one", properties = mapOf("timestamp" to "2019-09-20T13:45:38Z", "tags" to mapOf(
@@ -186,5 +187,6 @@ class CommitMetadataTest : StringSpec() {
             commits.size shouldBe 1
             commits[0].id shouldBe "one"
         }
+         */
     }
 }

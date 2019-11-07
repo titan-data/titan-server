@@ -38,57 +38,14 @@ import io.titandata.models.RepositoryVolumeStatus
 class ZfsRepositoryManager(val provider: ZfsStorageProvider) {
 
     private val poolName = provider.poolName
-    private val METADATA_PROP = provider.METADATA_PROP
-    private val INITIAL_COMMIT = provider.INITIAL_COMMIT
 
     /**
-     * Parse the name and metadata for a repository, based on 'zfs list' output. This is invoked
-     * when listing and fetching repositories. It assumes that there are only two fields being
-     * listed, the name and the metadata. It will parse the metadata as JSON, throwing an error
-     * if it's in an invalid format.
-     *
-     * To keep the listRepositories() code simple, this returns null when given just a pool name.
-     * This is because 'zfs list -d 1' just limits the depth, and will still print the dataset
-     * itself (the pool in this case).
-     */
-    fun parseRepository(line: String): Repository? {
-        // Metadata must be last since it can contain tabs
-        val regex = "^$poolName/repo/([^/\t]+)\t(.*)$".toRegex(RegexOption.MULTILINE)
-        val result = regex.find(line) ?: return null
-        val name = result.groupValues.get(1)
-        val metadata = result.groupValues.get(2)
-
-        return Repository(name = name, properties = provider.parseMetadata(metadata))
-    }
-
-    /**
-     * Create a new repository. This involves three steps:
-     *
-     *  1. Create a new root repo dataset
-     *  2. Create a new dataset with the given volumeSet GUID beneath the root repo
-     *  3. Create a default snapshot named 'initial'
-     *
-     * The third step simplifies subsequent operations by always having a point to clone from,
-     * even when no commits exist, so that we don't have to special case creating new datsets.
+     * Create a new repository and volume set.
      */
     fun createRepository(repo: Repository, volumeSet: String) {
-        provider.validateRepositoryName(repo.name)
-
-        try {
-            val json = provider.gson.toJson(repo.properties)
-            val name = repo.name
-            provider.executor.exec("zfs", "create", "-o", "mountpoint=legacy",
-                    "-o", "$METADATA_PROP=$json", "$poolName/repo/$name")
-            provider.executor.exec("zfs", "create", "$poolName/repo/$name/$volumeSet")
-
-            // We always create a snapshot knows as "initial" that can be used to clone an empty
-            // dataset. This keeps other code simple to avoid having to special-case an initial
-            // clone
-            provider.executor.exec("zfs", "snapshot", "-o", "$METADATA_PROP={}",
-                    "$poolName/repo/$name/$volumeSet@$INITIAL_COMMIT")
-        } catch (e: CommandException) {
-            provider.checkRepositoryExists(e, repo.name)
-        }
+        val name = repo.name
+        provider.executor.exec("zfs", "create", "-o", "mountpoint=legacy", "$poolName/repo/$name")
+        provider.executor.exec("zfs", "create", "$poolName/repo/$name/$volumeSet")
     }
 
     /**
@@ -99,7 +56,9 @@ class ZfsRepositoryManager(val provider: ZfsStorageProvider) {
      *
      *      actutalSize     Equivalent to 'used'. Includes the size of any and all snapshots.
      *
-     *      checkedOutFrom  If this is a clone, then this is the commit portion of the clone origin.
+     *      sourceCommit    The commit lineage from which this commit is derived. This is either the previous commit
+     *                      in the volumeSet, the origin of the volumeSet if there is no commit, or null if this is
+     *                      the first commit in the repository.
      *
      *      lastCommit      Last committed change. This may or may not be the same as the last commit on the current
      *                      head filesystem, so we need to list all commits and fetch the latest one across the
@@ -117,55 +76,26 @@ class ZfsRepositoryManager(val provider: ZfsStorageProvider) {
      *                                      the path of the volume within the container.
      */
     fun getRepositoryStatus(name: String, volumeSet: String): RepositoryStatus {
-        provider.validateRepositoryName(name)
-        // This is not particularly efficient, but we don't have a better way
-        val commits = provider.commitManager.listCommits(name, null)
-        val latest = commits.getOrNull(0)?.id
-
         // Get the size from the dataset itself
         val fields = provider.executor.exec("zfs", "list", "-pHo", "logicalused,used",
                 "$poolName/repo/$name/$volumeSet").lines().get(0).split("\t")
         val logicalSize = fields[0].toLong()
         val actualSize = fields[1].toLong()
 
-        var sourceCommit: String? = null
-        // Check to see if we have a previous snapshot on this GUID. If so, that's the source commit
-        var lastSnap = provider.getLatestSnapshot("$poolName/repo/$name/$volumeSet")
-        if (lastSnap != INITIAL_COMMIT) {
-            sourceCommit = lastSnap
-        }
-
-        // If there are no commits on this GUID, then the source commit is our origin
-        if (sourceCommit == null) {
-            val origins = provider.executor.exec("zfs", "list", "-Ho", "origin", "-r",
-                    "$poolName/repo/$name/$volumeSet")
-            for (line in origins.lines()) {
-                if (line.contains("@")) {
-                    val snapshot = line.trim().substringAfterLast("@")
-                    if (snapshot != INITIAL_COMMIT) {
-                        sourceCommit = snapshot
-                        break
-                    }
-                }
-            }
-        }
-
         val volumes = mutableListOf<RepositoryVolumeStatus>()
         val volumeOutput = provider.executor.exec("zfs", "list", "-d", "1", "-pHo",
-                "name,logicalreferenced,referenced,$METADATA_PROP", "$poolName/repo/$name/$volumeSet")
-        val regex = "^$poolName/repo/$name/$volumeSet/([^/\t]+)\t([^\t]+)\t([^\t]+)\t(.*)$".toRegex()
+                "name,logicalreferenced,referenced", "$poolName/repo/$name/$volumeSet")
+        val regex = "^$poolName/repo/$name/$volumeSet/([^/\t]+)\t([^\t]+)\t([^\t]+)$".toRegex()
         for (line in volumeOutput.lines()) {
             val result = regex.find(line)
             if (result != null) {
                 val volumeName = result.groupValues.get(1)
                 val volumeLogical = result.groupValues.get(2).toLong()
                 val volumeActual = result.groupValues.get(3).toLong()
-                val metadataString = result.groupValues.get(4)
                 volumes.add(RepositoryVolumeStatus(
                         name = volumeName,
                         logicalSize = volumeLogical,
-                        actualSize = volumeActual,
-                        properties = provider.parseMetadata(metadataString)
+                        actualSize = volumeActual
                 ))
             }
         }
@@ -173,8 +103,6 @@ class ZfsRepositoryManager(val provider: ZfsStorageProvider) {
         return RepositoryStatus(
                 logicalSize = logicalSize,
                 actualSize = actualSize,
-                sourceCommit = sourceCommit,
-                lastCommit = latest,
                 volumeStatus = volumes
         )
     }
@@ -184,7 +112,6 @@ class ZfsRepositoryManager(val provider: ZfsStorageProvider) {
      * appropriate order.
      */
     fun deleteRepository(name: String) {
-        provider.validateRepositoryName(name)
         try {
             provider.executor.exec("zfs", "destroy", "-R", "$poolName/repo/$name")
         } catch (e: CommandException) {

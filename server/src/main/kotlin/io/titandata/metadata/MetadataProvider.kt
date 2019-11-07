@@ -336,6 +336,7 @@ class MetadataProvider(val inMemory: Boolean = true, val databaseName: String = 
         val id = Commits.insert {
             it[Commits.repo] = repo
             it[Commits.volumeSet] = UUID.fromString(volumeSet)
+            it[sourceCommit] = getCommitSource(volumeSet)
             it[timestamp] = getTimestamp(commit)
             it[guid] = commit.id
             it[metadata] = gson.toJson(commit.properties)
@@ -361,6 +362,40 @@ class MetadataProvider(val inMemory: Boolean = true, val databaseName: String = 
             Pair(it[Commits.volumeSet].toString(), convertCommit(it))
         }.firstOrNull()
                 ?: throw NoSuchObjectException("no such commit '$commitId' in repository '$repo'")
+    }
+
+    fun getLastCommit(repo: String) : String? {
+        return Commits.select {
+            (Commits.repo eq repo) and (Commits.state eq VolumeState.ACTIVE)
+        }.orderBy(Commits.timestamp, SortOrder.DESC)
+                .limit(1)
+                .map { it[Commits.guid] }
+                .firstOrNull()
+    }
+
+    fun getCommitSource(volumeSet: String) : String? {
+        // First, check to see if there's a latest commit for this volume set
+        val volumeSetGuid = UUID.fromString(volumeSet)
+        val prevCommit = Commits.select {
+            Commits.volumeSet eq volumeSetGuid
+        }.orderBy(Commits.timestamp, SortOrder.DESC)
+                .limit(1)
+                .firstOrNull()
+
+        if (prevCommit != null) {
+            return prevCommit[Commits.guid]
+        }
+
+        // Otherwise, look at the source of the volumeset
+        val volumeSetSource = VolumeSets.select {
+            VolumeSets.id eq volumeSetGuid
+        }.firstOrNull()
+
+        if (volumeSetSource != null) {
+            return volumeSetSource[VolumeSets.source_commit]
+        }
+
+        return null
     }
 
     fun listCommits(repo: String, tags: List<String>? = null): List<Commit> {

@@ -70,7 +70,7 @@ class OperationExecutor(
                             if (tags.containsKey("source")) {
                                 val source = tags["source"]!!
                                 try {
-                                    localCommit = providers.storage.getCommit(repo, source).id
+                                    localCommit = providers.commits.getCommit(repo, source).id
                                 } catch (e: NoSuchObjectException) {
                                     // Ignore local commits that don't exist and continue down chain
                                 }
@@ -93,11 +93,11 @@ class OperationExecutor(
             if (!metadataOnly) {
                 syncData(provider, operationData)
             } else if (operation.type == Operation.Type.PULL) {
-                providers.storage.updateCommit(repo, commit!!)
+                providers.commits.updateCommit(repo, commit!!)
             }
 
             if (operation.type == Operation.Type.PUSH) {
-                val localCommit = providers.storage.getCommit(repo, operation.commitId)
+                val localCommit = providers.commits.getCommit(repo, operation.commitId)
                 provider.pushMetadata(this, operationData, localCommit, metadataOnly)
             }
 

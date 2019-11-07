@@ -202,7 +202,7 @@ class OperationOrchestrator(val providers: ProviderModule) {
         }
 
         try {
-            providers.storage.getCommit(repository, commitId)
+            providers.commits.getCommit(repository, commitId)
             if (!metadataOnly) {
                 throw ObjectExistsException("commit '$commitId' already exists in repository '$repository'")
             }
@@ -233,7 +233,7 @@ class OperationOrchestrator(val providers: ProviderModule) {
         if (r.provider != params.provider) {
             throw IllegalArgumentException("operation parameters type (${params.provider}) doesn't match type of remote '$remote' (${r.provider})")
         }
-        providers.storage.getCommit(repository, commitId) // check commit exists
+        providers.commits.getCommit(repository, commitId) // check commit exists
         val remoteProvider = providers.remote(r.provider)
         if (metadataOnly) {
             remoteProvider.getCommit(r, commitId, params) // for metadata only must exist in remote as well

@@ -1,5 +1,7 @@
 package io.titandata.orchestrator
 
+import io.titandata.storage.zfs.ZfsStorageProvider
+
 class NameUtil {
 
     companion object {
@@ -15,6 +17,16 @@ class NameUtil {
             }
         }
 
+        fun validateCommitId(commitId: String) {
+            if (!nameRegex.matches(commitId)) {
+                throw IllegalArgumentException("invalid commit id, can only contain " +
+                        "alphanumeric characters, '-', ':', '.', or '_'")
+            }
+            if (commitId.length > 64) {
+                throw IllegalArgumentException("invalid commit id, must be 64 characters or less")
+            }
+        }
+
         fun validateRemoteName(repoName: String) {
             if (!nameRegex.matches(repoName)) {
                 throw IllegalArgumentException("invalid remote name, can only contain " +
@@ -22,6 +34,19 @@ class NameUtil {
             }
             if (repoName.length > 64) {
                 throw IllegalArgumentException("invalid remote name, must be 64 characters or less")
+            }
+        }
+
+        fun validateVolumeName(volumeName: String) {
+            if (!nameRegex.matches(volumeName)) {
+                throw IllegalArgumentException("invalid volume name, can only contain " +
+                        "alphanumeric characters, '-', ':', '.', or '_'")
+            }
+            if (volumeName.length > 64) {
+                throw IllegalArgumentException("invalid volume name, must be 64 characters or less")
+            }
+            if (volumeName.startsWith("_")) {
+                throw IllegalArgumentException("volume names cannot start with '_'")
             }
         }
     }

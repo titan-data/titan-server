@@ -36,66 +36,14 @@ import java.time.format.DateTimeFormatter
 class ZfsCommitManager(val provider: ZfsStorageProvider) {
 
     private val poolName = provider.poolName
-    private val timestampProperty = provider.timestampProperty
-    private val METADATA_PROP = provider.METADATA_PROP
     private val REAPER_PROP = provider.REAPER_PROP
-    private val INITIAL_COMMIT = provider.INITIAL_COMMIT
 
     /**
-     * Create a new commit via ZFS snapshot. Both the commit ID and properties must be specified.
-     * This will automatically set the 'timestampProperty' in the metadata to the creation time
-     * of the snapshot, ensuring the most accurate representation of the commit timestamp. It
-     * will return a copy of the Commit object with this new property set.
+     * Create a new commit via recursive ZFS snapshot.
      */
-    fun createCommit(repo: String, volumeSet: String, commit: Commit): Commit {
-        provider.validateRepositoryName(repo)
-        provider.validateCommitName(commit.id)
-
-        val json = provider.gson.toJson(commit.properties)
+    fun createCommit(repo: String, volumeSet: String, commit: Commit) {
         val dataset = "$poolName/repo/$repo/$volumeSet@${commit.id}"
-
-        // Check to see if the commit exists, even on a different active dataset
-        if (provider.getCommitGuid(repo, commit.id) != null) {
-            throw ObjectExistsException("commit '${commit.id}' already exists")
-        }
-
-        try {
-            provider.executor.exec("zfs", "snapshot", "-r", "-o", "$METADATA_PROP=$json", dataset)
-
-            // Go back and fetch the creation time, adding it to the new object
-            val creation = provider.executor.exec("zfs", "list", "-Hpo", "creation", dataset).trim()
-            val ts = DateTimeFormatter.ISO_INSTANT.format(Instant.ofEpochSecond(creation.toLong()))
-
-            val newProperties = HashMap(commit.properties)
-            newProperties[timestampProperty] = ts
-            val newJson = provider.gson.toJson(newProperties)
-
-            // And now set the metadata again, with the new timestamp property included
-            provider.executor.exec("zfs", "set", "$METADATA_PROP=$newJson", dataset)
-
-            return Commit(id = commit.id, properties = newProperties)
-        } catch (e: CommandException) {
-            // getActive() will have already detected if the repo exists, so this error must be
-            // a missing commit
-            provider.checkCommitExists(e, commit.id)
-            throw e
-        }
-    }
-
-    /**
-     * Fetch a single commit. Uses getCommitGuid() to determine the guid of the dataset of which
-     * its a part, and then gets the metadata associated with it.
-     */
-    fun getCommit(repo: String, id: String): Commit {
-        val guid = provider.getCommitGuid(repo, id)
-        guid ?: throw NoSuchObjectException("no such commit '$id' in repository '$repo'")
-        val output = provider.executor.exec("zfs", "list", "-Ho",
-                "io.titan-data:metadata", "$poolName/repo/$repo/$guid@$id")
-        val deferDestroy = output.substringBefore("\t")
-        if (deferDestroy == "on") {
-            throw NoSuchObjectException("")
-        }
-        return Commit(id = id, properties = provider.parseMetadata(output))
+        provider.executor.exec("zfs", "snapshot", "-r", dataset)
     }
 
     /**
@@ -113,18 +61,15 @@ class ZfsCommitManager(val provider: ZfsStorageProvider) {
      *
      * Since our commits are recursive snaphots, we have to sum up the space ourselves.
      */
-    fun getCommitStatus(repo: String, id: String): CommitStatus {
-        val guid = provider.getCommitGuid(repo, id)
-        guid ?: throw NoSuchObjectException("no such commit '$id' in repository '$repo'")
-
+    fun getCommitStatus(repo: String, volumeSet: String, id: String): CommitStatus {
         val output = provider.executor.exec("zfs", "list", "-Hpo", "name,logicalreferenced,referenced,used", "-t",
-                "snapshot", "-r", "$poolName/repo/$repo/$guid")
+                "snapshot", "-r", "$poolName/repo/$repo/$volumeSet")
 
         var logicalSize = 0L
         var actualSize = 0L
         var uniqueSize = 0L
 
-        val regex = "^$poolName/repo/$repo/$guid/.*@$id\t(.*)\t(.*)\t(.*)$".toRegex(RegexOption.MULTILINE)
+        val regex = "^$poolName/repo/$repo/$volumeSet/.*@$id\t(.*)\t(.*)\t(.*)$".toRegex(RegexOption.MULTILINE)
         for (line in output.lines()) {
             val result = regex.find(line) ?: continue
             logicalSize += result.groupValues.get(1).toLong()
@@ -136,74 +81,18 @@ class ZfsCommitManager(val provider: ZfsStorageProvider) {
     }
 
     /**
-     * Parse the name and metadata for a commit, based on 'zfs list' output. Similar to
-     * parseRepository(), this is invoked when listing commits. It assumes that there
-     * are only two fields being listed, the name and the metadata. It will parse the metadata as
-     * JSON, throwing an error if it's in an invalid format. If 'defer_destroy' is set, then it
-     * means that the snapshot was destroyed while clones were active, and we should ignore it
-     * in the commit log.
-     */
-    fun parseCommit(line: String): Commit? {
-        // Metadata must be last since it can contain tabs
-        val regex = "^$poolName/repo/[^/]+/[^/]+@([^\t]+)\toff\t(.*)$".toRegex(RegexOption.MULTILINE)
-        val result = regex.find(line) ?: return null
-        val id = result.groupValues.get(1)
-        val metadata = result.groupValues.get(2)
-        return Commit(id = id, properties = provider.parseMetadata(metadata))
-    }
-
-    /**
-     * List all commits. This operates by listing all snapshots beneath a repo, along with metadata.
-     * It then invokes parseCommit() to identify only those that have the right number of
-     * components (since the "-d" option just limits the depth, and will include the root of the
-     * list command as well.
-     */
-    fun listCommits(repo: String, tags: List<String>?): List<Commit> {
-        provider.validateRepositoryName(repo)
-        val filter = TagFilter(tags)
-        try {
-            val output = provider.executor.exec("zfs", "list", "-Ho",
-                    "name,defer_destroy,$METADATA_PROP", "-t", "snapshot", "-d", "2",
-                    "$poolName/repo/$repo")
-
-            val commits = mutableListOf<Commit>()
-            for (line in output.lines()) {
-                if (line != "") {
-                    val commit = parseCommit(line)
-                    if (commit != null && commit.id != INITIAL_COMMIT && filter.match(commit)) {
-                        commits.add(commit)
-                    }
-                }
-            }
-
-            // We always return commits in descending order so that the client doesn't have to
-            return commits.sortedByDescending { OffsetDateTime.parse(it.properties.get(timestampProperty)?.toString()
-                    ?: DateTimeFormatter.ISO_INSTANT.format(Instant.ofEpochSecond(0)),
-                    DateTimeFormatter.ISO_DATE_TIME) }
-        } catch (e: CommandException) {
-            provider.checkNoSuchRepository(e, repo)
-            throw e
-        }
-    }
-
-    /**
      * Delete a commit. Unlike git, our commit have no dependency on ordering, and each can be
      * pulled or pushed independently. While they may share storage, they can be independently
      * discarded to free up storage.
      */
-    fun deleteCommit(repo: String, activeVolumeSet: String, commit: String) {
-        provider.validateRepositoryName(repo)
-        provider.validateCommitName(commit)
-        val guid = provider.getCommitGuid(repo, commit)
-        guid ?: throw NoSuchObjectException("no such commit '$commit' in repository '$repo'")
-
-        provider.executor.exec("zfs", "destroy", "-rd", "$poolName/repo/$repo/$guid@$commit")
+    fun deleteCommit(repo: String, activeVolumeSet: String, commitVolumeSet: String, commit: String) {
+        provider.executor.exec("zfs", "destroy", "-rd", "$poolName/repo/$repo/$commitVolumeSet@$commit")
 
         // If there are no more commits for this GUID, and this is not the active GUID for
         // the repo, then delete the entire GUID.
-        if (activeVolumeSet != guid) {
+        if (activeVolumeSet != commitVolumeSet) {
             val output = provider.executor.exec("zfs", "list", "-H", "-t", "snapshot", "-d", "1",
-                    "$poolName/repo/$repo/$guid").trim()
+                    "$poolName/repo/$repo/$commitVolumeSet").trim()
             if (output == "") {
                 /*
                  * The above command will recursively destroy any snapshots. If this commit
@@ -213,7 +102,7 @@ class ZfsCommitManager(val provider: ZfsStorageProvider) {
                  * clones. To deal with this, we instead set a flag, "io.titan-data:deathrow", that the
                  * ZFS reaper class will periodically try to clean these up in the background.
                  */
-                provider.executor.exec("zfs", "set", "$REAPER_PROP=on", "$poolName/repo/$repo/$guid")
+                provider.executor.exec("zfs", "set", "$REAPER_PROP=on", "$poolName/repo/$repo/$commitVolumeSet")
             }
         }
     }
@@ -229,13 +118,8 @@ class ZfsCommitManager(val provider: ZfsStorageProvider) {
      * To cleanup the guid we do one of two things. First, if the guid has no active snapshots, then we can simply
      * blow it away. Otherwise, we rollback to the most recent commit as we no longer need the head filesystem data.
      */
-    fun checkoutCommit(repo: String, prevVolumeSet: String, newVolumeSet: String, commit: String) {
-        provider.validateRepositoryName(repo)
-        provider.validateCommitName(commit)
-        val guid = provider.getCommitGuid(repo, commit)
-        guid ?: throw NoSuchObjectException("no such commit '$commit' in repository '$repo'")
-
-        provider.cloneCommit(repo, guid, commit, newVolumeSet)
+    fun checkoutCommit(repo: String, prevVolumeSet: String, newVolumeSet: String, commitVolumeSet: String, commit: String) {
+        provider.cloneCommit(repo, commitVolumeSet, commit, newVolumeSet)
 
         val snap = provider.getLatestSnapshot("$poolName/repo/$repo/$prevVolumeSet")
 
@@ -251,18 +135,5 @@ class ZfsCommitManager(val provider: ZfsStorageProvider) {
                 }
             }
         }
-    }
-
-    /**
-     * Update the metadata for the given commit. This is generally used to change the tags, though it's up to the
-     * client so it could be used to update other parts of the metadata.
-     */
-    fun updateCommit(repo: String, commit: Commit) {
-        provider.validateRepositoryName(repo)
-        val guid = provider.getCommitGuid(repo, commit.id)
-        guid ?: throw NoSuchObjectException("no such commit '${commit.id}' in repository '$repo'")
-
-        val json = provider.gson.toJson(commit.properties)
-        provider.executor.exec("zfs", "set", "$METADATA_PROP=$json", "$poolName/repo/$repo/$guid@${commit.id}")
     }
 }

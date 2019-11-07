@@ -1,6 +1,7 @@
 package io.titandata.orchestrator
 
 import io.titandata.ProviderModule
+import io.titandata.models.Commit
 import io.titandata.models.Repository
 import io.titandata.models.RepositoryStatus
 import org.jetbrains.exposed.sql.transactions.transaction
@@ -9,11 +10,15 @@ class RepositoryOrchestrator(val providers: ProviderModule) {
 
     fun createRepository(repo: Repository) {
         NameUtil.validateRepoName(repo.name)
+        val initialCommit = Commit(id="initial", properties=emptyMap())
         val volumeSet = transaction {
             providers.metadata.createRepository(repo)
-            providers.metadata.createVolumeSet(repo.name, true)
+            val vs = providers.metadata.createVolumeSet(repo.name, true)
+            providers.metadata.createCommit(repo.name, vs, initialCommit)
+            vs
         }
         providers.storage.createRepository(repo, volumeSet)
+        providers.storage.createCommit(repo.name, volumeSet, initialCommit)
     }
 
     fun listRepositories(): List<Repository> {
@@ -34,7 +39,16 @@ class RepositoryOrchestrator(val providers: ProviderModule) {
         val volumeSet = transaction {
             providers.metadata.getActiveVolumeSet(name)
         }
-        return providers.storage.getRepositoryStatus(name, volumeSet)
+        val status = providers.storage.getRepositoryStatus(name, volumeSet)
+        return transaction {
+            RepositoryStatus(
+                    logicalSize = status.logicalSize,
+                    actualSize = status.actualSize,
+                    volumeStatus = status.volumeStatus,
+                    lastCommit = providers.metadata.getLastCommit(name),
+                    sourceCommit = providers.metadata.getCommitSource(volumeSet)
+            )
+        }
     }
 
     fun updateRepository(name: String, repo: Repository) {

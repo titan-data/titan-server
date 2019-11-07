@@ -1,11 +1,8 @@
 package io.titandata.metadata.table
 
 import io.titandata.metadata.MetadataProvider
-import io.titandata.metadata.table.Remotes.primaryKey
 import io.titandata.metadata.table.Remotes.references
-import org.jetbrains.exposed.dao.IdTable
 import org.jetbrains.exposed.dao.IntIdTable
-import org.jetbrains.exposed.sql.Table
 
 /*
  * Commits represent a snapshot of a volumeset. Each commit is given a GUID, but a commit can be in one
@@ -19,7 +16,7 @@ import org.jetbrains.exposed.sql.Table
  * don't cascade on delete in order to force the explicit cleanup of commits and their associated storage
  */
 object Commits : IntIdTable("commits") {
-    val repo = varchar("repo", 64).references(Repositories.name)
+    val repo = varchar("repo", 64)
     val guid = varchar("guid", 64)
     val timestamp = datetime("timestamp")
     val volumeSet = uuid("volume_set").references(VolumeSets.id)

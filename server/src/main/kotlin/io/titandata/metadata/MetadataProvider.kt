@@ -22,6 +22,7 @@ import org.jetbrains.exposed.exceptions.ExposedSQLException
 import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.ResultRow
 import org.jetbrains.exposed.sql.SchemaUtils
+import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.deleteAll
 import org.jetbrains.exposed.sql.deleteWhere
@@ -30,6 +31,7 @@ import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
+import org.joda.time.DateTime
 
 /*
  * The metadata provider is responsible for persistence of all metadata to the titan database. With the exception of
@@ -83,6 +85,7 @@ class MetadataProvider(val inMemory: Boolean = true, val databaseName: String = 
 
     fun clear() {
         transaction {
+            Commits.deleteAll()
             Volumes.deleteAll()
             VolumeSets.deleteAll()
             Repositories.deleteAll()
@@ -310,5 +313,67 @@ class MetadataProvider(val inMemory: Boolean = true, val databaseName: String = 
 
     fun listAllVolumes(): List<Volume> {
         return Volumes.selectAll().map { convertVolume(it) }
+    }
+
+    private fun convertCommit(it: ResultRow) = Commit(
+            id = it[Commits.guid],
+            properties = gson.fromJson(it[Commits.metadata], object : TypeToken<Map<String, Any>>() {}.type)
+    )
+
+    private fun getTimestamp(commit: Commit): DateTime {
+        val timestampString = commit.properties.get("timestamp")
+        return if (timestampString != null) {
+            DateTime.parse(timestampString.toString())
+        } else {
+            DateTime.now()
+        }
+    }
+
+    fun createCommit(repo: String, volumeSet: String, commit: Commit) {
+        Commits.insert {
+            it[Commits.repo] = repo
+            it[Commits.volumeSet] = UUID.fromString(volumeSet)
+            it[timestamp] = getTimestamp(commit)
+            it[guid] = commit.id
+            it[metadata] = gson.toJson(commit.properties)
+            it[state] = VolumeState.ACTIVE
+        }
+    }
+
+    fun getCommit(repo: String, commitId: String): Pair<String, Commit> {
+        return Commits.select {
+            (Commits.repo eq repo) and (Commits.guid eq commitId) and (Commits.state eq VolumeState.ACTIVE)
+        }.map {
+            Pair(it[Commits.volumeSet].toString(), convertCommit(it))
+        }.firstOrNull()
+                ?: throw NoSuchObjectException("no such commit '$commitId' in repository '$repo'")
+    }
+
+    fun listCommits(repo: String): List<Commit> {
+        return Commits.select {
+            (Commits.repo eq repo) and (Commits.state eq VolumeState.ACTIVE)
+        }.orderBy(Commits.timestamp, SortOrder.DESC)
+                .map { convertCommit(it) }
+    }
+
+    fun updateCommit(repo: String, commit: Commit) {
+        val count = Commits.update({
+            (Commits.repo eq repo) and (Commits.guid eq commit.id) and (Commits.state eq VolumeState.ACTIVE)
+        }) {
+            it[timestamp] = getTimestamp(commit)
+            it[metadata] = gson.toJson(commit.properties)
+        }
+        if (count == 0) {
+            throw NoSuchObjectException("no such commit '${commit.id}' in repository '$repo'")
+        }
+    }
+
+    fun deleteCommit(repo: String, commitId: String) {
+        val count = Commits.deleteWhere {
+            (Commits.repo eq repo) and (Commits.guid eq commitId) and (Commits.state eq VolumeState.ACTIVE)
+        }
+        if (count == 0) {
+            throw NoSuchObjectException("no such commit '$commitId' in repository '$repo'")
+        }
     }
 }

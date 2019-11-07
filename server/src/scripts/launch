@@ -112,5 +112,7 @@ create_network $IDENTITY
 # Launch the server
 launch_server $IDENTITY $POOL $PORT $IMAGE $MNT_DIR
 
+log_finished
+
 exit 0
 

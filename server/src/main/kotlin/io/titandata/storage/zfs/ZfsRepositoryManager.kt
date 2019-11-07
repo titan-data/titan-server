@@ -37,17 +37,6 @@ import io.titandata.models.RepositoryVolumeStatus
  */
 class ZfsRepositoryManager(val provider: ZfsStorageProvider) {
 
-    private val poolName = provider.poolName
-
-    /**
-     * Create a new repository and volume set.
-     */
-    fun createRepository(repo: Repository, volumeSet: String) {
-        val name = repo.name
-        provider.executor.exec("zfs", "create", "-o", "mountpoint=legacy", "$poolName/repo/$name")
-        provider.executor.exec("zfs", "create", "$poolName/repo/$name/$volumeSet")
-    }
-
     /**
      * Get the status of a repository. This fetches a few additional pieces of information about
      * the repository:
@@ -107,25 +96,4 @@ class ZfsRepositoryManager(val provider: ZfsStorageProvider) {
         )
     }
 
-    /**
-     * Delete a repository. We use the '-R' flag to 'zfs destroy' to destroy all clones in the
-     * appropriate order.
-     */
-    fun deleteRepository(name: String) {
-        try {
-            provider.executor.exec("zfs", "destroy", "-R", "$poolName/repo/$name")
-        } catch (e: CommandException) {
-            provider.checkNoSuchRepository(e, name)
-            throw e
-        }
-
-        // Try to delete the directory, but it may not exist if no volumes have been created
-        try {
-            provider.executor.exec("rm", "-rf", provider.getMountpoint(name))
-        } catch (e: CommandException) {
-            if (!e.output.contains("No such file or directory")) {
-                throw e
-            }
-        }
-    }
 }

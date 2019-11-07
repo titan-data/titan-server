@@ -16,6 +16,7 @@ import io.titandata.models.CommitStatus
 import io.titandata.models.Operation
 import io.titandata.models.Repository
 import io.titandata.models.RepositoryStatus
+import io.titandata.models.RepositoryVolumeStatus
 import io.titandata.models.Volume
 import io.titandata.serialization.ModelTypeAdapters
 import io.titandata.storage.OperationData
@@ -25,14 +26,13 @@ import org.slf4j.LoggerFactory
 
 /**
  * ZFS Storage provider. This implements all of the local repository operations on top of a ZFS
- * storage pool. By design, it stores everything it needs within the ZFS dataset structure and
- * properties, though it would be possible to add an in-memory cache (or even a full database)
- * should it be required. Another area of future investigation could be the use of channel
- * programs to collapse multiple ZFS commands into single atomic operations.
+ * storage pool. The layout is pretty straightforward:
  *
- * To keep down code sprawl, each group of operations (repositories, commits, operations, volumes)
- * is separated out into a separate class, and this base provider simply keeps common helper
- * functions and redirects to those sub-classes.
+ *      pool
+ *      pool/volumeSet              Collection of volumes
+ *      pool/volumeSet@commit       Recursive snapshot of a particular commit
+ *      pool/volumeSet/volume       Volume within a volume set
+ *
  */
 class ZfsStorageProvider(
     val poolName: String = "titan",
@@ -43,117 +43,98 @@ class ZfsStorageProvider(
         val log = LoggerFactory.getLogger(ZfsStorageProvider::class.java)
     }
 
-    enum class ObjectType(val displayName: String) {
-        REPOSITORY("repository"),
-        COMMIT("commit"),
-        VOLUME("volume"),
-        OPERATION("operation")
-    }
-
-    internal val METADATA_PROP = "io.titan-data:metadata"
-    internal val OPERATION_PROP = "io.titan-data:operation"
-    internal val REAPER_PROP = "io.titan-data:reaper"
     internal val executor = CommandExecutor()
 
-    internal val volumeManager = ZfsVolumeManager(this)
-    internal val operationManager = ZfsOperationManager(this)
-    internal val repositoryManager = ZfsRepositoryManager(this)
-    internal val commitManager = ZfsCommitManager(this)
-    internal val reaper = ZfsReaper(this)
-
-    internal val gson = ModelTypeAdapters.configure(GsonBuilder()).create()
-
-    override fun load() {
-        Thread(reaper).start()
-    }
-
-    // Utility methods that translate from generic CommandExceptions into a more specific
-    // exception based on error output
-
-    fun checkNoSuchObject(e: CommandException, name: String, type: ObjectType) {
-        if ("does not exist" in e.output) {
-            throw NoSuchObjectException("no such ${type.displayName} '$name'")
-        }
-    }
-
-    fun checkNoSuchRepository(e: CommandException, name: String) {
-        checkNoSuchObject(e, name, ObjectType.REPOSITORY)
-    }
-
-    fun checkNoSuchVolume(e: CommandException, name: String) {
-        checkNoSuchObject(e, name, ObjectType.VOLUME)
-    }
-
-    fun checkObjectExists(e: CommandException, name: String, type: ObjectType) {
-        if ("already exists" in e.output) {
-            throw ObjectExistsException("${type.displayName} '$name' already exists")
-        }
-    }
-
-    fun checkRepositoryExists(e: CommandException, name: String) {
-        checkObjectExists(e, name, ObjectType.REPOSITORY)
-    }
-
-    fun checkCommitExists(e: CommandException, name: String) {
-        checkObjectExists(e, name, ObjectType.COMMIT)
-    }
-
-    fun checkVolumeExists(e: CommandException, name: String) {
-        checkObjectExists(e, name, ObjectType.VOLUME)
-    }
-
-    /**
-     * Parse metadata for the given dataset. It should never be the case that someone can
-     * configure invalid metadata, but just in case we convert any JSON parsing errors into a
-     * more generic InvalidStateException that is used across the server.
+    /*
+     * Create a new volume set. This is simply an empty placeholder volumeset.
      */
-    fun parseMetadata(metadata: String): Map<String, Any> {
+    override fun createVolumeSet(volumeSet: String) {
+        executor.exec("zfs", "create", "$poolName/data/$volumeSet")
+    }
+
+    /*
+     * Clone a volumeset from an existing commit. We create the plain volume set, and then go about cloning each
+     * volume from the old volumeset into the new space.
+     */
+    override fun cloneVolumeSet(sourceVolumeSet: String, sourceCommit: String, newVolumeSet: String,
+                                volumeNames: List<String>) {
+        createVolumeSet(newVolumeSet)
+        for (vol in volumeNames) {
+            executor.exec("zfs", "clone", "$poolName/data/$sourceVolumeSet/$vol@$sourceCommit",
+                    "$poolName/data/$newVolumeSet/$vol")
+
+        }
+    }
+
+    /*
+     * Delete a volume set. This should only be invoked from the reaper after all volumes have been deleted.
+     */
+    override fun deleteVolumeSet(volumeSet: String) {
+        executor.exec("zfs", "destroy", "$poolName/data/$volumeSet")
+
+        // Try to delete the directory, but it may not exist if no volumes have been created
         try {
-            return gson.fromJson(metadata, object : TypeToken<Map<String, Any>>() {}.type)
-        } catch (e: JsonSyntaxException) {
-            throw InvalidStateException("metadata must be valid JSON")
-        }
-    }
-
-    /**
-     * Helper method to create a clone of a whole guid from the given hash. This will create a
-     * empty GUID dataset, and then clone any datasets beneath it.
-     */
-    fun cloneCommit(repo: String, guid: String, hash: String, newGuid: String) {
-        val output = executor.exec("zfs", "list", "-rHo", "name,$METADATA_PROP",
-                "$poolName/repo/$repo/$guid")
-        executor.exec("zfs", "create", "$poolName/repo/$repo/$newGuid")
-        val regex = "^$poolName/repo/$repo/$guid/([^/]+)\t(.*)$".toRegex()
-        for (line in output.lines()) {
-            val result = regex.find(line.trim())
-            if (result != null) {
-                val volumeName = result.groupValues[1]
-                val metadata = result.groupValues[2]
-                executor.exec("zfs", "clone", "-o", "$METADATA_PROP=$metadata",
-                        "$poolName/repo/$repo/$guid/$volumeName@$hash", "$poolName/repo/$repo/$newGuid/$volumeName")
+            executor.exec("rm", "-rf", "/var/lib/$poolName/$volumeSet")
+        } catch (e: CommandException) {
+            if (!e.output.contains("No such file or directory")) {
+                throw e
             }
         }
     }
 
-    /**
-     * Get the base mountpoint for a volume or entire repository.
-     */
-    fun getMountpoint(repo: String, volume: String? = null): String {
-        if (volume == null) {
-            return "/var/lib/$poolName/mnt/$repo"
-        } else {
-            return "/var/lib/$poolName/mnt/$repo/$volume"
-        }
+    override fun getVolumeStatus(volumeSet: String, volume: String): RepositoryVolumeStatus {
+        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
     }
 
-    /**
-     * Helper function to help with debugging EBUSY mount failures. This will unmmount the directory, but if it
-     * fails with EBUSY, then we'll automatically log the results of lsof to see if there is any process currenly
-     * using it. If the path is not currently mounted, then we just ignore it and move on.
+    /*
+     * Create a new commit. Since we keep all volumes underneath the volume set, we can just do a recursive snapshot
+     * of the set.
      */
-    fun safeUnmount(path: String) {
+    override fun createCommit(volumeSet: String, commitId: String, volumeNames: List<String>) {
+        executor.exec("zfs", "snapshot", "-r", "$poolName/data/$volumeSet@$commitId")
+    }
+
+    override fun getCommitStatus(volumeSet: String, commitId: String): CommitStatus {
+        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+    }
+
+    /*
+     * Delete a commit. The reaper will have ensured that any clones have been deleted prior to invoking this. We
+     * can just recursively delete the snapshot at the level of the volume set.
+     */
+    override fun deleteCommit(volumeSet: String, commitId: String, volumeNames: List<String>) {
+        executor.exec("zfs", "destroy", "-rd", "$poolName/data/$volumeSet@$commitId")
+    }
+
+    /*
+     * Create a new volume. Not much to do here, simply create a new dataset within the volume set.
+     */
+    override fun createVolume(volumeSet: String, volumeName: String) {
+        executor.exec("zfs", "create", "$poolName/data/$volumeSet/$volumeName")
+    }
+
+    override fun deleteVolume(volumeSet: String, volumeName: String) {
+        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+    }
+
+    override fun getVolumeMountpoint(volumeSet: String, volumeName: String): String {
+        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+    }
+
+    override fun mountVolume(volumeSet: String, volumeName: String) {
+        executor.exec("mkdir", "-p", "/var/lib/$poolName/$volumeSet/$volumeName")
+        executor.exec("mount", "-t", "zfs", "$poolName/data/$volumeSet/$volumeName",
+                "/var/lib/$poolName/$volumeSet/$volumeName")
+    }
+
+    /*
+     * When unmounting volumes, we make sure that it is idempotent (ignoring cases where it's already
+     * unmounted), and also take the opportunity to dump file usage (via lsof) if we get an EBUSY
+     * error.
+     */
+    override fun unmountVolume(volumeSet: String, volumeName: String) {
         try {
-            executor.exec("umount", path)
+            executor.exec("umount", "/var/lib/$poolName/$volumeSet/$volumeName")
         } catch (e: CommandException) {
             if ("not mounted" in e.output) {
                 return // Ignore
@@ -166,168 +147,5 @@ class ZfsStorageProvider(
             }
             throw e
         }
-    }
-
-    /**
-     * This is a helper function that is used for "zfs set" operations that can contain sensitive information
-     * (such as credentials in remotes or remote parameters). We apply a large hammer here and just blank out
-     * the whole value. If this proves problematic, then we can implement a more fine-grained scheme that pulls in
-     * more of the remote-specific context to only blank out sensitive fields.
-     */
-    fun secureZfsSet(property: String, value: String, target: String): String {
-        val process = executor.start("zfs", "set", "$property=$value", target)
-        val argString = "zfs, set, $property=*****, $target"
-        return executor.exec(process, argString)
-    }
-
-    /**
-     * Return the latest snapshot for a given ZFS dataset.
-     */
-    fun getLatestSnapshot(dataset: String): String? {
-        val output = executor.exec("zfs", "list", "-pHo", "name,creation", "-t", "snapshot", "-d", "1",
-                dataset).trim()
-
-        if (output == "") {
-            return null
-        }
-
-        // Get the most recent snapshot
-        val snaps = output.split("\n").map {
-            it.trim().split("\t")
-        }
-        val sorted = snaps.sortedByDescending { it[1].toLong() }
-        return sorted[0][0].substringAfterLast("@")
-    }
-
-    /*
-     * The remainder of this class simply redirects methods to the appropriate helper class. They
-     * are all annotated as synchronized as a simple (if incomplete) guard to prevent concurrent
-     * modifications. For the load we expect to place on the server, this should be sufficient. Of
-     * course, it doesn't actually make the operations atomic, so it's very possible that should
-     * the server fail in between a series of ZFS updates, it could leave the system in an
-     * incomplete state. Fully solving this is beyond the current server scope, but could
-     * theoretically be solved through ZFS channel programs or application-level recovery.
-     */
-
-    @Synchronized
-    override fun createRepository(repo: Repository, volumeSet: String) {
-        log.info("create repository ${repo.name}")
-        repositoryManager.createRepository(repo, volumeSet)
-    }
-
-    @Synchronized
-    override fun getRepositoryStatus(name: String, volumeSet: String): RepositoryStatus {
-        return repositoryManager.getRepositoryStatus(name, volumeSet)
-    }
-
-    @Synchronized
-    override fun deleteRepository(name: String) {
-        log.info("delete repository $name")
-        repositoryManager.deleteRepository(name)
-    }
-
-    @Synchronized
-    override fun createCommit(repo: String, volumeSet: String, commit: Commit) {
-        log.info("create commit ${commit.id} in $repo")
-        commitManager.createCommit(repo, volumeSet, commit)
-    }
-
-    @Synchronized
-    override fun getCommitStatus(repo: String, volumeSet: String, id: String): CommitStatus {
-        return commitManager.getCommitStatus(repo, volumeSet, id)
-    }
-
-    @Synchronized
-    override fun deleteCommit(repo: String, activeVolumeSet: String, commitVolumeSet: String, commit: String) {
-        log.info("delete commit $commit in $repo")
-        commitManager.deleteCommit(repo, activeVolumeSet, commitVolumeSet, commit)
-    }
-
-    @Synchronized
-    override fun checkoutCommit(repo: String, prevVolumeSet: String, newVolumeSet: String, commitVolumeSet: String, commit: String) {
-        log.info("checkout commit $commit in $repo")
-        commitManager.checkoutCommit(repo, prevVolumeSet, newVolumeSet, commitVolumeSet, commit)
-    }
-
-    @Synchronized
-    override fun createOperation(repo: String, operation: OperationData, localCommit: String?) {
-        log.info("create operation ${operation.operation.id} in $repo")
-        operationManager.createOperation(repo, operation, localCommit)
-    }
-
-    @Synchronized
-    override fun listOperations(repo: String): List<OperationData> {
-        return operationManager.listOperations(repo)
-    }
-
-    @Synchronized
-    override fun getOperation(repo: String, id: String): OperationData {
-        return operationManager.getOperation(repo, id)
-    }
-
-    @Synchronized
-    override fun commitOperation(repo: String, id: String, commit: Commit) {
-        log.info("commit operation $id in $repo with commit ${commit.id}")
-        operationManager.commitOperation(repo, id, commit)
-    }
-
-    @Synchronized
-    override fun discardOperation(repo: String, id: String) {
-        log.info("discard operation $id in $repo")
-        operationManager.discardOperation(repo, id)
-    }
-
-    override fun updateOperationState(repo: String, id: String, state: Operation.State) {
-        operationManager.updateOperationState(repo, id, state)
-    }
-
-    @Synchronized
-    override fun mountOperationVolumes(repo: String, id: String, volumes: List<Volume>): String {
-        log.info("mount volumes for operation $id in $repo")
-        return operationManager.mountOperationVolumes(repo, id, volumes)
-    }
-
-    @Synchronized
-    override fun unmountOperationVolumes(repo: String, id: String, volumes: List<Volume>) {
-        log.info("unmount volumes for operation $id in $repo")
-        operationManager.unmountOperationVolumes(repo, id, volumes)
-    }
-
-    override fun createOperationScratch(repo: String, id: String): String {
-        log.info("create scratch space for operation $id in $repo")
-        return operationManager.createOperationScratch(repo, id)
-    }
-
-    override fun destroyOperationScratch(repo: String, id: String) {
-        log.info("destroy scratch space for operation $id in $repo")
-        operationManager.destroyOperationScratch(repo, id)
-    }
-
-    @Synchronized
-    override fun createVolume(repo: String, volumeSet: String, volume: Volume) {
-        log.info("create volume ${volume.name} in $repo")
-        volumeManager.createVolume(repo, volumeSet, volume)
-    }
-
-    @Synchronized
-    override fun deleteVolume(repo: String, volumeSet: String, name: String) {
-        log.info("delete volume $name in $repo")
-        return volumeManager.deleteVolume(repo, volumeSet, name)
-    }
-
-    override fun getVolumeMountpoint(repo: String, volumeName: String): String {
-        return getMountpoint(repo, volumeName)
-    }
-
-    @Synchronized
-    override fun mountVolume(repo: String, volumeSet: String, volume: Volume) {
-        log.info("mount volume ${volume.name} in $repo")
-        volumeManager.mountVolume(repo, volumeSet, volume)
-    }
-
-    @Synchronized
-    override fun unmountVolume(repo: String, name: String) {
-        log.info("unmount volume $name in $repo")
-        volumeManager.unmountVolume(repo, name)
     }
 }

@@ -15,6 +15,7 @@ import org.jetbrains.exposed.dao.UUIDTable
  */
 object VolumeSets : UUIDTable("volume_sets") {
     val repo = varchar("repositories", 64)
-    val source_commit = varchar("source_commit", 64).nullable()
+    val sourceCommit = varchar("source_commit", 64).nullable()
+    val sourceId = integer("source_id").nullable()
     val state = enumerationByName("state", 16, MetadataProvider.VolumeState::class)
 }

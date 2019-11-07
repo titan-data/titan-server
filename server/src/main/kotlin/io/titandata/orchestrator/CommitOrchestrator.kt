@@ -81,10 +81,10 @@ class CommitOrchestrator(val providers: ProviderModule) {
         }
         val commitVolumeSet = transaction {
             val vs = providers.metadata.getCommit(repo, commit).first
-            providers.metadata.deleteCommit(repo, commit)
+            providers.metadata.markCommitDeleting(repo, commit)
             vs
         }
-        return providers.storage.deleteCommit(repo, activeVolumeSet, commitVolumeSet, commit)
+        providers.reaper.signal()
     }
 
     fun checkoutCommit(repo: String, commit: String) {

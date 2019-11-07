@@ -35,17 +35,6 @@ import java.time.format.DateTimeFormatter
  */
 class ZfsCommitManager(val provider: ZfsStorageProvider) {
 
-    private val poolName = provider.poolName
-    private val REAPER_PROP = provider.REAPER_PROP
-
-    /**
-     * Create a new commit via recursive ZFS snapshot.
-     */
-    fun createCommit(repo: String, volumeSet: String, commit: Commit) {
-        val dataset = "$poolName/repo/$repo/$volumeSet@${commit.id}"
-        provider.executor.exec("zfs", "snapshot", "-r", dataset)
-    }
-
     /**
      * Get additional status about a commit, in this case the commit size. We map the following values to their
      * ZFS counterparts:
@@ -78,33 +67,6 @@ class ZfsCommitManager(val provider: ZfsStorageProvider) {
         }
 
         return CommitStatus(logicalSize = logicalSize, actualSize = actualSize, uniqueSize = uniqueSize)
-    }
-
-    /**
-     * Delete a commit. Unlike git, our commit have no dependency on ordering, and each can be
-     * pulled or pushed independently. While they may share storage, they can be independently
-     * discarded to free up storage.
-     */
-    fun deleteCommit(repo: String, activeVolumeSet: String, commitVolumeSet: String, commit: String) {
-        provider.executor.exec("zfs", "destroy", "-rd", "$poolName/repo/$repo/$commitVolumeSet@$commit")
-
-        // If there are no more commits for this GUID, and this is not the active GUID for
-        // the repo, then delete the entire GUID.
-        if (activeVolumeSet != commitVolumeSet) {
-            val output = provider.executor.exec("zfs", "list", "-H", "-t", "snapshot", "-d", "1",
-                    "$poolName/repo/$repo/$commitVolumeSet").trim()
-            if (output == "") {
-                /*
-                 * The above command will recursively destroy any snapshots. If this commit
-                 * has been checked out, then there may be clones of a child dataset (e.g. "vol@commit")
-                 * in the deferred destroy state, even if the parent snapshot on the dataset itself
-                 * was deleted. Because of this, a vanilla destroy command can fail due to dependent
-                 * clones. To deal with this, we instead set a flag, "io.titan-data:deathrow", that the
-                 * ZFS reaper class will periodically try to clean these up in the background.
-                 */
-                provider.executor.exec("zfs", "set", "$REAPER_PROP=on", "$poolName/repo/$repo/$commitVolumeSet")
-            }
-        }
     }
 
     /**

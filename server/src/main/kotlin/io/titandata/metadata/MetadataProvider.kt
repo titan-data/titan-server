@@ -13,7 +13,9 @@ import io.titandata.metadata.table.Tags
 import io.titandata.metadata.table.VolumeSets
 import io.titandata.metadata.table.Volumes
 import io.titandata.models.Commit
+import io.titandata.models.Operation
 import io.titandata.models.Remote
+import io.titandata.models.RemoteParameters
 import io.titandata.models.Repository
 import io.titandata.models.Volume
 import io.titandata.serialization.ModelTypeAdapters
@@ -206,11 +208,24 @@ class MetadataProvider(val inMemory: Boolean = true, val databaseName: String = 
         }
     }
 
-    fun createVolumeSet(repoName: String, activate: Boolean = false): String {
+    fun createVolumeSet(repoName: String, sourceCommit: String?, activate: Boolean = false): String {
         getRepository(repoName)
+
+        // TODO tests
+        val sourceId = if (sourceCommit == null) {
+            null
+        } else {
+            Commits.select {
+                (Commits.repo eq repoName) and (Commits.guid eq sourceCommit) and (Commits.state eq VolumeState.ACTIVE)
+            }.map {
+                it[Commits.id].value
+            }.firstOrNull()
+        }
 
         val id = VolumeSets.insert {
             it[repo] = repoName
+            it[VolumeSets.sourceCommit] = sourceCommit
+            it[VolumeSets.sourceId] = sourceId
             it[state] = if (activate) { VolumeState.ACTIVE } else { VolumeState.INACTIVE }
         } get VolumeSets.id
         return id.toString()
@@ -364,6 +379,7 @@ class MetadataProvider(val inMemory: Boolean = true, val databaseName: String = 
                 ?: throw NoSuchObjectException("no such commit '$commitId' in repository '$repo'")
     }
 
+    // TODO test
     fun getLastCommit(repo: String) : String? {
         return Commits.select {
             (Commits.repo eq repo) and (Commits.state eq VolumeState.ACTIVE)
@@ -373,6 +389,7 @@ class MetadataProvider(val inMemory: Boolean = true, val databaseName: String = 
                 .firstOrNull()
     }
 
+    // TODO test
     fun getCommitSource(volumeSet: String) : String? {
         // First, check to see if there's a latest commit for this volume set
         val volumeSetGuid = UUID.fromString(volumeSet)
@@ -392,7 +409,7 @@ class MetadataProvider(val inMemory: Boolean = true, val databaseName: String = 
         }.firstOrNull()
 
         if (volumeSetSource != null) {
-            return volumeSetSource[VolumeSets.source_commit]
+            return volumeSetSource[VolumeSets.sourceCommit]
         }
 
         return null
@@ -430,6 +447,32 @@ class MetadataProvider(val inMemory: Boolean = true, val databaseName: String = 
                 .map { convertCommit(it) }
     }
 
+    data class CommitInfo (
+            val id: Int,
+            val guid: String,
+            var volumeSet: String
+    )
+
+    // TODO tests
+    fun listDeletingCommits() : List<CommitInfo> {
+       return Commits.select {
+           Commits.state eq VolumeState.DELETING
+       }.map {
+           CommitInfo(
+                   id=it[Commits.id].value,
+                   guid=it[Commits.guid],
+                   volumeSet=it[Commits.volumeSet].toString()
+           )
+       }
+    }
+
+    // TODO tests
+    fun hasClones(commit: CommitInfo): Boolean {
+        return !VolumeSets.select {
+            VolumeSets.sourceId eq commit.id
+        }.empty()
+    }
+
     fun updateCommit(repo: String, commit: Commit) {
         val id = Commits.select {
             (Commits.repo eq repo) and (Commits.guid eq commit.id) and (Commits.state eq VolumeState.ACTIVE)
@@ -458,12 +501,20 @@ class MetadataProvider(val inMemory: Boolean = true, val databaseName: String = 
         }
     }
 
-    fun deleteCommit(repo: String, commitId: String) {
-        val count = Commits.deleteWhere {
+    fun markCommitDeleting(repo: String, commitId: String) {
+        val count = Commits.update({
             (Commits.repo eq repo) and (Commits.guid eq commitId) and (Commits.state eq VolumeState.ACTIVE)
+        }) {
+            it[state] = VolumeState.DELETING
         }
         if (count == 0) {
             throw NoSuchObjectException("no such commit '$commitId' in repository '$repo'")
+        }
+    }
+
+    fun deleteCommit(commit: CommitInfo) {
+        val count = Commits.deleteWhere {
+            (Commits.id eq commit.id)
         }
     }
 }

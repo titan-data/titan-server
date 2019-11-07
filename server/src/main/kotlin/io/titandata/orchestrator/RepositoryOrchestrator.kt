@@ -10,15 +10,12 @@ class RepositoryOrchestrator(val providers: ProviderModule) {
 
     fun createRepository(repo: Repository) {
         NameUtil.validateRepoName(repo.name)
-        val initialCommit = Commit(id="initial", properties=emptyMap())
         val volumeSet = transaction {
             providers.metadata.createRepository(repo)
-            val vs = providers.metadata.createVolumeSet(repo.name, true)
-            providers.metadata.createCommit(repo.name, vs, initialCommit)
+            val vs = providers.metadata.createVolumeSet(repo.name, null, true)
             vs
         }
-        providers.storage.createRepository(repo, volumeSet)
-        providers.storage.createCommit(repo.name, volumeSet, initialCommit)
+        providers.storage.createVolumeSet(volumeSet)
     }
 
     fun listRepositories(): List<Repository> {
@@ -39,12 +36,17 @@ class RepositoryOrchestrator(val providers: ProviderModule) {
         val volumeSet = transaction {
             providers.metadata.getActiveVolumeSet(name)
         }
-        val status = providers.storage.getRepositoryStatus(name, volumeSet)
+        val volumes = transaction {
+            providers.metadata.listVolumes(volumeSet)
+        }
+        val volumeStatus = volumes.map {
+            providers.storage.getVolumeStatus(volumeSet, it.name)
+        }
         return transaction {
             RepositoryStatus(
-                    logicalSize = status.logicalSize,
-                    actualSize = status.actualSize,
-                    volumeStatus = status.volumeStatus,
+                    logicalSize = 0,
+                    actualSize = 0,
+                    volumeStatus = volumeStatus,
                     lastCommit = providers.metadata.getLastCommit(name),
                     sourceCommit = providers.metadata.getCommitSource(volumeSet)
             )
@@ -62,8 +64,9 @@ class RepositoryOrchestrator(val providers: ProviderModule) {
     fun deleteRepository(name: String) {
         NameUtil.validateRepoName(name)
         transaction {
+            // TODO mark all commits deleting
+            // TODO mark all volumesets deleting
             providers.metadata.deleteRepository(name)
         }
-        providers.storage.deleteRepository(name)
     }
 }

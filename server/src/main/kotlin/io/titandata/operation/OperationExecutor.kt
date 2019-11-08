@@ -5,14 +5,12 @@
 package io.titandata.operation
 
 import io.titandata.ProviderModule
-import io.titandata.exception.NoSuchObjectException
 import io.titandata.models.Commit
 import io.titandata.models.Operation
 import io.titandata.models.ProgressEntry
 import io.titandata.models.Remote
 import io.titandata.models.RemoteParameters
 import io.titandata.remote.RemoteProvider
-import io.titandata.storage.OperationData
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.slf4j.LoggerFactory
 
@@ -114,7 +112,6 @@ class OperationExecutor(
                     providers.storage.unmountVolume(operationId, volume.name)
                 }
             }
-
         } finally {
             providers.storage.unmountVolume(operationId, "_scratch")
         }

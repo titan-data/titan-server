@@ -4,10 +4,10 @@ import io.titandata.ProviderModule
 import io.titandata.exception.ObjectExistsException
 import io.titandata.models.Commit
 import io.titandata.models.CommitStatus
-import org.jetbrains.exposed.sql.transactions.transaction
 import java.rmi.NoSuchObjectException
 import java.time.Instant
 import java.time.format.DateTimeFormatter
+import org.jetbrains.exposed.sql.transactions.transaction
 
 class CommitOrchestrator(val providers: ProviderModule) {
 
@@ -27,7 +27,7 @@ class CommitOrchestrator(val providers: ProviderModule) {
         }
         val properties = commit.properties.toMutableMap()
         properties["tags"] = tags
-        val newCommit = Commit(id = commit.id, properties=properties)
+        val newCommit = Commit(id = commit.id, properties = properties)
 
         val volumeSet = transaction {
             try {

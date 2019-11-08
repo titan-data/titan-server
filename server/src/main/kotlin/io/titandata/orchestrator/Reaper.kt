@@ -1,11 +1,9 @@
 package io.titandata.orchestrator
 
 import io.titandata.ProviderModule
-import io.titandata.metadata.MetadataProvider
+import java.util.concurrent.locks.ReentrantLock
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.slf4j.LoggerFactory
-import java.util.concurrent.locks.Condition
-import java.util.concurrent.locks.ReentrantLock
 
 /*
  * The reaper orchestrator is the class that asynchronously looks for objects in the DELETING state that can be
@@ -49,7 +47,7 @@ class Reaper(val providers: ProviderModule) : Runnable {
         }
     }
 
-    fun reapCommits() : Int {
+    fun reapCommits(): Int {
         val commits = transaction {
             providers.metadata.listDeletingCommits().filter {
                 !providers.metadata.hasClones(it)

@@ -4,22 +4,9 @@
 
 package io.titandata.storage.zfs
 
-import com.google.gson.GsonBuilder
-import com.google.gson.JsonSyntaxException
-import com.google.gson.reflect.TypeToken
 import io.titandata.exception.CommandException
-import io.titandata.exception.InvalidStateException
-import io.titandata.exception.NoSuchObjectException
-import io.titandata.exception.ObjectExistsException
-import io.titandata.models.Commit
 import io.titandata.models.CommitStatus
-import io.titandata.models.Operation
-import io.titandata.models.Repository
-import io.titandata.models.RepositoryStatus
 import io.titandata.models.RepositoryVolumeStatus
-import io.titandata.models.Volume
-import io.titandata.serialization.ModelTypeAdapters
-import io.titandata.storage.OperationData
 import io.titandata.storage.StorageProvider
 import io.titandata.util.CommandExecutor
 import org.slf4j.LoggerFactory
@@ -56,13 +43,16 @@ class ZfsStorageProvider(
      * Clone a volumeset from an existing commit. We create the plain volume set, and then go about cloning each
      * volume from the old volumeset into the new space.
      */
-    override fun cloneVolumeSet(sourceVolumeSet: String, sourceCommit: String, newVolumeSet: String,
-                                volumeNames: List<String>) {
+    override fun cloneVolumeSet(
+        sourceVolumeSet: String,
+        sourceCommit: String,
+        newVolumeSet: String,
+        volumeNames: List<String>
+    ) {
         createVolumeSet(newVolumeSet)
         for (vol in volumeNames) {
             executor.exec("zfs", "clone", "$poolName/data/$sourceVolumeSet/$vol@$sourceCommit",
                     "$poolName/data/$newVolumeSet/$vol")
-
         }
     }
 
@@ -151,7 +141,7 @@ class ZfsStorageProvider(
         return "/var/lib/$poolName/$volumeSet/$volumeName"
     }
 
-    override fun mountVolume(volumeSet: String, volumeName: String) : String {
+    override fun mountVolume(volumeSet: String, volumeName: String): String {
         executor.exec("mkdir", "-p", getVolumeMountpoint(volumeSet, volumeName))
         executor.exec("mount", "-t", "zfs", "$poolName/data/$volumeSet/$volumeName",
                 getVolumeMountpoint(volumeSet, volumeName))

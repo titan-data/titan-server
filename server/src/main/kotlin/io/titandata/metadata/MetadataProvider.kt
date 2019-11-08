@@ -384,7 +384,7 @@ class MetadataProvider(val inMemory: Boolean = true, val databaseName: String = 
     }
 
     // TODO test
-    fun getLastCommit(repo: String) : String? {
+    fun getLastCommit(repo: String): String? {
         return Commits.select {
             (Commits.repo eq repo) and (Commits.state eq VolumeState.ACTIVE)
         }.orderBy(Commits.timestamp, SortOrder.DESC)
@@ -394,7 +394,7 @@ class MetadataProvider(val inMemory: Boolean = true, val databaseName: String = 
     }
 
     // TODO test
-    fun getCommitSource(volumeSet: String) : String? {
+    fun getCommitSource(volumeSet: String): String? {
         // First, check to see if there's a latest commit for this volume set
         val volumeSetGuid = UUID.fromString(volumeSet)
         val prevCommit = Commits.select {
@@ -423,7 +423,7 @@ class MetadataProvider(val inMemory: Boolean = true, val databaseName: String = 
         val query = if (!tags.isNullOrEmpty()) {
             val q = (Commits innerJoin Tags)
                     .slice(Commits.guid, Commits.volumeSet, Commits.metadata)
-                    .select { (Commits.id eq Tags.commit) and (Commits.repo eq repo) and (Commits.state eq VolumeState.ACTIVE)}
+                    .select { (Commits.id eq Tags.commit) and (Commits.repo eq repo) and (Commits.state eq VolumeState.ACTIVE) }
 
             val existList = mutableListOf<String>()
             for (tag in tags) {
@@ -444,30 +444,30 @@ class MetadataProvider(val inMemory: Boolean = true, val databaseName: String = 
             }
             q
         } else {
-            Commits.select { (Commits.repo eq repo) and (Commits.state eq VolumeState.ACTIVE)}
+            Commits.select { (Commits.repo eq repo) and (Commits.state eq VolumeState.ACTIVE) }
         }
 
         return query.orderBy(Commits.timestamp, SortOrder.DESC)
                 .map { convertCommit(it) }
     }
 
-    data class CommitInfo (
-            val id: Int,
-            val guid: String,
-            var volumeSet: String
+    data class CommitInfo(
+        val id: Int,
+        val guid: String,
+        var volumeSet: String
     )
 
     // TODO tests
-    fun listDeletingCommits() : List<CommitInfo> {
-       return Commits.select {
-           Commits.state eq VolumeState.DELETING
-       }.map {
-           CommitInfo(
-                   id=it[Commits.id].value,
-                   guid=it[Commits.guid],
-                   volumeSet=it[Commits.volumeSet].toString()
-           )
-       }
+    fun listDeletingCommits(): List<CommitInfo> {
+        return Commits.select {
+            Commits.state eq VolumeState.DELETING
+        }.map {
+            CommitInfo(
+                    id = it[Commits.id].value,
+                    guid = it[Commits.guid],
+                    volumeSet = it[Commits.volumeSet].toString()
+            )
+        }
     }
 
     // TODO tests
@@ -524,7 +524,7 @@ class MetadataProvider(val inMemory: Boolean = true, val databaseName: String = 
 
     // TODO tests for operations
 
-    fun createOperation(repo: String, volumeSet: String, data : OperationData) {
+    fun createOperation(repo: String, volumeSet: String, data: OperationData) {
         Operations.insert {
             it[Operations.volumeSet] = UUID.fromString(volumeSet)
             it[Operations.repo] = repo
@@ -559,17 +559,17 @@ class MetadataProvider(val inMemory: Boolean = true, val databaseName: String = 
             )
     )
 
-    fun listOperations(repo: String) : List<OperationData> {
+    fun listOperations(repo: String): List<OperationData> {
         return Operations.select {
             Operations.repo eq repo
         }.map { convertOperation(it) }
     }
 
-    fun getOperation(id: String) : OperationData {
+    fun getOperation(id: String): OperationData {
         val uuid = UUID.fromString(id)
         return Operations.select {
             Operations.volumeSet eq uuid
-        }. map { convertOperation(it) }
+        }.map { convertOperation(it) }
                 .firstOrNull()
                 ?: throw NoSuchObjectException("no such operation '$id'")
     }
@@ -583,16 +583,15 @@ class MetadataProvider(val inMemory: Boolean = true, val databaseName: String = 
         }
     }
 
-    fun operationInProgress(repo: String, type: Operation.Type, commitId: String, remote: String?) : String? {
+    fun operationInProgress(repo: String, type: Operation.Type, commitId: String, remote: String?): String? {
         val query = Operations.select {
-            (Operations.repo  eq repo) and (Operations.type eq type) and (Operations.commitId eq commitId) and (Operations.state eq Operation.State.RUNNING)
+            (Operations.repo eq repo) and (Operations.type eq type) and (Operations.commitId eq commitId) and (Operations.state eq Operation.State.RUNNING)
         }
         remote?.let {
             query.andWhere { Operations.remote eq remote }
         }
         return query.map { it[Operations.volumeSet].toString() }
                 .firstOrNull()
-
     }
 
     private fun convertProgressEntry(it: ResultRow) = ProgressEntry(
@@ -603,7 +602,7 @@ class MetadataProvider(val inMemory: Boolean = true, val databaseName: String = 
     )
 
     // TODO progress entry tests
-    fun addProgressEntry(operation: String, entry: ProgressEntry) : Int {
+    fun addProgressEntry(operation: String, entry: ProgressEntry): Int {
         val result = ProgressEntries.insert {
             it[ProgressEntries.operation] = UUID.fromString(operation)
             it[message] = entry.message
@@ -613,7 +612,7 @@ class MetadataProvider(val inMemory: Boolean = true, val databaseName: String = 
         return result.value
     }
 
-    fun listProgressEntries(operation: String, lastEntry: Int = 0) : List<ProgressEntry> {
+    fun listProgressEntries(operation: String, lastEntry: Int = 0): List<ProgressEntry> {
         val uuid = UUID.fromString(operation)
         return ProgressEntries.select {
             (ProgressEntries.operation eq uuid) and (ProgressEntries.id greater lastEntry)

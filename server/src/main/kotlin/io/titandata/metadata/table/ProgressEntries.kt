@@ -1,8 +1,6 @@
 package io.titandata.metadata.table
 
-import io.titandata.metadata.MetadataProvider
 import io.titandata.metadata.table.Remotes.references
-import io.titandata.models.Operation
 import io.titandata.models.ProgressEntry
 import org.jetbrains.exposed.dao.IntIdTable
 import org.jetbrains.exposed.sql.ReferenceOption

@@ -268,7 +268,6 @@ class OperationOrchestrator(val providers: ProviderModule) {
             throw ObjectExistsException("Pull operation $inProgress already in progress for commit $commitId")
         }
 
-
         try {
             providers.commits.getCommit(repository, commitId)
             if (!metadataOnly) {

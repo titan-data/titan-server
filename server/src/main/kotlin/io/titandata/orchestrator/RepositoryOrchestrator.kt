@@ -1,7 +1,6 @@
 package io.titandata.orchestrator
 
 import io.titandata.ProviderModule
-import io.titandata.models.Commit
 import io.titandata.models.Repository
 import io.titandata.models.RepositoryStatus
 import org.jetbrains.exposed.sql.transactions.transaction

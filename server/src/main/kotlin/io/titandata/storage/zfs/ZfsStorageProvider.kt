@@ -22,8 +22,7 @@ import org.slf4j.LoggerFactory
  *      pool/data/volumeSet/volume      Volume within a volume set
  */
 class ZfsStorageProvider(
-    val poolName: String = "titan",
-    val timestampProperty: String = "timestamp"
+    val poolName: String = "titan"
 ) : StorageProvider {
 
     companion object {
@@ -117,7 +116,7 @@ class ZfsStorageProvider(
      * can just recursively delete the snapshot at the level of the volume set.
      */
     override fun deleteCommit(volumeSet: String, commitId: String, volumeNames: List<String>) {
-        executor.exec("zfs", "destroy", "-rd", "$poolName/data/$volumeSet@$commitId")
+        executor.exec("zfs", "destroy", "-r", "$poolName/data/$volumeSet@$commitId")
     }
 
     /**

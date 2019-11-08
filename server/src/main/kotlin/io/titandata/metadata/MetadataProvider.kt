@@ -493,7 +493,6 @@ class MetadataProvider(val inMemory: Boolean = true, val databaseName: String = 
         var volumeSet: String
     )
 
-    // TODO tests
     fun listDeletingCommits(): List<CommitInfo> {
         return Commits.select {
             Commits.state eq VolumeState.DELETING
@@ -506,7 +505,6 @@ class MetadataProvider(val inMemory: Boolean = true, val databaseName: String = 
         }
     }
 
-    // TODO tests
     fun hasClones(commit: CommitInfo): Boolean {
         return !VolumeSets.select {
             VolumeSets.sourceId eq commit.id
@@ -557,8 +555,6 @@ class MetadataProvider(val inMemory: Boolean = true, val databaseName: String = 
             (Commits.id eq commit.id)
         }
     }
-
-    // TODO tests for operations
 
     fun createOperation(repo: String, volumeSet: String, data: OperationData) {
         Operations.insert {
@@ -637,7 +633,6 @@ class MetadataProvider(val inMemory: Boolean = true, val databaseName: String = 
             type = it[ProgressEntries.type]
     )
 
-    // TODO progress entry tests
     fun addProgressEntry(operation: String, entry: ProgressEntry): Int {
         val result = ProgressEntries.insert {
             it[ProgressEntries.operation] = UUID.fromString(operation)

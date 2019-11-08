@@ -49,45 +49,6 @@ class OperationExecutor(
                 commit = provider.getCommit(remote, operation.commitId, params)
             }
 
-            if (!isResume) {
-                var localCommit: String? = null
-                if (operation.type == Operation.Type.PUSH) {
-                    localCommit = operation.commitId
-                } else {
-                    /*
-                     * For pulls, we want to try to find the best possible source snapshot, so that incremental pulls
-                     * minimize the amount of storage changed. To do this, we rely on the CLI pushing metadat with a
-                     * "source" tag that indicates the source of the commmit. We chase this chain as far as we can
-                     * on the remote until we find a matching commit locally. In the event that the chain is broken on
-                     * the remote (because a commit has been deleted) or that we don't have any appropriate commits
-                     * locally, we simply use the latest commit and hope for the best.
-                     */
-                    try {
-                        var remoteCommit = commit!!
-                        while (localCommit == null && remoteCommit.properties.containsKey("tags")) {
-                            @Suppress("UNCHECKED_CAST")
-                            val tags = remoteCommit.properties["tags"] as Map<String, String>
-                            if (tags.containsKey("source")) {
-                                val source = tags["source"]!!
-                                try {
-                                    localCommit = providers.commits.getCommit(repo, source).id
-                                } catch (e: NoSuchObjectException) {
-                                    // Ignore local commits that don't exist and continue down chain
-                                }
-                                remoteCommit = provider.getCommit(remote, source, params)
-                            } else {
-                                break
-                            }
-                        }
-                    } catch (e: NoSuchObjectException) {
-                        // If we can't find a remote commit in the chain, then default to latest
-                    }
-                }
-
-                providers.storage.createOperation(repo, OperationData(operation = operation,
-                        params = params, metadataOnly = metadataOnly), localCommit)
-            }
-
             operationData = provider.startOperation(this)
 
             if (!metadataOnly) {

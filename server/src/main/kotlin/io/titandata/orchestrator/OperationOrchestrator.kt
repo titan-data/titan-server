@@ -11,7 +11,9 @@ import io.titandata.models.Operation
 import io.titandata.models.ProgressEntry
 import io.titandata.models.Remote
 import io.titandata.models.RemoteParameters
+import io.titandata.models.Volume
 import io.titandata.operation.OperationExecutor
+import io.titandata.storage.OperationData
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.slf4j.LoggerFactory
 
@@ -48,14 +50,14 @@ class OperationOrchestrator(val providers: ProviderModule) {
         val log = LoggerFactory.getLogger(OperationOrchestrator::class.java)
     }
 
-    private val operationsById: MutableMap<String, OperationExecutor> = mutableMapOf()
+    private val activeOperations: MutableMap<String, OperationExecutor> = mutableMapOf()
 
     internal fun addOperation(exec: OperationExecutor) {
-        operationsById.put(exec.operation.id, exec)
+        activeOperations.put(exec.operation.id, exec)
     }
 
     internal fun removeOperation(exec: OperationExecutor) {
-        operationsById.remove(exec.operation.id)
+        activeOperations.remove(exec.operation.id)
     }
 
     internal fun buildOperation(type: Operation.Type, volumeSet: String, remote: String, commitId: String): Operation {
@@ -71,14 +73,85 @@ class OperationOrchestrator(val providers: ProviderModule) {
     internal fun createAndStartOperation(
         type: Operation.Type,
         repository: String,
-        volumeSet: String,
         remote: Remote,
         commitId: String,
         params: RemoteParameters,
         metadataOnly: Boolean
     ): Operation {
-        val op = buildOperation(type, volumeSet, remote.name, commitId)
-        val exec = OperationExecutor(providers, op, repository, remote, params, false, metadataOnly)
+        var localCommit: String? = null
+        if (type == Operation.Type.PUSH) {
+            localCommit = commitId
+        } else {
+            /*
+             * For pulls, we want to try to find the best possible source snapshot, so that incremental pulls
+             * minimize the amount of storage changed. To do this, we rely on the CLI pushing metadat with a
+             * "source" tag that indicates the source of the commmit. We chase this chain as far as we can
+             * on the remote until we find a matching commit locally. In the event that the chain is broken on
+             * the remote (because a commit has been deleted) or that we don't have any appropriate commits
+             * locally, we simply use the latest commit and hope for the best.
+             */
+            try {
+                val provider = providers.remote(remote.provider)
+                var remoteCommit = provider.getCommit(remote, commitId, params)
+                while (localCommit == null && remoteCommit.properties.containsKey("tags")) {
+                    @Suppress("UNCHECKED_CAST")
+                    val tags = remoteCommit.properties["tags"] as Map<String, String>
+                    if (tags.containsKey("source")) {
+                        val source = tags["source"]!!
+                        try {
+                            localCommit = providers.commits.getCommit(repository, source).id
+                        } catch (e: NoSuchObjectException) {
+                            // Ignore local commits that don't exist and continue down chain
+                        }
+                        remoteCommit = provider.getCommit(remote, source, params)
+                    } else {
+                        break
+                    }
+                }
+            } catch (e: NoSuchObjectException) {
+                // If we can't find a remote commit in the chain, then default to latest
+            }
+        }
+
+        // Create metadata
+        val (volumeSet, operation) = transaction {
+            val vs = providers.metadata.createVolumeSet(repository, localCommit)
+            val volumes = providers.metadata.listVolumes(providers.metadata.getActiveVolumeSet(repository))
+            for (v in volumes) {
+                providers.metadata.createVolume(vs, v)
+            }
+            providers.metadata.createVolume(vs, Volume(name = "_scratch"))
+            val op = buildOperation(type, vs, remote.name, commitId)
+            providers.metadata.createOperation(repository, vs, OperationData(
+                    metadataOnly = metadataOnly,
+                    params = params,
+                    operation = op
+            ))
+            Pair(vs, op)
+        }
+
+        // Create storage
+        if (!metadataOnly) {
+            if (localCommit == null) {
+                val volumes = transaction {
+                    providers.metadata.listVolumes(volumeSet)
+                }
+                providers.storage.createVolumeSet(volumeSet)
+                for (v in volumes) {
+                    providers.storage.createVolume(volumeSet, v.name)
+                }
+            } else {
+                val (sourceVolumeSet, volumes) = transaction {
+                    val vs = providers.metadata.getCommit(repository, localCommit!!).first
+                    Pair(vs, providers.metadata.listVolumes(vs).map { it.name })
+                }
+                providers.storage.cloneVolumeSet(sourceVolumeSet, localCommit!!, volumeSet, volumes)
+                providers.storage.createVolume(volumeSet, "_scratch")
+            }
+        }
+
+        // Run executor
+        val exec = OperationExecutor(providers, operation, repository, remote, params, false, metadataOnly)
         addOperation(exec)
         val message = when (type) {
             Operation.Type.PULL -> "Pulling $commitId from '${remote.name}'"
@@ -86,11 +159,11 @@ class OperationOrchestrator(val providers: ProviderModule) {
         }
         exec.addProgress(ProgressEntry(ProgressEntry.Type.MESSAGE, message))
         exec.start()
-        return op
+        return operation
     }
 
     internal fun getExecutor(repository: String, id: String): OperationExecutor {
-        val op = operationsById[id]
+        val op = activeOperations[id]
         if (op == null || op.repo != repository) {
             throw NoSuchObjectException("no such operation '$id' in repository '$repository'")
         }
@@ -125,13 +198,12 @@ class OperationOrchestrator(val providers: ProviderModule) {
 
     @Synchronized
     fun clearState() {
-        val values = operationsById.values
+        val values = activeOperations.values
         for (exec in values) {
             exec.abort()
             exec.join()
-            operationsByRepo.get(exec.repo)!!.remove(exec)
         }
-        operationsById.clear()
+        activeOperations.clear()
     }
 
     @Synchronized
@@ -187,12 +259,13 @@ class OperationOrchestrator(val providers: ProviderModule) {
         val remoteProvider = providers.remote(r.provider)
         remoteProvider.validateOperation(r, commitId, Operation.Type.PULL, params, metadataOnly)
 
-        operationsById.values.forEach {
-            if (it.repo == repository && it.operation.type == Operation.Type.PULL &&
-                    it.operation.commitId == commitId && it.operation.state == Operation.State.RUNNING) {
-                throw ObjectExistsException("Pull operation ${it.operation.id} already in progress for commit ${it.operation.commitId}")
-            }
+        val inProgress = transaction {
+            providers.metadata.operationInProgress(repository, Operation.Type.PULL, commitId, null)
         }
+        if (inProgress != null) {
+            throw ObjectExistsException("Pull operation $inProgress already in progress for commit $commitId")
+        }
+
 
         try {
             providers.commits.getCommit(repository, commitId)
@@ -205,11 +278,7 @@ class OperationOrchestrator(val providers: ProviderModule) {
             }
         }
 
-        val volumeSet = transaction {
-            providers.metadata.createVolumeSet(repository)
-        }
-
-        return createAndStartOperation(Operation.Type.PULL, repository, volumeSet, r, commitId, params, metadataOnly)
+        return createAndStartOperation(Operation.Type.PULL, repository, r, commitId, params, metadataOnly)
     }
 
     @Synchronized
@@ -232,20 +301,15 @@ class OperationOrchestrator(val providers: ProviderModule) {
             remoteProvider.getCommit(r, commitId, params) // for metadata only must exist in remote as well
         }
 
-        operationsById.values.forEach {
-            if (it.repo == repository && it.operation.type == Operation.Type.PUSH &&
-                    it.operation.commitId == commitId && it.remote.name == remote &&
-                    it.operation.state == Operation.State.RUNNING) {
-                throw ObjectExistsException("Push operation ${it.operation.id} to remote $remote already in progress for commit ${it.operation.commitId}")
-            }
+        val inProgress = transaction {
+            providers.metadata.operationInProgress(repository, Operation.Type.PUSH, commitId, remote)
+        }
+        if (inProgress != null) {
+            throw ObjectExistsException("Push operation $inProgress to remote $remote already in progress for commit $commitId")
         }
 
         remoteProvider.validateOperation(r, commitId, Operation.Type.PUSH, params, metadataOnly)
 
-        val volumeSet = transaction {
-            providers.metadata.createVolumeSet(repository)
-        }
-
-        return createAndStartOperation(Operation.Type.PUSH, repository, volumeSet, r, commitId, params, metadataOnly)
+        return createAndStartOperation(Operation.Type.PUSH, repository, r, commitId, params, metadataOnly)
     }
 }

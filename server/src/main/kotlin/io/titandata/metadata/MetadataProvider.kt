@@ -8,6 +8,7 @@ import io.titandata.exception.NoSuchObjectException
 import io.titandata.exception.ObjectExistsException
 import io.titandata.metadata.table.Commits
 import io.titandata.metadata.table.Operations
+import io.titandata.metadata.table.ProgressEntries
 import io.titandata.metadata.table.Remotes
 import io.titandata.metadata.table.Repositories
 import io.titandata.metadata.table.Tags
@@ -15,6 +16,7 @@ import io.titandata.metadata.table.VolumeSets
 import io.titandata.metadata.table.Volumes
 import io.titandata.models.Commit
 import io.titandata.models.Operation
+import io.titandata.models.ProgressEntry
 import io.titandata.models.Remote
 import io.titandata.models.RemoteParameters
 import io.titandata.models.Repository
@@ -570,5 +572,41 @@ class MetadataProvider(val inMemory: Boolean = true, val databaseName: String = 
         }. map { convertOperation(it) }
                 .firstOrNull()
                 ?: throw NoSuchObjectException("no such operation '$id'")
+    }
+
+    fun operationInProgress(repo: String, type: Operation.Type, commitId: String, remote: String?) : String? {
+        val query = Operations.select {
+            (Operations.repo  eq repo) and (Operations.type eq type) and (Operations.commitId eq commitId) and (Operations.state eq Operation.State.RUNNING)
+        }
+        remote?.let {
+            query.andWhere { Operations.remote eq remote }
+        }
+        return query.map { it[Operations.volumeSet].toString() }
+                .firstOrNull()
+
+    }
+
+    private fun convertProgressEntry(it: ResultRow) = ProgressEntry(
+            id = it[ProgressEntries.id].value,
+            message = it[ProgressEntries.message],
+            percent = it[ProgressEntries.percent],
+            type = it[ProgressEntries.type]
+    )
+
+    // TODO progress entry tests
+    fun addProgressEntry(operation: String, entry: ProgressEntry) : Int {
+        val result = ProgressEntries.insert {
+            it[message] = entry.message
+            it[type] = entry.type
+            it[percent] = entry.percent
+        } get ProgressEntries.id
+        return result.value
+    }
+
+    fun listProgressEntries(operation: String, lastEntry: Int = 0) : List<ProgressEntry> {
+        val uuid = UUID.fromString(operation)
+        return ProgressEntries.select {
+            (ProgressEntries.operation eq uuid) and (ProgressEntries.id greater lastEntry)
+        }.map { convertProgressEntry(it) }
     }
 }

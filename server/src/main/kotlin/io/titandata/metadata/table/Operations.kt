@@ -5,12 +5,13 @@ import io.titandata.metadata.table.Remotes.references
 import io.titandata.models.Operation
 import org.jetbrains.exposed.dao.IntIdTable
 import org.jetbrains.exposed.sql.ReferenceOption
+import org.jetbrains.exposed.sql.Table
 
 /*
  * Operations are additional metadata that can be associated with a volume set while an operation (push or pull)
  * is ongoing.
  */
-object Operations : IntIdTable("commits") {
+object Operations : Table("operations") {
     val volumeSet = uuid("volume_set").references(VolumeSets.id, onDelete = ReferenceOption.CASCADE).primaryKey()
     val repo = varchar("repo", 64)
     val metadataOnly = bool("metadata_only")

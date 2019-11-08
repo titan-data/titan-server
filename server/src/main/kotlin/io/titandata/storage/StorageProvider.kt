@@ -19,7 +19,7 @@ interface StorageProvider {
     fun getVolumeStatus(volumeSet: String, volume: String): RepositoryVolumeStatus
 
     fun createCommit(volumeSet: String, commitId: String, volumeNames : List<String>)
-    fun getCommitStatus(volumeSet: String, commitId: String): CommitStatus
+    fun getCommitStatus(volumeSet: String, commitId: String, volumeNames: List<String>): CommitStatus
     fun deleteCommit(volumeSet: String, commitId: String, volumeNames: List<String>)
 
     fun createVolume(volumeSet: String, volumeName: String)

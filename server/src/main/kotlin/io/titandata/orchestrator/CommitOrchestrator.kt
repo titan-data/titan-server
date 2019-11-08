@@ -60,10 +60,11 @@ class CommitOrchestrator(val providers: ProviderModule) {
         NameUtil.validateRepoName(repo)
         NameUtil.validateCommitId(id)
 
-        val vs = transaction {
-            providers.metadata.getCommit(repo, id).first
+        val (vs, volumes) = transaction {
+            val vs = providers.metadata.getCommit(repo, id).first
+            Pair(vs, providers.metadata.listVolumes(vs).map { it.name })
         }
-        return providers.storage.getCommitStatus(repo, vs, id)
+        return providers.storage.getCommitStatus(vs, id, volumes)
     }
 
     fun listCommits(repo: String, tags: List<String>?): List<Commit> {
@@ -76,13 +77,8 @@ class CommitOrchestrator(val providers: ProviderModule) {
         NameUtil.validateRepoName(repo)
         NameUtil.validateCommitId(commit)
 
-        val activeVolumeSet = transaction {
-            providers.metadata.getActiveVolumeSet(repo)
-        }
-        val commitVolumeSet = transaction {
-            val vs = providers.metadata.getCommit(repo, commit).first
+        transaction {
             providers.metadata.markCommitDeleting(repo, commit)
-            vs
         }
         providers.reaper.signal()
     }
@@ -91,26 +87,26 @@ class CommitOrchestrator(val providers: ProviderModule) {
         NameUtil.validateRepoName(repo)
         NameUtil.validateCommitId(commit)
 
-        val activeVolumeSet = transaction {
-            providers.metadata.getActiveVolumeSet(repo)
-        }
-        val newVolumeSet = transaction {
-            providers.metadata.createVolumeSet(repo)
-        }
-        val volumes = transaction {
-            providers.metadata.listVolumes(activeVolumeSet)
-        }
-        val commitVolumeSet = transaction {
-            providers.metadata.getCommit(repo, commit).first
-        }
-        providers.storage.checkoutCommit(repo, activeVolumeSet, newVolumeSet, commitVolumeSet, commit)
-        transaction {
+        val (sourceVolumeSet, newVolumeSet) = transaction {
+            val vs = providers.metadata.getCommit(repo, commit).first
+            val newVolumeSet = providers.metadata.createVolumeSet(repo, commit)
+            val volumes = providers.metadata.listVolumes(vs)
             for (v in volumes) {
                 providers.metadata.createVolume(newVolumeSet, v)
             }
-            providers.metadata.activateVolumeSet(repo, newVolumeSet)
-            providers.metadata.markVolumeSetDeleting(activeVolumeSet)
+            Pair(vs, newVolumeSet)
         }
+
+        val volumes = transaction {
+            providers.metadata.listVolumes(newVolumeSet).map { it.name }
+        }
+
+        providers.storage.cloneVolumeSet(sourceVolumeSet, commit, newVolumeSet, volumes)
+
+        transaction {
+            providers.metadata.activateVolumeSet(repo, newVolumeSet)
+        }
+        providers.reaper.signal()
     }
 
     fun updateCommit(repo: String, commit: Commit) {

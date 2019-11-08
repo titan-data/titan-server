@@ -36,7 +36,7 @@ class VolumeOrchestrator(val providers: ProviderModule) {
             providers.metadata.createVolume(vs, vol)
             vs
         }
-        providers.storage.createVolume(repo, vs, vol)
+        providers.storage.createVolume(vs, vol.name)
         return convertVolume(repo, vol)
     }
 
@@ -46,9 +46,9 @@ class VolumeOrchestrator(val providers: ProviderModule) {
 
         transaction {
             val vs = providers.metadata.getActiveVolumeSet(repo)
-            providers.metadata.deleteVolume(vs, name)
+            providers.metadata.markVolumeDeleting(vs, name)
         }
-        providers.storage.deleteVolume(repo, getVolumeSet(repo), name)
+        providers.reaper.signal()
     }
 
     fun getVolume(repo: String, name: String): Volume {
@@ -64,13 +64,11 @@ class VolumeOrchestrator(val providers: ProviderModule) {
     fun mountVolume(repo: String, name: String) {
         NameUtil.validateRepoName(repo)
         NameUtil.validateVolumeName(name)
-        val vs = transaction {
-            providers.metadata.getActiveVolumeSet(repo)
+        val (vs, vol) = transaction {
+            val vs = providers.metadata.getActiveVolumeSet(repo)
+            Pair(vs, providers.metadata.getVolume(vs, name))
         }
-        val vol = transaction {
-            providers.metadata.getVolume(vs, name)
-        }
-        providers.storage.mountVolume(repo, vs, vol)
+        providers.storage.mountVolume(vs, vol.name)
     }
 
     fun unmountVolume(repo: String, name: String) {

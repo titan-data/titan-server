@@ -29,10 +29,10 @@ import org.slf4j.LoggerFactory
  * storage pool. The layout is pretty straightforward:
  *
  *      pool
- *      pool/volumeSet              Collection of volumes
- *      pool/volumeSet@commit       Recursive snapshot of a particular commit
- *      pool/volumeSet/volume       Volume within a volume set
- *
+ *      pool/data                       Namespace for all volumesets
+ *      pool/data/volumeSet             Collection of volumes
+ *      pool/data/volumeSet@commit      Recursive snapshot of a particular commit
+ *      pool/data/volumeSet/volume      Volume within a volume set
  */
 class ZfsStorageProvider(
     val poolName: String = "titan",
@@ -83,7 +83,17 @@ class ZfsStorageProvider(
     }
 
     override fun getVolumeStatus(volumeSet: String, volume: String): RepositoryVolumeStatus {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        val output = executor.exec("zfs", "list", "-pHo",
+                "logicalreferenced,referenced", "$poolName/data/$volumeSet/$volume")
+        val regex = "([^\t]+)\t([^\t]+)$".toRegex()
+            val result = regex.find(output)
+                val volumeLogical = result!!.groupValues.get(1).toLong()
+                val volumeActual = result!!.groupValues.get(2).toLong()
+        return RepositoryVolumeStatus(
+                name = volume,
+                logicalSize = volumeLogical,
+                actualSize = volumeActual
+        )
     }
 
     /*
@@ -94,8 +104,25 @@ class ZfsStorageProvider(
         executor.exec("zfs", "snapshot", "-r", "$poolName/data/$volumeSet@$commitId")
     }
 
-    override fun getCommitStatus(volumeSet: String, commitId: String): CommitStatus {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+    override fun getCommitStatus(volumeSet: String, commitId: String, volumeNames: List<String>): CommitStatus {
+        val output = executor.exec("zfs", "list", "-Hpo", "name,logicalreferenced,referenced,used", "-t",
+                "snapshot", "-r", "$poolName/data/$volumeSet")
+
+        var logicalSize = 0L
+        var actualSize = 0L
+        var uniqueSize = 0L
+
+        for (volume in volumeNames) {
+            val output = executor.exec("zfs", "list", "-Hpo", "logicalreferenced,referenced,used", "-t",
+                    "snapshot", "$poolName/data/$volumeSet/$volume@$commitId")
+            val regex = "^(.*)\t(.*)\t(.*)$".toRegex(RegexOption.MULTILINE)
+            val result = regex.find(output) ?: continue
+            logicalSize += result.groupValues.get(1).toLong()
+            actualSize += result.groupValues.get(2).toLong()
+            uniqueSize += result.groupValues.get(3).toLong()
+        }
+
+        return CommitStatus(logicalSize = logicalSize, actualSize = actualSize, uniqueSize = uniqueSize)
     }
 
     /*
@@ -106,25 +133,31 @@ class ZfsStorageProvider(
         executor.exec("zfs", "destroy", "-rd", "$poolName/data/$volumeSet@$commitId")
     }
 
-    /*
+    /**
      * Create a new volume. Not much to do here, simply create a new dataset within the volume set.
      */
     override fun createVolume(volumeSet: String, volumeName: String) {
         executor.exec("zfs", "create", "$poolName/data/$volumeSet/$volumeName")
     }
 
+    /**
+     * Delete a volume. This should only be called when the volume has been unmounted, and the
+     * repository is about to be destroyed. It is invalid to continue to use a repository
+     * that has had volumes removed in the middle of its lifecycle.
+     */
     override fun deleteVolume(volumeSet: String, volumeName: String) {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        executor.exec("zfs", "destroy", "$poolName/data/$volumeSet/$volumeName")
+        executor.exec("rmdir", getVolumeMountpoint(volumeSet, volumeName))
     }
 
     override fun getVolumeMountpoint(volumeSet: String, volumeName: String): String {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        return "/var/lib/$poolName/$volumeSet/$volumeName"
     }
 
     override fun mountVolume(volumeSet: String, volumeName: String) {
-        executor.exec("mkdir", "-p", "/var/lib/$poolName/$volumeSet/$volumeName")
+        executor.exec("mkdir", "-p", getVolumeMountpoint(volumeSet, volumeName))
         executor.exec("mount", "-t", "zfs", "$poolName/data/$volumeSet/$volumeName",
-                "/var/lib/$poolName/$volumeSet/$volumeName")
+                getVolumeMountpoint(volumeSet, volumeName))
     }
 
     /*
@@ -134,7 +167,7 @@ class ZfsStorageProvider(
      */
     override fun unmountVolume(volumeSet: String, volumeName: String) {
         try {
-            executor.exec("umount", "/var/lib/$poolName/$volumeSet/$volumeName")
+            executor.exec("umount", getVolumeMountpoint(volumeSet, volumeName))
         } catch (e: CommandException) {
             if ("not mounted" in e.output) {
                 return // Ignore

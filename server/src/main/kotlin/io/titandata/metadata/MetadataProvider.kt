@@ -7,6 +7,7 @@ import com.zaxxer.hikari.HikariDataSource
 import io.titandata.exception.NoSuchObjectException
 import io.titandata.exception.ObjectExistsException
 import io.titandata.metadata.table.Commits
+import io.titandata.metadata.table.Operations
 import io.titandata.metadata.table.Remotes
 import io.titandata.metadata.table.Repositories
 import io.titandata.metadata.table.Tags
@@ -19,6 +20,7 @@ import io.titandata.models.RemoteParameters
 import io.titandata.models.Repository
 import io.titandata.models.Volume
 import io.titandata.serialization.ModelTypeAdapters
+import io.titandata.storage.OperationData
 import java.util.UUID
 import org.jetbrains.exposed.exceptions.ExposedSQLException
 import org.jetbrains.exposed.sql.Database
@@ -516,5 +518,57 @@ class MetadataProvider(val inMemory: Boolean = true, val databaseName: String = 
         val count = Commits.deleteWhere {
             (Commits.id eq commit.id)
         }
+    }
+
+    // TODO tests for operations
+
+    fun createOperation(repo: String, volumeSet: String, data : OperationData) {
+        Operations.insert {
+            it[Operations.volumeSet] = UUID.fromString(volumeSet)
+            it[Operations.repo] = repo
+            it[metadataOnly] = data.metadataOnly
+            it[remoteParameters] = gson.toJson(data.params)
+            it[remote] = data.operation.remote
+            it[commitId] = data.operation.commitId
+            it[type] = data.operation.type
+            it[state] = data.operation.state
+        }
+    }
+
+    fun deleteOperation(volumeSet: String) {
+        val uuid = UUID.fromString(volumeSet)
+        val count = Operations.deleteWhere {
+            Operations.volumeSet eq uuid
+        }
+        if (count == 0) {
+            throw NoSuchObjectException("no such operation '$volumeSet")
+        }
+    }
+
+    private fun convertOperation(it: ResultRow) = OperationData(
+            metadataOnly = it[Operations.metadataOnly],
+            params = gson.fromJson(it[Operations.remoteParameters], RemoteParameters::class.java),
+            operation = Operation(
+                    id = it[Operations.volumeSet].toString(),
+                    remote = it[Operations.remote],
+                    commitId = it[Operations.commitId],
+                    type = it[Operations.type],
+                    state = it[Operations.state]
+            )
+    )
+
+    fun listOperations(repo: String) : List<OperationData> {
+        return Operations.select {
+            Operations.repo eq repo
+        }.map { convertOperation(it) }
+    }
+
+    fun getOperation(id: String) : OperationData {
+        val uuid = UUID.fromString(id)
+        return Operations.select {
+            Operations.volumeSet eq uuid
+        }. map { convertOperation(it) }
+                .firstOrNull()
+                ?: throw NoSuchObjectException("no such operation '$id'")
     }
 }

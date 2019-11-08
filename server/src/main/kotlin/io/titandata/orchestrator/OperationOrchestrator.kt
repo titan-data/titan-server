@@ -48,20 +48,14 @@ class OperationOrchestrator(val providers: ProviderModule) {
         val log = LoggerFactory.getLogger(OperationOrchestrator::class.java)
     }
 
-    private val operationsByRepo: MutableMap<String, MutableList<OperationExecutor>> = mutableMapOf()
     private val operationsById: MutableMap<String, OperationExecutor> = mutableMapOf()
 
     internal fun addOperation(exec: OperationExecutor) {
         operationsById.put(exec.operation.id, exec)
-        if (!operationsByRepo.contains(exec.repo)) {
-            operationsByRepo[exec.repo] = mutableListOf()
-        }
-        operationsByRepo[exec.repo]!!.add(exec)
     }
 
     internal fun removeOperation(exec: OperationExecutor) {
         operationsById.remove(exec.operation.id)
-        operationsByRepo.get(exec.repo)!!.remove(exec)
     }
 
     internal fun buildOperation(type: Operation.Type, volumeSet: String, remote: String, commitId: String): Operation {
@@ -114,7 +108,7 @@ class OperationOrchestrator(val providers: ProviderModule) {
         log.debug("loading operation state")
         transaction {
             for (r in providers.metadata.listRepositories()) {
-                for (op in providers.storage.listOperations(r.name)) {
+                for (op in providers.metadata.listOperations(r.name)) {
                     val exec = OperationExecutor(providers, op.operation, r.name,
                             getRemote(r.name, op.operation.remote), op.params, true, op.metadataOnly)
                     addOperation(exec)
@@ -154,19 +148,18 @@ class OperationOrchestrator(val providers: ProviderModule) {
         return ret
     }
 
-    @Synchronized
     fun listOperations(repository: String): List<Operation> {
-        transaction {
-            providers.metadata.getRepository(repository)
+        NameUtil.validateRepoName(repository)
+
+        return transaction {
+            providers.metadata.listOperations(repository).map { it.operation }
         }
-        val operations = operationsByRepo[repository] ?: mutableListOf()
-        return operations.map { op -> op.operation }
     }
 
-    @Synchronized
     fun getOperation(repository: String, id: String): Operation {
-        val op = getExecutor(repository, id)
-        return op.operation
+        return transaction {
+            providers.metadata.getOperation(id).operation
+        }
     }
 
     @Synchronized

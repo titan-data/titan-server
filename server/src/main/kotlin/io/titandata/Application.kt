@@ -132,7 +132,7 @@ internal fun ApplicationCompressionConfiguration(): Compression.Configuration.()
 fun Application.main() {
     val providers = ProviderModule(System.getenv("TITAN_POOL") ?: "titan", false)
     providers.metadata.init()
-    providers.storage.load()
+    Thread(providers.reaper).start()
     providers.operations.loadState()
     mainProvider(providers)
 }

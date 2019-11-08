@@ -17,5 +17,5 @@ object Operations : Table("operations") {
     val remote = varchar("remote", 64)
     val commitId = varchar("commit_id", 64)
     val type = enumerationByName("type", 4, Operation.Type::class)
-    val state = enumerationByName("type", 16, Operation.State::class)
+    val state = enumerationByName("state", 16, Operation.State::class)
 }

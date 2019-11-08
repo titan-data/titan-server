@@ -110,6 +110,17 @@ class RemoteMetadataTest : StringSpec() {
             s3.bucket shouldBe "bucket"
         }
 
+        "update remote to conflicting name fails" {
+            shouldThrow<ObjectExistsException> {
+                transaction {
+                    md.createRepository(Repository(name = "foo", properties = mapOf()))
+                    md.addRemote("foo", NopRemote(name = "one"))
+                    md.addRemote("foo", NopRemote(name = "two"))
+                    md.updateRemote("foo", "one", NopRemote(name = "two"))
+                }
+            }
+        }
+
         "rename remote succeeds" {
             val remote = transaction {
                 md.createRepository(Repository(name = "foo", properties = mapOf()))

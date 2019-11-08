@@ -26,6 +26,7 @@ import io.titandata.storage.OperationData
 import java.util.UUID
 import org.jetbrains.exposed.exceptions.ExposedSQLException
 import org.jetbrains.exposed.sql.Database
+import org.jetbrains.exposed.sql.Op
 import org.jetbrains.exposed.sql.ResultRow
 import org.jetbrains.exposed.sql.SchemaUtils
 import org.jetbrains.exposed.sql.SortOrder
@@ -33,6 +34,7 @@ import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.inList
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.andWhere
+import org.jetbrains.exposed.sql.compoundOr
 import org.jetbrains.exposed.sql.deleteAll
 import org.jetbrains.exposed.sql.deleteWhere
 import org.jetbrains.exposed.sql.insert
@@ -88,12 +90,14 @@ class MetadataProvider(val inMemory: Boolean = true, val databaseName: String = 
         }
 
         transaction {
-            SchemaUtils.createMissingTablesAndColumns(Repositories, Remotes, VolumeSets, Volumes, Commits, Tags)
+            SchemaUtils.createMissingTablesAndColumns(Repositories, Remotes, VolumeSets, Volumes, Commits, Tags,
+                    Operations, ProgressEntries)
         }
     }
 
     fun clear() {
         transaction {
+            Operations.deleteAll()
             Commits.deleteAll()
             Volumes.deleteAll()
             VolumeSets.deleteAll()
@@ -208,7 +212,6 @@ class MetadataProvider(val inMemory: Boolean = true, val databaseName: String = 
     }
 
     fun createVolumeSet(repoName: String, sourceCommit: String? = null, activate: Boolean = false): String {
-        // TODO tests
         val sourceId = if (sourceCommit == null) {
             null
         } else {
@@ -248,7 +251,7 @@ class MetadataProvider(val inMemory: Boolean = true, val databaseName: String = 
         }
         if (count == 0) {
             // This should never happen, not a user-visible exception
-            throw Exception("no such volume set '$volumeSet' in repository '$repoName'")
+            throw IllegalArgumentException("no such volume set '$volumeSet' in repository '$repoName'")
         }
     }
 
@@ -410,36 +413,81 @@ class MetadataProvider(val inMemory: Boolean = true, val databaseName: String = 
         return null
     }
 
-    fun listCommits(repo: String, tags: List<String>? = null): List<Commit> {
-        val query = if (!tags.isNullOrEmpty()) {
-            val q = (Commits innerJoin Tags)
-                    .slice(Commits.guid, Commits.volumeSet, Commits.metadata)
-                    .select { (Commits.id eq Tags.commit) and (Commits.repo eq repo) and (Commits.state eq VolumeState.ACTIVE) }
+    fun tagsMatch(commit: Commit, existCheck: List<String>, matchCheck: Map<String, String>) : Boolean {
+        @Suppress("UNCHECKED_CAST")
+        val tags = commit.properties["tags"] as Map<String, String>? ?: return false
 
-            val existList = mutableListOf<String>()
+        for (key in existCheck) {
+            if (!tags.containsKey(key)) {
+                return false
+            }
+        }
+
+        for ((key, value) in matchCheck) {
+            if (tags[key] != value) {
+                return false
+            }
+        }
+
+        return true
+    }
+
+    fun listCommits(repo: String, tags: List<String>? = null): List<Commit> {
+        // Build the search criteria
+        val existCheck = mutableListOf<String>()
+        val matchCheck = mutableMapOf<String, String>()
+        tags?.let {
             for (tag in tags) {
                 if (tag.contains("=")) {
                     val key = tag.substringBefore("=")
                     val value = tag.substringAfter("=")
-                    q.andWhere {
-                        (Tags.key eq key) and (Tags.value eq value)
-                    }
+                    matchCheck[key] = value
                 } else {
-                    existList.add(tag)
+                    existCheck.add(tag)
                 }
             }
-            if (existList.size != 0) {
-                q.andWhere {
-                    Tags.key inList existList
-                }
+        }
+
+        val query = if (!tags.isNullOrEmpty()) {
+            val q = (Commits innerJoin Tags)
+                    .slice(Commits.guid, Commits.volumeSet, Commits.metadata, Commits.timestamp)
+                    .select { ((Commits.id eq Tags.commit) and (Commits.repo eq repo) and (Commits.state eq VolumeState.ACTIVE)) }
+
+            /*
+             * For filtering by multiple tags, we want to avoid complex temporary tables, etc. So we instead find tags
+             * that match any such filter, and then post-process the list to do the AND query. This will get more
+             * complicated if we want to do pagination, etc.
+             */
+            val conditions = mutableListOf<Op<Boolean>>()
+            if (existCheck.size != 0) {
+                conditions.add(Op.build {
+                    Tags.key inList existCheck
+                })
             }
+
+            for ((key, value) in matchCheck) {
+                conditions.add(Op.build {
+                    (Tags.key eq key) and (Tags.value eq value)
+                })
+            }
+
+            q.andWhere {
+                conditions.compoundOr()
+            }.withDistinct(true)
             q
         } else {
             Commits.select { (Commits.repo eq repo) and (Commits.state eq VolumeState.ACTIVE) }
         }
 
-        return query.orderBy(Commits.timestamp, SortOrder.DESC)
+        val result = query.orderBy(Commits.timestamp, SortOrder.DESC)
                 .map { convertCommit(it) }
+
+        if (tags.isNullOrEmpty()) {
+            return result
+        } else {
+            return result.filter { tagsMatch(it, existCheck, matchCheck) }
+        }
+
     }
 
     data class CommitInfo(

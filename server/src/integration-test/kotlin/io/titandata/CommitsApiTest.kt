@@ -220,7 +220,7 @@ class CommitsApiTest : StringSpec() {
         "delete commit succeeds" {
             val guid = transaction {
                 providers.metadata.createRepository(Repository(name = "foo", properties = emptyMap()))
-                providers.metadata.createVolumeSet("foo", true)
+                providers.metadata.createVolumeSet("foo", null, true)
             }
             every { executor.exec("zfs", "list", "-Ho", "name,defer_destroy", "-t", "snapshot", "-d", "2", "test/repo/foo") } returns "test/repo/foo/$guid@hash\toff"
             every { executor.exec("zfs", "destroy", "-rd", "test/repo/foo/$guid@hash") } returns ""
@@ -242,7 +242,7 @@ class CommitsApiTest : StringSpec() {
         "delete non-existent commit returns no such object" {
             transaction {
                 providers.metadata.createRepository(Repository(name = "foo", properties = emptyMap()))
-                providers.metadata.createVolumeSet("foo", true)
+                providers.metadata.createVolumeSet("foo", null, true)
             }
             every { executor.exec(*anyVararg()) } returns ""
             with(engine.handleRequest(HttpMethod.Delete, "/v1/repositories/foo/commits/hash")) {
@@ -256,7 +256,7 @@ class CommitsApiTest : StringSpec() {
         "create commit succeeds" {
             val guid = transaction {
                 providers.metadata.createRepository(Repository(name = "foo", properties = emptyMap()))
-                providers.metadata.createVolumeSet("foo", true)
+                providers.metadata.createVolumeSet("foo", null, true)
             }
             every { executor.exec("zfs", "list", "-Ho", "name,defer_destroy", "-t", "snapshot", "-d", "2", "test/repo/foo") } returns ""
             every { executor.exec("zfs", "snapshot", "-r", "-o", "io.titan-data:metadata={\"a\":\"b\"}", "test/repo/foo/$guid@hash") } returns ""
@@ -288,7 +288,7 @@ class CommitsApiTest : StringSpec() {
         "checkout commit succeeds" {
             val guid = transaction {
                 providers.metadata.createRepository(Repository(name = "foo", properties = emptyMap()))
-                providers.metadata.createVolumeSet("foo", true)
+                providers.metadata.createVolumeSet("foo", null, true)
             }
             every { executor.exec(*anyVararg()) } returns ""
             every { executor.exec("zfs", "list", "-Ho", "name,defer_destroy", "-t", "snapshot",

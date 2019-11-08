@@ -157,7 +157,6 @@ class MetadataProvider(val inMemory: Boolean = true, val databaseName: String = 
     }
 
     fun addRemote(repoName: String, remote: Remote) {
-        getRepository(repoName) // check existence
         try {
             Remotes.insert {
                 it[name] = remote.name
@@ -170,7 +169,6 @@ class MetadataProvider(val inMemory: Boolean = true, val databaseName: String = 
     }
 
     fun getRemote(repoName: String, remoteName: String): Remote {
-        getRepository(repoName) // check existence
         return Remotes.select {
             (Remotes.name eq remoteName) and (Remotes.repo eq repoName)
         }.map { convertRemote(it) }
@@ -179,14 +177,12 @@ class MetadataProvider(val inMemory: Boolean = true, val databaseName: String = 
     }
 
     fun listRemotes(repoName: String): List<Remote> {
-        getRepository(repoName) // check existence
         return Remotes.select {
             Remotes.repo eq repoName
         }.map { convertRemote(it) }
     }
 
     fun removeRemote(repoName: String, remoteName: String) {
-        getRepository(repoName) // check existence
         val count = Remotes.deleteWhere {
             (Remotes.name eq remoteName) and (Remotes.repo eq repoName)
         }
@@ -196,7 +192,6 @@ class MetadataProvider(val inMemory: Boolean = true, val databaseName: String = 
     }
 
     fun updateRemote(repoName: String, remoteName: String, remote: Remote) {
-        getRepository(repoName) // check existence
         try {
             val count = Remotes.update({
                 (Remotes.name eq remoteName) and (Remotes.repo eq repoName)
@@ -212,9 +207,7 @@ class MetadataProvider(val inMemory: Boolean = true, val databaseName: String = 
         }
     }
 
-    fun createVolumeSet(repoName: String, sourceCommit: String?, activate: Boolean = false): String {
-        getRepository(repoName)
-
+    fun createVolumeSet(repoName: String, sourceCommit: String? = null, activate: Boolean = false): String {
         // TODO tests
         val sourceId = if (sourceCommit == null) {
             null
@@ -236,7 +229,6 @@ class MetadataProvider(val inMemory: Boolean = true, val databaseName: String = 
     }
 
     fun getActiveVolumeSet(repoName: String): String {
-        getRepository(repoName)
         return VolumeSets.select {
             (VolumeSets.repo eq repoName) and (VolumeSets.state eq VolumeState.ACTIVE)
         }.map { it[VolumeSets.id].toString() }
@@ -244,7 +236,6 @@ class MetadataProvider(val inMemory: Boolean = true, val databaseName: String = 
     }
 
     fun activateVolumeSet(repoName: String, volumeSet: String) {
-        getRepository(repoName)
         VolumeSets.update({
             (VolumeSets.repo eq repoName) and (VolumeSets.state eq VolumeState.ACTIVE)
         }) {

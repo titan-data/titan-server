@@ -14,6 +14,7 @@ class RemoteOrchestrator(val providers: ProviderModule) {
     fun listRemotes(repo: String): List<Remote> {
         NameUtil.validateRepoName(repo)
         return transaction {
+            providers.metadata.getRepository(repo)
             providers.metadata.listRemotes(repo)
         }
     }
@@ -22,6 +23,7 @@ class RemoteOrchestrator(val providers: ProviderModule) {
         NameUtil.validateRepoName(repo)
         NameUtil.validateRemoteName(remote.name)
         transaction {
+            providers.metadata.getRepository(repo)
             providers.metadata.addRemote(repo, remote)
         }
     }
@@ -30,6 +32,7 @@ class RemoteOrchestrator(val providers: ProviderModule) {
         NameUtil.validateRepoName(repo)
         NameUtil.validateRemoteName(remoteName)
         return transaction {
+            providers.metadata.getRepository(repo)
             providers.metadata.getRemote(repo, remoteName)
         }
     }
@@ -38,6 +41,7 @@ class RemoteOrchestrator(val providers: ProviderModule) {
         NameUtil.validateRepoName(repo)
         NameUtil.validateRemoteName(remoteName)
         transaction {
+            providers.metadata.getRepository(repo)
             providers.metadata.removeRemote(repo, remoteName)
         }
     }
@@ -47,6 +51,7 @@ class RemoteOrchestrator(val providers: ProviderModule) {
         NameUtil.validateRemoteName(remoteName)
         NameUtil.validateRemoteName(remote.name)
         transaction {
+            providers.metadata.getRepository(repo)
             providers.metadata.updateRemote(repo, remoteName, remote)
         }
     }

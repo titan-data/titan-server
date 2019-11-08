@@ -126,7 +126,7 @@ class RepositoriesApiTest : StringSpec() {
         "get repository status succeeds" {
             val guid = transaction {
                 providers.metadata.createRepository(Repository(name = "foo", properties = emptyMap()))
-                providers.metadata.createVolumeSet("foo", true)
+                providers.metadata.createVolumeSet("foo", null, true)
             }
             every { executor.exec(*anyVararg()) } returns ""
             every { executor.exec("zfs", "list", "-Ho", "name,defer_destroy,io.titan-data:metadata", "-t", "snapshot",

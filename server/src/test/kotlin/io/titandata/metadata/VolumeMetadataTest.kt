@@ -26,7 +26,7 @@ class VolumeMetadataTest : StringSpec() {
     fun createVolumeSet(): String {
         return transaction {
             md.createRepository(Repository(name = "foo", properties = emptyMap()))
-            md.createVolumeSet("foo", true)
+            md.createVolumeSet("foo", null, true)
         }
     }
 

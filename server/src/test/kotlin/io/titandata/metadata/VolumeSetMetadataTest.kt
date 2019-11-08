@@ -32,18 +32,10 @@ class VolumeSetMetadataTest : StringSpec() {
             }
         }
 
-        "create volume set for non-existent repo fails" {
-            shouldThrow<NoSuchObjectException> {
-                transaction {
-                    md.createVolumeSet("foo")
-                }
-            }
-        }
-
         "get active volumeset returns vs if activate" {
             transaction {
                 md.createRepository(Repository(name = "foo", properties = mapOf()))
-                val vs = md.createVolumeSet("foo", true)
+                val vs = md.createVolumeSet("foo", null, true)
                 md.getActiveVolumeSet("foo") shouldBe vs
             }
         }
@@ -51,8 +43,8 @@ class VolumeSetMetadataTest : StringSpec() {
         "activate volumeset marks other volumeset inactive" {
             transaction {
                 md.createRepository(Repository(name = "foo", properties = mapOf()))
-                md.createVolumeSet("foo", true)
-                val vs = md.createVolumeSet("foo", false)
+                md.createVolumeSet("foo", null, true)
+                val vs = md.createVolumeSet("foo", null, false)
                 md.activateVolumeSet("foo", vs)
                 md.getActiveVolumeSet("foo") shouldBe vs
             }
@@ -69,7 +61,7 @@ class VolumeSetMetadataTest : StringSpec() {
         "mark active volumeset deleting makes it no longer active" {
             transaction {
                 md.createRepository(Repository(name = "foo", properties = mapOf()))
-                val vs = md.createVolumeSet("foo", true)
+                val vs = md.createVolumeSet("foo", null, true)
                 md.markVolumeSetDeleting(vs)
                 // Don't really have a way to verify this other than checking this fails
                 shouldThrow<NullPointerException> {
@@ -81,7 +73,7 @@ class VolumeSetMetadataTest : StringSpec() {
         "deleting volume set shows up in list" {
             transaction {
                 md.createRepository(Repository(name = "foo", properties = mapOf()))
-                val vs = md.createVolumeSet("foo", true)
+                val vs = md.createVolumeSet("foo", null, true)
                 md.markVolumeSetDeleting(vs)
                 val deleting = md.listDeletingVolumeSets()
                 deleting.size shouldBe 1
@@ -92,7 +84,7 @@ class VolumeSetMetadataTest : StringSpec() {
         "volume set deletion succeeds" {
             transaction {
                 md.createRepository(Repository(name = "foo", properties = mapOf()))
-                val vs = md.createVolumeSet("foo", true)
+                val vs = md.createVolumeSet("foo", null, true)
                 md.deleteVolumeSet(vs)
                 // Don't really have a way to verify this other than checking this fails
                 shouldThrow<NullPointerException> {

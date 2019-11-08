@@ -23,7 +23,7 @@ class CommitMetadataTest : StringSpec() {
         md.clear()
         transaction {
             md.createRepository(Repository(name = "foo", properties = emptyMap()))
-            vs = md.createVolumeSet("foo", true)
+            vs = md.createVolumeSet("foo", null, true)
         }
     }
 
@@ -106,18 +106,6 @@ class CommitMetadataTest : StringSpec() {
             shouldThrow<NoSuchObjectException> {
                 transaction {
                     md.updateCommit("foo", Commit(id = "id", properties = emptyMap()))
-                }
-            }
-        }
-
-        "delete commit succeeds" {
-            transaction {
-                md.createCommit("foo", vs, Commit(id = "id", properties = emptyMap()))
-                md.deleteCommit("foo", "id")
-            }
-            shouldThrow<NoSuchObjectException> {
-                transaction {
-                    md.getCommit("foo", "id")
                 }
             }
         }

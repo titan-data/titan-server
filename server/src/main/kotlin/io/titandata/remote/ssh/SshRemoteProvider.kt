@@ -182,10 +182,10 @@ class SshRemoteProvider(val providers: ProviderModule) : BaseRemoteProvider() {
         }
     }
 
-    override fun syncVolume(operation: OperationExecutor, data: Any?, volume: Volume, basePath: String, scratchPath: String) {
+    override fun syncVolume(operation: OperationExecutor, data: Any?, volume: Volume, path: String, scratchPath: String) {
         val remote = operation.remote as SshRemote
 
-        val localPath = "$basePath/${volume.name}/"
+        val localPath = "$path/"
         val remoteDir = "${remote.path}/${operation.operation.commitId}/data/${volume.name}"
         val remotePath = "${remote.username}@${remote.address}:$remoteDir/"
         val src = when (operation.operation.type) {

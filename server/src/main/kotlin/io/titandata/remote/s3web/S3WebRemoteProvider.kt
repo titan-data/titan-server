@@ -77,11 +77,11 @@ class S3WebRemoteProvider(val providers: ProviderModule) : BaseRemoteProvider() 
                 ?: throw NoSuchObjectException("no such commit $commitId in remote '${remote.name}'")
     }
 
-    override fun pushVolume(operation: OperationExecutor, data: Any?, volume: Volume, basePath: String, scratchPath: String) {
+    override fun pushVolume(operation: OperationExecutor, data: Any?, volume: Volume, path: String, scratchPath: String) {
         throw IllegalStateException("push operations are not supported for s3web provider")
     }
 
-    override fun pullVolume(operation: OperationExecutor, data: Any?, volume: Volume, basePath: String, scratchPath: String) {
+    override fun pullVolume(operation: OperationExecutor, data: Any?, volume: Volume, path: String, scratchPath: String) {
         val remote = operation.remote as S3WebRemote
         val desc = volume.properties?.get("path")?.toString() ?: volume.name
         val commitId = operation.operation.commitId
@@ -89,10 +89,10 @@ class S3WebRemoteProvider(val providers: ProviderModule) : BaseRemoteProvider() 
         operation.addProgress(ProgressEntry(type = ProgressEntry.Type.START,
                 message = "Downloading archive for $desc"))
 
-        val path = "$commitId/${volume.name}.tar.gz"
-        val response = getFile(remote, path)
+        val archivePath = "$commitId/${volume.name}.tar.gz"
+        val response = getFile(remote, archivePath)
         if (!response.isSuccessful) {
-            throw IOException("failed to get ${remote.url}/$path, error code ${response.code}")
+            throw IOException("failed to get ${remote.url}/$archivePath, error code ${response.code}")
         }
         val archive = "$scratchPath/${volume.name}.tar.gz"
         val archiveFile = File(archive)
@@ -108,7 +108,7 @@ class S3WebRemoteProvider(val providers: ProviderModule) : BaseRemoteProvider() 
                 message = "Extracting archive for $desc"))
         val args = arrayOf("tar", "xzf", archive)
         val process = ProcessBuilder()
-                .directory(File("$basePath/${volume.name}"))
+                .directory(File(path))
                 .command(*args)
                 .start()
         providers.commandExecutor.exec(process, args.joinToString())

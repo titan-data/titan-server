@@ -206,7 +206,7 @@ class S3RemoteProvider(val providers: ProviderModule) : BaseRemoteProvider() {
         return S3Operation(this, operation)
     }
 
-    override fun pushVolume(operation: OperationExecutor, data: Any?, volume: Volume, basePath: String, scratchPath: String) {
+    override fun pushVolume(operation: OperationExecutor, data: Any?, volume: Volume, path: String, scratchPath: String) {
         data as S3Operation
 
         val desc = getVolumeDesc(volume)
@@ -216,7 +216,7 @@ class S3RemoteProvider(val providers: ProviderModule) : BaseRemoteProvider() {
         val archive = "$scratchPath/${volume.name}.tar.gz"
         val args = arrayOf("tar", "czf", archive, ".")
         val process = ProcessBuilder()
-                .directory(File("$basePath/${volume.name}"))
+                .directory(File(path))
                 .command(*args)
                 .start()
         providers.commandExecutor.exec(process, args.joinToString())
@@ -228,7 +228,7 @@ class S3RemoteProvider(val providers: ProviderModule) : BaseRemoteProvider() {
         operation.addProgress(ProgressEntry(type = ProgressEntry.Type.END))
     }
 
-    override fun pullVolume(operation: OperationExecutor, data: Any?, volume: Volume, basePath: String, scratchPath: String) {
+    override fun pullVolume(operation: OperationExecutor, data: Any?, volume: Volume, path: String, scratchPath: String) {
         data as S3Operation
         val desc = getVolumeDesc(volume)
         operation.addProgress(ProgressEntry(type = ProgressEntry.Type.START,
@@ -247,7 +247,7 @@ class S3RemoteProvider(val providers: ProviderModule) : BaseRemoteProvider() {
                 message = "Extracting archive for $desc"))
         val args = arrayOf("tar", "xzf", archive)
         val process = ProcessBuilder()
-                .directory(File("$basePath/${volume.name}"))
+                .directory(File(path))
                 .command(*args)
                 .start()
         providers.commandExecutor.exec(process, args.joinToString())

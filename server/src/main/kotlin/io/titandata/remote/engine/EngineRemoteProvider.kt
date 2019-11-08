@@ -329,10 +329,10 @@ class EngineRemoteProvider(val providers: ProviderModule) : BaseRemoteProvider()
         operation.addProgress(ProgressEntry(type = ProgressEntry.Type.END))
     }
 
-    override fun syncVolume(operation: OperationExecutor, data: Any?, volume: Volume, basePath: String, scratchPath: String) {
+    override fun syncVolume(operation: OperationExecutor, data: Any?, volume: Volume, path: String, scratchPath: String) {
         data as EngineOperation
         val desc = getVolumeDesc(volume)
-        val localPath = "$basePath/${volume.name}"
+        val localPath = path
         val remotePath = "${data.sshUser}@${data.sshAddress}:data/${volume.name}"
         val src = when (operation.operation.type) {
             Operation.Type.PUSH -> localPath

@@ -15,7 +15,7 @@ class CommitOrchestrator(val providers: ProviderModule) {
      * To create a new commit, we fetch the active volume set, and then inform the storage provider to create a commit
      * for all volumes within that volume set.
      */
-    fun createCommit(repo: String, commit: Commit): Commit {
+    fun createCommit(repo: String, commit: Commit, existingVolumeSet: String? = null): Commit {
         NameUtil.validateRepoName(repo)
         NameUtil.validateCommitId(commit.id)
 
@@ -36,7 +36,7 @@ class CommitOrchestrator(val providers: ProviderModule) {
             } catch (e: NoSuchObjectException) {
                 // Ignore
             }
-            val vs = providers.metadata.getActiveVolumeSet(repo)
+            val vs = if (existingVolumeSet != null) { existingVolumeSet } else { providers.metadata.getActiveVolumeSet(repo) }
             providers.metadata.createCommit(repo, vs, newCommit)
             vs
         }

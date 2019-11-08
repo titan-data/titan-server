@@ -517,7 +517,7 @@ class MetadataProvider(val inMemory: Boolean = true, val databaseName: String = 
     }
 
     fun deleteCommit(commit: CommitInfo) {
-        val count = Commits.deleteWhere {
+        Commits.deleteWhere {
             (Commits.id eq commit.id)
         }
     }
@@ -574,6 +574,15 @@ class MetadataProvider(val inMemory: Boolean = true, val databaseName: String = 
                 ?: throw NoSuchObjectException("no such operation '$id'")
     }
 
+    fun updateOperationState(id: String, state: Operation.State) {
+        val uuid = UUID.fromString(id)
+        Operations.update({
+            Operations.volumeSet eq uuid
+        }) {
+            it[Operations.state] = state
+        }
+    }
+
     fun operationInProgress(repo: String, type: Operation.Type, commitId: String, remote: String?) : String? {
         val query = Operations.select {
             (Operations.repo  eq repo) and (Operations.type eq type) and (Operations.commitId eq commitId) and (Operations.state eq Operation.State.RUNNING)
@@ -596,6 +605,7 @@ class MetadataProvider(val inMemory: Boolean = true, val databaseName: String = 
     // TODO progress entry tests
     fun addProgressEntry(operation: String, entry: ProgressEntry) : Int {
         val result = ProgressEntries.insert {
+            it[ProgressEntries.operation] = UUID.fromString(operation)
             it[message] = entry.message
             it[type] = entry.type
             it[percent] = entry.percent
@@ -607,6 +617,7 @@ class MetadataProvider(val inMemory: Boolean = true, val databaseName: String = 
         val uuid = UUID.fromString(operation)
         return ProgressEntries.select {
             (ProgressEntries.operation eq uuid) and (ProgressEntries.id greater lastEntry)
-        }.map { convertProgressEntry(it) }
+        }.orderBy(ProgressEntries.id)
+                .map { convertProgressEntry(it) }
     }
 }

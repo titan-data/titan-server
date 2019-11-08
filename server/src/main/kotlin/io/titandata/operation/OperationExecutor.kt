@@ -36,7 +36,7 @@ class OperationExecutor(
     }
 
     private var thread: Thread? = null
-    private var progress: MutableList<ProgressEntry> = mutableListOf()
+    private var lastProgress: Int = 0
     private var commit: Commit? = null
 
     override fun run() {
@@ -76,9 +76,13 @@ class OperationExecutor(
                 if (operation.state == Operation.State.COMPLETE &&
                         operation.type == Operation.Type.PULL && !metadataOnly) {
                     // It shouldn't be possible for commit to be null here, or else it would've failed
-                    providers.storage.commitOperation(repo, operation.id, commit!!)
+                    providers.commits.createCommit(repo, commit!!, operation.id)
                 } else {
-                    providers.storage.discardOperation(repo, operation.id)
+                    transaction {
+                        providers.metadata.deleteOperation(operation.id)
+                        providers.metadata.markVolumeSetDeleting(operation.id)
+                    }
+                    providers.reaper.signal()
                 }
                 operationData = null
             } catch (t: Throwable) {
@@ -93,26 +97,26 @@ class OperationExecutor(
 
     fun syncData(provider: RemoteProvider, data: Any?) {
         val operationId = operation.id
-        val scratch = providers.storage.createOperationScratch(repo, operationId)
-        try {
             val volumes = transaction {
-                val vs = providers.metadata.getActiveVolumeSet(repo)
-                providers.metadata.listVolumes(vs)
+                providers.metadata.listVolumes(operationId).filter { it.name != "_scratch" }
             }
-            val base = providers.storage.mountOperationVolumes(repo, operationId, volumes)
-            try {
-                for (volume in volumes) {
+        val scratch = providers.storage.mountVolume(operationId, "_scratch")
+        try {
+            for (volume in volumes) {
+                val mountpoint = providers.storage.mountVolume(operationId, volume.name)
+                try {
                     if (operation.type == Operation.Type.PULL) {
-                        provider.pullVolume(this, data, volume, base, scratch)
+                        provider.pullVolume(this, data, volume, mountpoint, scratch)
                     } else {
-                        provider.pushVolume(this, data, volume, base, scratch)
+                        provider.pushVolume(this, data, volume, mountpoint, scratch)
                     }
+                } finally {
+                    providers.storage.unmountVolume(operationId, volume.name)
                 }
-            } finally {
-                providers.storage.unmountOperationVolumes(repo, operationId, volumes)
             }
+
         } finally {
-            providers.storage.destroyOperationScratch(repo, operationId)
+            providers.storage.unmountVolume(operationId, "_scratch")
         }
     }
 
@@ -131,19 +135,27 @@ class OperationExecutor(
 
     @Synchronized
     fun getProgress(): List<ProgressEntry> {
-        val ret = progress
-        progress = mutableListOf()
+        val ret = transaction {
+            providers.metadata.listProgressEntries(operation.id, lastProgress)
+        }
+        if (ret.size > 0) {
+            lastProgress = ret.last().id
+        }
         return ret
     }
 
     @Synchronized
     fun addProgress(entry: ProgressEntry) {
-        progress.add(entry)
-        when (entry.type) {
-            ProgressEntry.Type.FAILED -> operation.state = Operation.State.FAILED
-            ProgressEntry.Type.ABORT -> operation.state = Operation.State.ABORTED
-            ProgressEntry.Type.COMPLETE -> operation.state = Operation.State.COMPLETE
-            else -> operation.state = Operation.State.RUNNING
+        val operationState = when (entry.type) {
+            ProgressEntry.Type.FAILED -> Operation.State.FAILED
+            ProgressEntry.Type.ABORT -> Operation.State.ABORTED
+            ProgressEntry.Type.COMPLETE -> Operation.State.COMPLETE
+            else -> Operation.State.RUNNING
         }
+        transaction {
+            providers.metadata.addProgressEntry(operation.id, entry)
+            providers.metadata.updateOperationState(operation.id, operationState)
+        }
+        operation.state = operationState
     }
 }

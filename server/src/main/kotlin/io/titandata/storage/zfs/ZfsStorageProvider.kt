@@ -86,9 +86,9 @@ class ZfsStorageProvider(
         val output = executor.exec("zfs", "list", "-pHo",
                 "logicalreferenced,referenced", "$poolName/data/$volumeSet/$volume")
         val regex = "([^\t]+)\t([^\t]+)$".toRegex()
-            val result = regex.find(output)
-                val volumeLogical = result!!.groupValues.get(1).toLong()
-                val volumeActual = result!!.groupValues.get(2).toLong()
+        val result = regex.find(output)
+        val volumeLogical = result!!.groupValues.get(1).toLong()
+        val volumeActual = result.groupValues.get(2).toLong()
         return RepositoryVolumeStatus(
                 name = volume,
                 logicalSize = volumeLogical,
@@ -105,9 +105,6 @@ class ZfsStorageProvider(
     }
 
     override fun getCommitStatus(volumeSet: String, commitId: String, volumeNames: List<String>): CommitStatus {
-        val output = executor.exec("zfs", "list", "-Hpo", "name,logicalreferenced,referenced,used", "-t",
-                "snapshot", "-r", "$poolName/data/$volumeSet")
-
         var logicalSize = 0L
         var actualSize = 0L
         var uniqueSize = 0L
@@ -154,10 +151,11 @@ class ZfsStorageProvider(
         return "/var/lib/$poolName/$volumeSet/$volumeName"
     }
 
-    override fun mountVolume(volumeSet: String, volumeName: String) {
+    override fun mountVolume(volumeSet: String, volumeName: String) : String {
         executor.exec("mkdir", "-p", getVolumeMountpoint(volumeSet, volumeName))
         executor.exec("mount", "-t", "zfs", "$poolName/data/$volumeSet/$volumeName",
                 getVolumeMountpoint(volumeSet, volumeName))
+        return getVolumeMountpoint(volumeSet, volumeName)
     }
 
     /*

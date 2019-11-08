@@ -142,10 +142,10 @@ class OperationOrchestrator(val providers: ProviderModule) {
                 }
             } else {
                 val (sourceVolumeSet, volumes) = transaction {
-                    val vs = providers.metadata.getCommit(repository, localCommit!!).first
+                    val vs = providers.metadata.getCommit(repository, localCommit).first
                     Pair(vs, providers.metadata.listVolumes(vs).map { it.name })
                 }
-                providers.storage.cloneVolumeSet(sourceVolumeSet, localCommit!!, volumeSet, volumes)
+                providers.storage.cloneVolumeSet(sourceVolumeSet, localCommit, volumeSet, volumes)
                 providers.storage.createVolume(volumeSet, "_scratch")
             }
         }
@@ -228,6 +228,8 @@ class OperationOrchestrator(val providers: ProviderModule) {
         }
     }
 
+    // TODO - check that operation is actually for given repo
+    @Suppress("UNUSED_PARAMETER")
     fun getOperation(repository: String, id: String): Operation {
         return transaction {
             providers.metadata.getOperation(id).operation

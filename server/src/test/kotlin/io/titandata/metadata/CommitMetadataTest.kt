@@ -90,6 +90,44 @@ class CommitMetadataTest : StringSpec() {
             commits[3].id shouldBe "one"
         }
 
+        "get last commit returns latest commit" {
+            val commit = transaction {
+                val vs2 = md.createVolumeSet("foo")
+                md.createCommit("foo", vs2, Commit(id = "two", properties = mapOf("timestamp" to "2019-09-20T13:46:38Z")))
+                md.createCommit("foo", vs, Commit(id = "one", properties = mapOf("timestamp" to "2019-09-20T13:45:38Z")))
+                md.createCommit("foo", vs2, Commit(id = "four", properties = mapOf("timestamp" to "2019-10-20T14:46:38Z")))
+                md.createCommit("foo", vs, Commit(id = "three", properties = mapOf("timestamp" to "2019-10-20T13:46:38Z")))
+                md.getLastCommit("foo")
+            }
+            commit shouldBe "four"
+        }
+
+        "get commit source returns previous commit in volumeset" {
+            val commit = transaction {
+                md.createCommit("foo", vs, Commit(id = "one", properties = mapOf("timestamp" to "2019-09-20T13:45:38Z")))
+                md.createCommit("foo", vs, Commit(id = "two", properties = mapOf("timestamp" to "2019-09-20T13:46:38Z")))
+                md.getCommitSource(vs)
+            }
+            commit shouldBe "two"
+        }
+
+        "get commit source returns volumeset source" {
+            val commit = transaction {
+                md.createCommit("foo", vs, Commit(id = "id", properties = emptyMap()))
+                val vs2 = md.createVolumeSet("foo", "id")
+
+                md.getCommitSource(vs2)
+            }
+            commit shouldBe "id"
+        }
+
+        "get commit source returns null if no commits exists" {
+            val commit = transaction {
+                md.getCommitSource(vs)
+            }
+            commit shouldBe null
+        }
+
         "update commit succeeds" {
             val commit = transaction {
                 md.createCommit("foo", vs, Commit(id = "id", properties = mapOf("timestamp" to "2019-09-20T13:45:38Z",
@@ -100,6 +138,17 @@ class CommitMetadataTest : StringSpec() {
             }
             commit.properties["a"] shouldBe "c"
             commit.properties["timestamp"] shouldBe "2019-09-20T13:45:39Z"
+        }
+
+        "tags filtering works after updating commit" {
+            transaction {
+                md.createCommit("foo", vs, Commit(id = "id", properties = mapOf("timestamp" to "2019-09-20T13:45:38Z",
+                        "tags" to mapOf("a" to "b"))))
+                md.updateCommit("foo", Commit(id = "id", properties = mapOf("timestamp" to "2019-09-20T13:45:39Z",
+                        "tags" to mapOf("a" to "c"))))
+                md.listCommits("foo", listOf("a=b")).size shouldBe 0
+                md.listCommits("foo", listOf("a=c")).size shouldBe 1
+            }
         }
 
         "update non-existent commit fails" {
@@ -176,6 +225,70 @@ class CommitMetadataTest : StringSpec() {
             }
             commits.size shouldBe 1
             commits[0].id shouldBe "one"
+        }
+
+        "list deleting commits succeeds" {
+            transaction {
+                md.createCommit("foo", vs, Commit(id = "one", properties = emptyMap()))
+                val vs2 = md.createVolumeSet("foo")
+                md.createCommit("foo", vs2, Commit(id = "two", properties = emptyMap()))
+                md.createCommit("foo", vs2, Commit(id = "three", properties = emptyMap()))
+
+                md.markCommitDeleting("foo", "one")
+                md.markCommitDeleting("foo", "two")
+
+                val commits = md.listDeletingCommits().sortedBy { it.id }
+
+                commits.size shouldBe 2
+                commits[0].guid shouldBe "one"
+                commits[0].volumeSet shouldBe vs
+                commits[1].guid shouldBe "two"
+                commits[1].volumeSet shouldBe vs2
+            }
+        }
+
+        "has clone returns false with no clone" {
+            transaction {
+                md.createCommit("foo", vs, Commit(id = "id", properties = emptyMap()))
+                md.markCommitDeleting("foo", "id")
+                val commits = md.listDeletingCommits()
+
+                commits.size shouldBe 1
+
+                md.hasClones(commits[0]) shouldBe false
+            }
+        }
+
+        "has clone returns true with volumeset clone" {
+            transaction {
+                md.createCommit("foo", vs, Commit(id = "id", properties = emptyMap()))
+                md.createVolumeSet("foo", "id")
+                md.markCommitDeleting("foo", "id")
+                val commits = md.listDeletingCommits()
+
+                commits.size shouldBe 1
+
+                md.hasClones(commits[0]) shouldBe true
+            }
+        }
+
+        "mark non-existent commit deleting fails" {
+            shouldThrow<NoSuchObjectException> {
+                transaction {
+                    md.markCommitDeleting("foo", "nosuchcommit")
+                }
+            }
+        }
+
+        "delete commit succeeds" {
+            transaction {
+                md.createCommit("foo", vs, Commit(id = "id", properties = emptyMap()))
+                md.markCommitDeleting("foo", "id")
+                val commits = md.listDeletingCommits()
+                commits.size shouldBe 1
+                md.deleteCommit(commits[0])
+                md.listDeletingCommits().size shouldBe 0
+            }
         }
     }
 }

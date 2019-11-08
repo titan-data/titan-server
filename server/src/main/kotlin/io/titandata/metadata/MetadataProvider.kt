@@ -377,7 +377,6 @@ class MetadataProvider(val inMemory: Boolean = true, val databaseName: String = 
                 ?: throw NoSuchObjectException("no such commit '$commitId' in repository '$repo'")
     }
 
-    // TODO test
     fun getLastCommit(repo: String): String? {
         return Commits.select {
             (Commits.repo eq repo) and (Commits.state eq VolumeState.ACTIVE)
@@ -387,7 +386,6 @@ class MetadataProvider(val inMemory: Boolean = true, val databaseName: String = 
                 .firstOrNull()
     }
 
-    // TODO test
     fun getCommitSource(volumeSet: String): String? {
         // First, check to see if there's a latest commit for this volume set
         val volumeSetGuid = UUID.fromString(volumeSet)
@@ -413,7 +411,7 @@ class MetadataProvider(val inMemory: Boolean = true, val databaseName: String = 
         return null
     }
 
-    fun tagsMatch(commit: Commit, existCheck: List<String>, matchCheck: Map<String, String>) : Boolean {
+    fun tagsMatch(commit: Commit, existCheck: List<String>, matchCheck: Map<String, String>): Boolean {
         @Suppress("UNCHECKED_CAST")
         val tags = commit.properties["tags"] as Map<String, String>? ?: return false
 
@@ -487,7 +485,6 @@ class MetadataProvider(val inMemory: Boolean = true, val databaseName: String = 
         } else {
             return result.filter { tagsMatch(it, existCheck, matchCheck) }
         }
-
     }
 
     data class CommitInfo(

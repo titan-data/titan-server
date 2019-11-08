@@ -5,7 +5,6 @@ import io.kotlintest.TestCase
 import io.kotlintest.shouldBe
 import io.kotlintest.shouldThrow
 import io.kotlintest.specs.StringSpec
-import io.titandata.exception.NoSuchObjectException
 import io.titandata.models.Commit
 import io.titandata.models.Repository
 import java.util.UUID
@@ -37,7 +36,7 @@ class VolumeSetMetadataTest : StringSpec() {
             transaction {
                 md.createRepository(Repository(name = "foo", properties = emptyMap()))
                 val src = md.createVolumeSet("foo")
-                md.createCommit("foo", src, Commit(id="id", properties = emptyMap()))
+                md.createCommit("foo", src, Commit(id = "id", properties = emptyMap()))
                 val dst = md.createVolumeSet("foo", "id")
 
                 md.getCommitSource(dst) shouldBe "id"

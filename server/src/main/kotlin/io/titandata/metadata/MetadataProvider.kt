@@ -315,7 +315,7 @@ class MetadataProvider(val inMemory: Boolean = true, val databaseName: String = 
 
     fun getVolume(volumeSet: String, volumeName: String): Volume {
         return Volumes.select {
-            (Volumes.volumeSet eq UUID.fromString(volumeSet)) and (Volumes.name eq volumeName)
+            (Volumes.volumeSet eq UUID.fromString(volumeSet)) and (Volumes.name eq volumeName) and (Volumes.state neq VolumeState.DELETING)
         }.map { convertVolume(it) }
                 .firstOrNull()
                 ?: throw NoSuchObjectException("no such volume '$volumeName'")

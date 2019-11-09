@@ -196,8 +196,6 @@ class LocalWorkflowTest : EndToEndTest() {
             val status = repoApi.getRepositoryStatus("foo")
             status.sourceCommit shouldBe "id"
             status.lastCommit shouldBe "id"
-            status.logicalSize shouldNotBe 0
-            status.actualSize shouldNotBe 0
             status.volumeStatus.size shouldBe 1
             status.volumeStatus[0].name shouldBe "vol"
             status.volumeStatus[0].actualSize shouldNotBe 0

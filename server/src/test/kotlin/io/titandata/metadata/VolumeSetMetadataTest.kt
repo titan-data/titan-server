@@ -5,8 +5,10 @@ import io.kotlintest.TestCase
 import io.kotlintest.shouldBe
 import io.kotlintest.shouldThrow
 import io.kotlintest.specs.StringSpec
+import io.titandata.exception.NoSuchObjectException
 import io.titandata.models.Commit
 import io.titandata.models.Repository
+import io.titandata.models.Volume
 import java.util.UUID
 import org.jetbrains.exposed.sql.transactions.transaction
 
@@ -75,6 +77,34 @@ class VolumeSetMetadataTest : StringSpec() {
                 md.createRepository(Repository(name = "foo", properties = emptyMap()))
                 val vs = md.createVolumeSet("foo")
                 md.markVolumeSetDeleting(vs)
+            }
+        }
+
+        "mark volumeset deleting marks all volumes and commits" {
+            transaction {
+                md.createRepository(Repository(name = "foo", properties = emptyMap()))
+                val vs = md.createVolumeSet("foo")
+                md.createVolume(vs, Volume(name="vol"))
+                val commit = Commit(id="id", properties=emptyMap())
+                md.createCommit("foo", vs, commit)
+                md.markVolumeSetDeleting(vs)
+                shouldThrow<NoSuchObjectException> {
+                    md.getVolume(vs, "vol")
+                }
+                shouldThrow<NoSuchObjectException> {
+                    md.getCommit("foo", "vol")
+                }
+            }
+        }
+
+        "mark all volumesets deleting succeeds" {
+            transaction {
+                md.createRepository(Repository(name = "foo", properties = emptyMap()))
+                val vs = md.createVolumeSet("foo")
+                md.markAllVolumeSetsDeleting("foo")
+                val volumeSets = md.listDeletingVolumeSets()
+                volumeSets.size shouldBe 1
+                volumeSets[0] shouldBe vs
             }
         }
 

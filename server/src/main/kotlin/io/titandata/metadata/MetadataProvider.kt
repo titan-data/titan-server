@@ -256,10 +256,32 @@ class MetadataProvider(val inMemory: Boolean = true, val databaseName: String = 
     }
 
     fun markVolumeSetDeleting(volumeSet: String) {
+        val uuid = UUID.fromString(volumeSet)
         VolumeSets.update({
-            VolumeSets.id eq UUID.fromString(volumeSet)
+            VolumeSets.id eq uuid
         }) {
             it[state] = VolumeState.DELETING
+        }
+        // Mark all volumes in volumeset as deleting
+        Volumes.update({
+            Volumes.volumeSet eq uuid
+        }) {
+            it[state] = VolumeState.DELETING
+        }
+        // Mark all commits in volumeset deleting
+        Commits.update({
+            Commits.volumeSet eq uuid
+        }) {
+            it[state] = VolumeState.DELETING
+        }
+    }
+
+    fun markAllVolumeSetsDeleting(repo: String) {
+        var volumeSets = VolumeSets.select {
+            VolumeSets.repo eq repo
+        }.map { it[VolumeSets.id] }
+        for (vs in volumeSets) {
+            markVolumeSetDeleting(vs.toString())
         }
     }
 

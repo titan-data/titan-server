@@ -1,10 +1,10 @@
 package io.titandata.orchestrator
 
 import io.titandata.ProviderModule
+import io.titandata.exception.NoSuchObjectException
 import io.titandata.exception.ObjectExistsException
 import io.titandata.models.Commit
 import io.titandata.models.CommitStatus
-import java.rmi.NoSuchObjectException
 import java.time.Instant
 import java.time.format.DateTimeFormatter
 import org.jetbrains.exposed.sql.transactions.transaction

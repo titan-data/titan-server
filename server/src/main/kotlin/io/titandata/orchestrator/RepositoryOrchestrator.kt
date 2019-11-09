@@ -32,24 +32,21 @@ class RepositoryOrchestrator(val providers: ProviderModule) {
 
     fun getRepositoryStatus(name: String): RepositoryStatus {
         NameUtil.validateRepoName(name)
-        val volumeSet = transaction {
-            providers.metadata.getActiveVolumeSet(name)
-        }
-        val volumes = transaction {
-            providers.metadata.listVolumes(volumeSet)
+        val (volumeSet, volumes) = transaction {
+            val vs = providers.metadata.getActiveVolumeSet(name)
+            Pair(vs, providers.metadata.listVolumes(vs))
         }
         val volumeStatus = volumes.map {
             providers.storage.getVolumeStatus(volumeSet, it.name)
         }
-        return transaction {
+        val status = transaction {
             RepositoryStatus(
-                    logicalSize = 0,
-                    actualSize = 0,
                     volumeStatus = volumeStatus,
                     lastCommit = providers.metadata.getLastCommit(name),
                     sourceCommit = providers.metadata.getCommitSource(volumeSet)
             )
         }
+        return status
     }
 
     fun updateRepository(name: String, repo: Repository) {
@@ -63,9 +60,9 @@ class RepositoryOrchestrator(val providers: ProviderModule) {
     fun deleteRepository(name: String) {
         NameUtil.validateRepoName(name)
         transaction {
-            // TODO mark all commits deleting
-            // TODO mark all volumesets deleting
+            providers.metadata.markAllVolumeSetsDeleting(name)
             providers.metadata.deleteRepository(name)
         }
+        providers.reaper.signal()
     }
 }

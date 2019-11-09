@@ -84,8 +84,8 @@ class VolumeSetMetadataTest : StringSpec() {
             transaction {
                 md.createRepository(Repository(name = "foo", properties = emptyMap()))
                 val vs = md.createVolumeSet("foo")
-                md.createVolume(vs, Volume(name="vol"))
-                val commit = Commit(id="id", properties=emptyMap())
+                md.createVolume(vs, Volume(name = "vol"))
+                val commit = Commit(id = "id", properties = emptyMap())
                 md.createCommit("foo", vs, commit)
                 md.markVolumeSetDeleting(vs)
                 shouldThrow<NoSuchObjectException> {

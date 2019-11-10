@@ -27,7 +27,7 @@ class VolumeSetMetadataTest : StringSpec() {
     init {
         "create volume set succeeds" {
             transaction {
-                md.createRepository(Repository(name = "foo", properties = emptyMap()))
+                md.createRepository(Repository(name = "foo"))
                 val vs = md.createVolumeSet("foo")
                 // Make sure it can be parsed
                 UUID.fromString(vs)
@@ -36,9 +36,9 @@ class VolumeSetMetadataTest : StringSpec() {
 
         "create volume set with commit source succeeds" {
             transaction {
-                md.createRepository(Repository(name = "foo", properties = emptyMap()))
+                md.createRepository(Repository(name = "foo"))
                 val src = md.createVolumeSet("foo")
-                md.createCommit("foo", src, Commit(id = "id", properties = emptyMap()))
+                md.createCommit("foo", src, Commit(id = "id"))
                 val dst = md.createVolumeSet("foo", "id")
 
                 md.getCommitSource(dst) shouldBe "id"
@@ -47,7 +47,7 @@ class VolumeSetMetadataTest : StringSpec() {
 
         "get active volumeset returns vs if activate" {
             transaction {
-                md.createRepository(Repository(name = "foo", properties = emptyMap()))
+                md.createRepository(Repository(name = "foo"))
                 val vs = md.createVolumeSet("foo", null, true)
                 md.getActiveVolumeSet("foo") shouldBe vs
             }
@@ -55,7 +55,7 @@ class VolumeSetMetadataTest : StringSpec() {
 
         "activate volumeset marks other volumeset inactive" {
             transaction {
-                md.createRepository(Repository(name = "foo", properties = emptyMap()))
+                md.createRepository(Repository(name = "foo"))
                 md.createVolumeSet("foo", null, true)
                 val vs = md.createVolumeSet("foo", null, false)
                 md.activateVolumeSet("foo", vs)
@@ -66,7 +66,7 @@ class VolumeSetMetadataTest : StringSpec() {
         "activate unknown volume set fails" {
             shouldThrow<IllegalArgumentException> {
                 transaction {
-                    md.createRepository(Repository(name = "foo", properties = emptyMap()))
+                    md.createRepository(Repository(name = "foo"))
                     md.activateVolumeSet("foo", UUID.randomUUID().toString())
                 }
             }
@@ -74,7 +74,7 @@ class VolumeSetMetadataTest : StringSpec() {
 
         "mark volumeset deleting succeeds" {
             transaction {
-                md.createRepository(Repository(name = "foo", properties = emptyMap()))
+                md.createRepository(Repository(name = "foo"))
                 val vs = md.createVolumeSet("foo")
                 md.markVolumeSetDeleting(vs)
             }
@@ -82,10 +82,10 @@ class VolumeSetMetadataTest : StringSpec() {
 
         "mark volumeset deleting marks all volumes and commits" {
             transaction {
-                md.createRepository(Repository(name = "foo", properties = emptyMap()))
+                md.createRepository(Repository(name = "foo"))
                 val vs = md.createVolumeSet("foo")
                 md.createVolume(vs, Volume(name = "vol"))
-                val commit = Commit(id = "id", properties = emptyMap())
+                val commit = Commit(id = "id")
                 md.createCommit("foo", vs, commit)
                 md.markVolumeSetDeleting(vs)
                 shouldThrow<NoSuchObjectException> {
@@ -99,7 +99,7 @@ class VolumeSetMetadataTest : StringSpec() {
 
         "mark all volumesets deleting succeeds" {
             transaction {
-                md.createRepository(Repository(name = "foo", properties = emptyMap()))
+                md.createRepository(Repository(name = "foo"))
                 val vs = md.createVolumeSet("foo")
                 md.markAllVolumeSetsDeleting("foo")
                 val volumeSets = md.listDeletingVolumeSets()
@@ -110,7 +110,7 @@ class VolumeSetMetadataTest : StringSpec() {
 
         "mark active volumeset deleting makes it no longer active" {
             transaction {
-                md.createRepository(Repository(name = "foo", properties = emptyMap()))
+                md.createRepository(Repository(name = "foo"))
                 val vs = md.createVolumeSet("foo", null, true)
                 md.markVolumeSetDeleting(vs)
                 // Don't really have a way to verify this other than checking this fails
@@ -122,7 +122,7 @@ class VolumeSetMetadataTest : StringSpec() {
 
         "deleting volume set shows up in list" {
             transaction {
-                md.createRepository(Repository(name = "foo", properties = emptyMap()))
+                md.createRepository(Repository(name = "foo"))
                 val vs = md.createVolumeSet("foo", null, true)
                 md.markVolumeSetDeleting(vs)
                 val deleting = md.listDeletingVolumeSets()
@@ -133,7 +133,7 @@ class VolumeSetMetadataTest : StringSpec() {
 
         "volume set deletion succeeds" {
             transaction {
-                md.createRepository(Repository(name = "foo", properties = emptyMap()))
+                md.createRepository(Repository(name = "foo"))
                 val vs = md.createVolumeSet("foo", null, true)
                 md.deleteVolumeSet(vs)
                 // Don't really have a way to verify this other than checking this fails

@@ -50,7 +50,7 @@ class RemoteOrchestratorTest : StringSpec() {
     override fun beforeTest(testCase: TestCase) {
         providers.metadata.clear()
         transaction {
-            providers.metadata.createRepository(Repository(name = "foo", properties = emptyMap()))
+            providers.metadata.createRepository(Repository(name = "foo"))
         }
         return MockKAnnotations.init(this)
     }
@@ -216,8 +216,8 @@ class RemoteOrchestratorTest : StringSpec() {
 
         "list remote commits succeeds" {
             every { nopRemoteProvider.listCommits(any(), any(), any()) } returns
-                    listOf(Commit(id = "one", properties = emptyMap()),
-                            Commit(id = "two", properties = emptyMap()))
+                    listOf(Commit(id = "one"),
+                            Commit(id = "two"))
             providers.remotes.addRemote("foo", NopRemote(name = "origin"))
             val result = providers.remotes.listRemoteCommits("foo", "origin", NopParameters(), null)
             result.size shouldBe 2
@@ -251,7 +251,7 @@ class RemoteOrchestratorTest : StringSpec() {
 
         "get remote commit succeeds" {
             every { nopRemoteProvider.getCommit(any(), any(), any()) } returns
-                    Commit(id = "one", properties = emptyMap())
+                    Commit(id = "one")
             providers.remotes.addRemote("foo", NopRemote(name = "origin"))
             val result = providers.remotes.getRemoteCommit("foo", "origin", NopParameters(), "id")
             result.id shouldBe "one"

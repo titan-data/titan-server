@@ -22,7 +22,7 @@ class CommitMetadataTest : StringSpec() {
     override fun beforeTest(testCase: TestCase) {
         md.clear()
         transaction {
-            md.createRepository(Repository(name = "foo", properties = emptyMap()))
+            md.createRepository(Repository(name = "foo"))
             vs = md.createVolumeSet("foo", null, true)
         }
     }
@@ -30,7 +30,7 @@ class CommitMetadataTest : StringSpec() {
     init {
         "create commit without timestamp succeeds" {
             transaction {
-                md.createCommit("foo", vs, Commit(id = "id", properties = emptyMap()))
+                md.createCommit("foo", vs, Commit(id = "id"))
             }
         }
 
@@ -68,7 +68,7 @@ class CommitMetadataTest : StringSpec() {
 
         "list commits succeeds" {
             val commits = transaction {
-                md.createCommit("foo", vs, Commit(id = "id", properties = emptyMap()))
+                md.createCommit("foo", vs, Commit(id = "id"))
                 md.listCommits("foo")
             }
             commits.size shouldBe 1
@@ -113,7 +113,7 @@ class CommitMetadataTest : StringSpec() {
 
         "get commit source returns volumeset source" {
             val commit = transaction {
-                md.createCommit("foo", vs, Commit(id = "id", properties = emptyMap()))
+                md.createCommit("foo", vs, Commit(id = "id"))
                 val vs2 = md.createVolumeSet("foo", "id")
 
                 md.getCommitSource(vs2)
@@ -154,7 +154,7 @@ class CommitMetadataTest : StringSpec() {
         "update non-existent commit fails" {
             shouldThrow<NoSuchObjectException> {
                 transaction {
-                    md.updateCommit("foo", Commit(id = "id", properties = emptyMap()))
+                    md.updateCommit("foo", Commit(id = "id"))
                 }
             }
         }
@@ -229,10 +229,10 @@ class CommitMetadataTest : StringSpec() {
 
         "list deleting commits succeeds" {
             transaction {
-                md.createCommit("foo", vs, Commit(id = "one", properties = emptyMap()))
+                md.createCommit("foo", vs, Commit(id = "one"))
                 val vs2 = md.createVolumeSet("foo")
-                md.createCommit("foo", vs2, Commit(id = "two", properties = emptyMap()))
-                md.createCommit("foo", vs2, Commit(id = "three", properties = emptyMap()))
+                md.createCommit("foo", vs2, Commit(id = "two"))
+                md.createCommit("foo", vs2, Commit(id = "three"))
 
                 md.markCommitDeleting("foo", "one")
                 md.markCommitDeleting("foo", "two")
@@ -249,7 +249,7 @@ class CommitMetadataTest : StringSpec() {
 
         "has clone returns false with no clone" {
             transaction {
-                md.createCommit("foo", vs, Commit(id = "id", properties = emptyMap()))
+                md.createCommit("foo", vs, Commit(id = "id"))
                 md.markCommitDeleting("foo", "id")
                 val commits = md.listDeletingCommits()
 
@@ -261,7 +261,7 @@ class CommitMetadataTest : StringSpec() {
 
         "has clone returns true with volumeset clone" {
             transaction {
-                md.createCommit("foo", vs, Commit(id = "id", properties = emptyMap()))
+                md.createCommit("foo", vs, Commit(id = "id"))
                 md.createVolumeSet("foo", "id")
                 md.markCommitDeleting("foo", "id")
                 val commits = md.listDeletingCommits()
@@ -282,7 +282,7 @@ class CommitMetadataTest : StringSpec() {
 
         "delete commit succeeds" {
             transaction {
-                md.createCommit("foo", vs, Commit(id = "id", properties = emptyMap()))
+                md.createCommit("foo", vs, Commit(id = "id"))
                 md.markCommitDeleting("foo", "id")
                 val commits = md.listDeletingCommits()
                 commits.size shouldBe 1

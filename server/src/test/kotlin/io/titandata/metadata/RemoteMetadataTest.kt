@@ -28,7 +28,7 @@ class RemoteMetadataTest : StringSpec() {
     init {
         "add remote succeeds" {
             transaction {
-                md.createRepository(Repository(name = "foo", properties = mapOf()))
+                md.createRepository(Repository(name = "foo"))
                 md.addRemote("foo", NopRemote(name = "origin"))
             }
         }
@@ -36,7 +36,7 @@ class RemoteMetadataTest : StringSpec() {
         "add duplicate remote fails" {
             shouldThrow<ObjectExistsException> {
                 transaction {
-                    md.createRepository(Repository(name = "foo", properties = mapOf()))
+                    md.createRepository(Repository(name = "foo"))
                     md.addRemote("foo", NopRemote(name = "origin"))
                     md.addRemote("foo", NopRemote(name = "origin"))
                 }
@@ -45,7 +45,7 @@ class RemoteMetadataTest : StringSpec() {
 
         "get remote succeeds" {
             val remote = transaction {
-                md.createRepository(Repository(name = "foo", properties = mapOf()))
+                md.createRepository(Repository(name = "foo"))
                 md.addRemote("foo", NopRemote(name = "origin"))
                 md.getRemote("foo", "origin")
             }
@@ -56,7 +56,7 @@ class RemoteMetadataTest : StringSpec() {
         "get non-existent remote fails" {
             shouldThrow<NoSuchObjectException> {
                 transaction {
-                    md.createRepository(Repository(name = "foo", properties = mapOf()))
+                    md.createRepository(Repository(name = "foo"))
                     md.getRemote("foo", "origin")
                 }
             }
@@ -64,7 +64,7 @@ class RemoteMetadataTest : StringSpec() {
 
         "list remotes succeeds" {
             val remotes = transaction {
-                md.createRepository(Repository(name = "foo", properties = mapOf()))
+                md.createRepository(Repository(name = "foo"))
                 md.addRemote("foo", NopRemote(name = "foo"))
                 md.addRemote("foo", S3Remote(name = "bar", bucket = "bucket"))
                 md.listRemotes("foo")
@@ -80,7 +80,7 @@ class RemoteMetadataTest : StringSpec() {
 
         "remove remote succeeds" {
             val remotes = transaction {
-                md.createRepository(Repository(name = "foo", properties = mapOf()))
+                md.createRepository(Repository(name = "foo"))
                 md.addRemote("foo", NopRemote(name = "foo"))
                 md.removeRemote("foo", "foo")
                 md.listRemotes("foo")
@@ -91,7 +91,7 @@ class RemoteMetadataTest : StringSpec() {
         "remove non-existent remote fails" {
             shouldThrow<NoSuchObjectException> {
                 transaction {
-                    md.createRepository(Repository(name = "foo", properties = mapOf()))
+                    md.createRepository(Repository(name = "foo"))
                     md.removeRemote("foo", "foo")
                 }
             }
@@ -99,7 +99,7 @@ class RemoteMetadataTest : StringSpec() {
 
         "update remote succeeds" {
             val remote = transaction {
-                md.createRepository(Repository(name = "foo", properties = mapOf()))
+                md.createRepository(Repository(name = "foo"))
                 md.addRemote("foo", NopRemote(name = "origin"))
                 md.updateRemote("foo", "origin", S3Remote(name = "origin", bucket = "bucket"))
                 md.getRemote("foo", "origin")
@@ -113,7 +113,7 @@ class RemoteMetadataTest : StringSpec() {
         "update remote to conflicting name fails" {
             shouldThrow<ObjectExistsException> {
                 transaction {
-                    md.createRepository(Repository(name = "foo", properties = mapOf()))
+                    md.createRepository(Repository(name = "foo"))
                     md.addRemote("foo", NopRemote(name = "one"))
                     md.addRemote("foo", NopRemote(name = "two"))
                     md.updateRemote("foo", "one", NopRemote(name = "two"))
@@ -123,7 +123,7 @@ class RemoteMetadataTest : StringSpec() {
 
         "rename remote succeeds" {
             val remote = transaction {
-                md.createRepository(Repository(name = "foo", properties = mapOf()))
+                md.createRepository(Repository(name = "foo"))
                 md.addRemote("foo", NopRemote(name = "origin"))
                 md.updateRemote("foo", "origin", NopRemote(name = "upstream"))
                 md.getRemote("foo", "upstream")
@@ -134,7 +134,7 @@ class RemoteMetadataTest : StringSpec() {
         "update of non-existent remote fails" {
             shouldThrow<NoSuchObjectException> {
                 transaction {
-                    md.createRepository(Repository(name = "foo", properties = mapOf()))
+                    md.createRepository(Repository(name = "foo"))
                     md.updateRemote("foo", "origin", NopRemote(name = "upstream"))
                 }
             }

@@ -83,7 +83,7 @@ class S3WebRemoteProvider(val providers: ProviderModule) : BaseRemoteProvider() 
 
     override fun pullVolume(operation: OperationExecutor, data: Any?, volume: Volume, path: String, scratchPath: String) {
         val remote = operation.remote as S3WebRemote
-        val desc = volume.properties?.get("path")?.toString() ?: volume.name
+        val desc = getVolumeDesc(volume)
         val commitId = operation.operation.commitId
 
         operation.addProgress(ProgressEntry(type = ProgressEntry.Type.START,

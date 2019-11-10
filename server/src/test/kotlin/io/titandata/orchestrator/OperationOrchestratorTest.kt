@@ -49,7 +49,7 @@ class OperationOrchestratorTest : StringSpec() {
         provider = OperationOrchestrator(providers)
         providers.metadata.clear()
         transaction {
-            providers.metadata.createRepository(Repository(name = "foo", properties = emptyMap()))
+            providers.metadata.createRepository(Repository(name = "foo"))
             providers.metadata.createVolumeSet("foo", null, true)
         }
         return MockKAnnotations.init(this)
@@ -152,7 +152,7 @@ class OperationOrchestratorTest : StringSpec() {
             transaction {
                 providers.metadata.addRemote("foo", NopRemote(name = "remote"))
             }
-            every { zfsStorageProvider.getCommit(any(), any()) } returns Commit(id = "commit", properties = mapOf())
+            every { zfsStorageProvider.getCommit(any(), any()) } returns Commit(id = "commit")
             shouldThrow<ObjectExistsException> {
                 provider.startPull("foo", "remote", "commit", NopParameters())
             }
@@ -304,7 +304,7 @@ class OperationOrchestratorTest : StringSpec() {
             transaction {
                 providers.metadata.addRemote("foo", NopRemote(name = "remote"))
             }
-            every { zfsStorageProvider.getCommit(any(), any()) } returns Commit(id = "commit", properties = mapOf())
+            every { zfsStorageProvider.getCommit(any(), any()) } returns Commit(id = "commit")
             every { nopRemoteProvider.validateOperation(any(), any(), any(), any(), any()) } throws ObjectExistsException("")
             shouldThrow<ObjectExistsException> {
                 provider.startPush("foo", "remote", "commit", NopParameters())
@@ -315,7 +315,7 @@ class OperationOrchestratorTest : StringSpec() {
             transaction {
                 providers.metadata.addRemote("foo", NopRemote(name = "remote"))
             }
-            every { zfsStorageProvider.getCommit(any(), any()) } returns Commit(id = "commit", properties = mapOf())
+            every { zfsStorageProvider.getCommit(any(), any()) } returns Commit(id = "commit")
             every { zfsStorageProvider.createOperation("foo", any(), any()) } just Runs
             every { zfsStorageProvider.discardOperation("foo", any()) } just Runs
             every { zfsStorageProvider.createOperationScratch("foo", any()) } returns ""
@@ -348,7 +348,7 @@ class OperationOrchestratorTest : StringSpec() {
             transaction {
                 providers.metadata.addRemote("foo", NopRemote(name = "remote"))
             }
-            every { zfsStorageProvider.getCommit(any(), any()) } returns Commit(id = "commit", properties = mapOf())
+            every { zfsStorageProvider.getCommit(any(), any()) } returns Commit(id = "commit")
             every { nopRemoteProvider.startOperation(any()) } throws Exception("error")
             every { zfsStorageProvider.createOperation("foo", any(), any()) } just Runs
             every { zfsStorageProvider.discardOperation("foo", "id") } just Runs
@@ -373,7 +373,7 @@ class OperationOrchestratorTest : StringSpec() {
             transaction {
                 providers.metadata.addRemote("foo", NopRemote(name = "remote"))
             }
-            every { zfsStorageProvider.getCommit(any(), any()) } returns Commit(id = "commit", properties = mapOf())
+            every { zfsStorageProvider.getCommit(any(), any()) } returns Commit(id = "commit")
             every { nopRemoteProvider.startOperation(any()) } throws InterruptedException("error")
             every { zfsStorageProvider.createOperation("foo", any(), any()) } just Runs
             every { zfsStorageProvider.discardOperation("foo", "id") } just Runs
@@ -397,7 +397,7 @@ class OperationOrchestratorTest : StringSpec() {
             transaction {
                 providers.metadata.addRemote("foo", NopRemote(name = "remote"))
             }
-            every { zfsStorageProvider.getCommit(any(), any()) } returns Commit(id = "commit", properties = mapOf())
+            every { zfsStorageProvider.getCommit(any(), any()) } returns Commit(id = "commit")
             shouldThrow<ObjectExistsException> {
                 provider.startPush("foo", "remote", "commit", NopParameters())
             }
@@ -408,7 +408,7 @@ class OperationOrchestratorTest : StringSpec() {
             transaction {
                 providers.metadata.addRemote("foo", NopRemote(name = "remote"))
             }
-            every { zfsStorageProvider.getCommit(any(), any()) } returns Commit(id = "commit2", properties = mapOf())
+            every { zfsStorageProvider.getCommit(any(), any()) } returns Commit(id = "commit2")
             every { zfsStorageProvider.discardOperation("foo", any()) } just Runs
             every { zfsStorageProvider.createOperation("foo", any(), any()) } just Runs
             every { zfsStorageProvider.createOperationScratch("foo", any()) } returns ""
@@ -461,7 +461,7 @@ class OperationOrchestratorTest : StringSpec() {
             every { zfsStorageProvider.mountOperationVolumes("foo", any(), any()) } returns ""
             every { zfsStorageProvider.unmountOperationVolumes("foo", any(), any()) } just Runs
             every { zfsStorageProvider.destroyOperationScratch("foo", any()) } just Runs
-            every { zfsStorageProvider.getCommit("foo", any()) } returns Commit(id = "hash", properties = mapOf())
+            every { zfsStorageProvider.getCommit("foo", any()) } returns Commit(id = "hash")
             provider.loadState()
 
             var op = provider.getOperation("foo", "id")

@@ -16,18 +16,15 @@ class CommitOrchestrator(val providers: ProviderModule) {
      * for all volumes within that volume set.
      */
     fun createCommit(repo: String, commit: Commit, existingVolumeSet: String? = null): Commit {
-        NameUtil.validateRepoName(repo)
         NameUtil.validateCommitId(commit.id)
+        providers.repositories.getRepository(repo)
 
         // Set the creation timestamp in metadata if it doesn't already exists
-        @Suppress("UNCHECKED_CAST")
-        val tags = (commit.properties.get("tags") as Map<String, String>?)?.toMutableMap() ?: mutableMapOf()
-        if (!tags.containsKey("timestamp")) {
-            tags["timestamp"] = DateTimeFormatter.ISO_INSTANT.format(Instant.now())
+        val props = commit.properties.toMutableMap()
+        if (!props.containsKey("timestamp")) {
+            props["timestamp"] = DateTimeFormatter.ISO_INSTANT.format(Instant.now())
         }
-        val properties = commit.properties.toMutableMap()
-        properties["tags"] = tags
-        val newCommit = Commit(id = commit.id, properties = properties)
+        val newCommit = Commit(id = commit.id, properties = props)
 
         val volumeSet = transaction {
             try {
@@ -50,16 +47,16 @@ class CommitOrchestrator(val providers: ProviderModule) {
     }
 
     fun getCommit(repo: String, id: String): Commit {
-        NameUtil.validateRepoName(repo)
         NameUtil.validateCommitId(id)
-
-        return providers.metadata.getCommit(repo, id).second
+        providers.repositories.getRepository(repo)
+        return transaction {
+            providers.metadata.getCommit(repo, id).second
+        }
     }
 
     fun getCommitStatus(repo: String, id: String): CommitStatus {
-        NameUtil.validateRepoName(repo)
         NameUtil.validateCommitId(id)
-
+        providers.repositories.getRepository(repo)
         val (vs, volumes) = transaction {
             val vs = providers.metadata.getCommit(repo, id).first
             Pair(vs, providers.metadata.listVolumes(vs).map { it.name })
@@ -67,15 +64,16 @@ class CommitOrchestrator(val providers: ProviderModule) {
         return providers.storage.getCommitStatus(vs, id, volumes)
     }
 
-    fun listCommits(repo: String, tags: List<String>?): List<Commit> {
-        NameUtil.validateRepoName(repo)
-
-        return providers.metadata.listCommits(repo, tags)
+    fun listCommits(repo: String, tags: List<String>? = null): List<Commit> {
+        providers.repositories.getRepository(repo)
+        return transaction {
+            providers.metadata.listCommits(repo, tags)
+        }
     }
 
     fun deleteCommit(repo: String, commit: String) {
-        NameUtil.validateRepoName(repo)
         NameUtil.validateCommitId(commit)
+        providers.repositories.getRepository(repo)
 
         transaction {
             providers.metadata.markCommitDeleting(repo, commit)
@@ -84,9 +82,8 @@ class CommitOrchestrator(val providers: ProviderModule) {
     }
 
     fun checkoutCommit(repo: String, commit: String) {
-        NameUtil.validateRepoName(repo)
         NameUtil.validateCommitId(commit)
-
+        providers.repositories.getRepository(repo)
         val (sourceVolumeSet, newVolumeSet) = transaction {
             val vs = providers.metadata.getCommit(repo, commit).first
             val newVolumeSet = providers.metadata.createVolumeSet(repo, commit)
@@ -110,8 +107,8 @@ class CommitOrchestrator(val providers: ProviderModule) {
     }
 
     fun updateCommit(repo: String, commit: Commit) {
-        NameUtil.validateRepoName(repo)
         NameUtil.validateCommitId(commit.id)
+        providers.repositories.getRepository(repo)
 
         transaction {
             providers.metadata.updateCommit(repo, commit)

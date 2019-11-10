@@ -49,7 +49,7 @@ class VolumeOrchestratorTest : StringSpec() {
     override fun beforeTest(testCase: TestCase) {
         providers.metadata.clear()
         transaction {
-            providers.metadata.createRepository(Repository(name = "foo", properties = emptyMap()))
+            providers.metadata.createRepository(Repository(name = "foo"))
             vs = providers.metadata.createVolumeSet("foo", null, true)
         }
         return MockKAnnotations.init(this)
@@ -72,7 +72,7 @@ class VolumeOrchestratorTest : StringSpec() {
             val vol = createVolume()
             vol.name shouldBe "foo/vol"
             vol.mountpoint shouldBe "/mountpoint"
-            vol.properties!!["a"] shouldBe "b"
+            vol.properties["a"] shouldBe "b"
             verifyAll {
                 zfsStorageProvider.createVolume(vs, "vol")
                 zfsStorageProvider.getVolumeMountpoint(vs, "vol")
@@ -144,7 +144,7 @@ class VolumeOrchestratorTest : StringSpec() {
             val vol = providers.volumes.getVolume("foo", "vol")
             vol.name shouldBe "foo/vol"
             vol.mountpoint shouldBe "/mountpoint"
-            vol.properties!!["a"] shouldBe "b"
+            vol.properties["a"] shouldBe "b"
         }
 
         "get volume with invalid repo name fails" {
@@ -235,7 +235,7 @@ class VolumeOrchestratorTest : StringSpec() {
             createVolume()
 
             transaction {
-                providers.metadata.createRepository(Repository(name = "bar", properties = emptyMap()))
+                providers.metadata.createRepository(Repository(name = "bar"))
                 providers.metadata.createVolumeSet("bar", null, true)
                 providers.volumes.createVolume("bar", "vol2", emptyMap())
             }

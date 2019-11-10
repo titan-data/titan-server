@@ -10,7 +10,7 @@ class TagFilterTest : StringSpec() {
         if (tags != null) {
             return Commit(id = "id", properties = mapOf("tags" to tags as Any))
         } else {
-            return Commit(id = "id", properties = mapOf())
+            return Commit(id = "id", properties = emptyMap())
         }
     }
 

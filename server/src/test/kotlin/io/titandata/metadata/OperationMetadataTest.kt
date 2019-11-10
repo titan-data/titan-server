@@ -25,7 +25,7 @@ class OperationMetadataTest : StringSpec() {
     override fun beforeTest(testCase: TestCase) {
         md.clear()
         transaction {
-            md.createRepository(Repository(name = "foo", properties = emptyMap()))
+            md.createRepository(Repository(name = "foo"))
             vs = md.createVolumeSet("foo", null, true)
         }
     }
@@ -61,7 +61,7 @@ class OperationMetadataTest : StringSpec() {
         "list operations succeeds" {
             transaction {
                 md.createOperation("foo", vs, buildOperationData(vs))
-                md.createRepository(Repository(name = "bar", properties = emptyMap()))
+                md.createRepository(Repository(name = "bar"))
                 val vs2 = md.createVolumeSet("bar")
                 md.createOperation("bar", vs2, buildOperationData(vs2))
                 val result = md.listOperations("foo")

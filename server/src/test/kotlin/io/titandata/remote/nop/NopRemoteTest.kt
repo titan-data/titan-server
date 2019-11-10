@@ -21,7 +21,7 @@ class NopRemoteTest : StringSpec() {
     val remoteUtil = RemoteUtil()
 
     fun parse(uri: String, map: Map<String, String>? = null): Remote {
-        return remoteUtil.parseUri(uri, "name", map ?: mapOf())
+        return remoteUtil.parseUri(uri, "name", map ?: emptyMap())
     }
 
     init {

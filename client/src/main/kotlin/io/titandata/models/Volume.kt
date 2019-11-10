@@ -13,5 +13,5 @@ data class Volume(
     var mountpoint: String? = null,
     @SerializedName("Status")
     var status: Any? = null,
-    var properties: Map<String, Any>? = null
+    var properties: Map<String, Any> = emptyMap()
 )

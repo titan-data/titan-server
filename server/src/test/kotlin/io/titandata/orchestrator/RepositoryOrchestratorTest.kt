@@ -75,7 +75,7 @@ class RepositoryOrchestratorTest : StringSpec() {
 
         "create repository with invalid name fails" {
             shouldThrow<IllegalArgumentException> {
-                providers.repositories.createRepository(Repository(name = "a".repeat(65), properties = emptyMap()))
+                providers.repositories.createRepository(Repository(name = "a".repeat(65)))
             }
         }
 
@@ -100,7 +100,7 @@ class RepositoryOrchestratorTest : StringSpec() {
 
         "list repositories succeeds" {
             createRepository()
-            providers.repositories.createRepository(Repository(name = "bar", properties = emptyMap()))
+            providers.repositories.createRepository(Repository(name = "bar"))
             val repos = providers.repositories.listRepositories().sortedBy { it.name }
             repos.size shouldBe 2
             repos[0].name shouldBe "bar"
@@ -120,28 +120,28 @@ class RepositoryOrchestratorTest : StringSpec() {
 
         "update repository with invalid source name fails" {
             shouldThrow<IllegalArgumentException> {
-                providers.repositories.updateRepository("bad/repo", Repository(name = "foo", properties = emptyMap()))
+                providers.repositories.updateRepository("bad/repo", Repository(name = "foo"))
             }
         }
 
         "update repository with invalid new name fails" {
             createRepository()
             shouldThrow<IllegalArgumentException> {
-                providers.repositories.updateRepository("foo", Repository(name = "bad/repo", properties = emptyMap()))
+                providers.repositories.updateRepository("foo", Repository(name = "bad/repo"))
             }
         }
 
         "update non-existent repository fails" {
             shouldThrow<NoSuchObjectException> {
-                providers.repositories.updateRepository("foo", Repository(name = "foo", properties = emptyMap()))
+                providers.repositories.updateRepository("foo", Repository(name = "foo"))
             }
         }
 
         "rename to conflicting repo fails" {
             createRepository()
-            providers.repositories.createRepository(Repository(name = "bar", properties = emptyMap()))
+            providers.repositories.createRepository(Repository(name = "bar"))
             shouldThrow<ObjectExistsException> {
-                providers.repositories.updateRepository("foo", Repository(name = "bar", properties = emptyMap()))
+                providers.repositories.updateRepository("foo", Repository(name = "bar"))
             }
         }
 
@@ -164,7 +164,7 @@ class RepositoryOrchestratorTest : StringSpec() {
             providers.volumes.createVolume("foo", "vol1", emptyMap())
             providers.volumes.createVolume("foo", "vol2", emptyMap())
             every { zfsStorageProvider.createCommit(any(), any(), any()) } just Runs
-            providers.commits.createCommit("foo", Commit(id = "id", properties = emptyMap()))
+            providers.commits.createCommit("foo", Commit(id = "id"))
             every { zfsStorageProvider.getVolumeStatus(any(), any()) } returns RepositoryVolumeStatus(
                 name = "vol", logicalSize = 20, actualSize = 10)
             val status = providers.repositories.getRepositoryStatus("foo")

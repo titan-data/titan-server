@@ -38,7 +38,7 @@ abstract class BaseRemoteProvider : RemoteProvider {
     }
 
     fun getVolumeDesc(vol: Volume): String {
-        return vol.properties?.get("path")?.toString() ?: vol.name
+        return vol.properties.get("path")?.toString() ?: vol.name
     }
 
     override fun startOperation(operation: OperationExecutor): Any? {

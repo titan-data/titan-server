@@ -1,5 +1,7 @@
 package io.titandata.orchestrator
 
+import java.util.UUID
+
 class NameUtil {
 
     companion object {
@@ -44,7 +46,15 @@ class NameUtil {
                 throw IllegalArgumentException("invalid volume name, must be 64 characters or less")
             }
             if (volumeName.startsWith("_")) {
-                throw IllegalArgumentException("volume names cannot start with '_'")
+                throw IllegalArgumentException("invalid volume name, cannot start with '_'")
+            }
+        }
+
+        fun validateOperationId(operationId: String) {
+            try {
+                UUID.fromString(operationId)
+            } catch (e: IllegalArgumentException) {
+                throw IllegalArgumentException("invalid operation ID, must be a UUID")
             }
         }
     }

@@ -238,6 +238,14 @@ class MetadataProvider(val inMemory: Boolean = true, val databaseName: String = 
                 .firstOrNull()!!
     }
 
+    fun getVolumeSetRepo(volumeSet: String): String? {
+        val uuid = UUID.fromString(volumeSet)
+        return VolumeSets.select {
+            VolumeSets.id eq uuid
+        }.map { it[VolumeSets.repo] }
+                .firstOrNull()
+    }
+
     fun activateVolumeSet(repoName: String, volumeSet: String) {
         VolumeSets.update({
             (VolumeSets.repo eq repoName) and (VolumeSets.state eq VolumeState.ACTIVE)

@@ -53,6 +53,14 @@ class VolumeSetMetadataTest : StringSpec() {
             }
         }
 
+        "get volumeset repo returns correct info" {
+            transaction {
+                md.createRepository(Repository(name = "foo"))
+                val vs = md.createVolumeSet("foo", null, true)
+                md.getVolumeSetRepo(vs) shouldBe "foo"
+            }
+        }
+
         "activate volumeset marks other volumeset inactive" {
             transaction {
                 md.createRepository(Repository(name = "foo"))

@@ -8,21 +8,29 @@ import io.kotlintest.Spec
 import io.kotlintest.TestCase
 import io.kotlintest.TestCaseOrder
 import io.kotlintest.TestResult
+import io.kotlintest.shouldBe
+import io.kotlintest.shouldThrow
 import io.kotlintest.specs.StringSpec
 import io.mockk.MockKAnnotations
 import io.mockk.clearAllMocks
+import io.mockk.every
 import io.mockk.impl.annotations.InjectMockKs
 import io.mockk.impl.annotations.MockK
 import io.mockk.impl.annotations.OverrideMockKs
 import io.mockk.impl.annotations.SpyK
 import io.titandata.ProviderModule
+import io.titandata.exception.NoSuchObjectException
+import io.titandata.exception.ObjectExistsException
+import io.titandata.models.Commit
 import io.titandata.models.Operation
 import io.titandata.models.Repository
-import io.titandata.operation.OperationExecutor
+import io.titandata.remote.engine.EngineParameters
 import io.titandata.remote.nop.NopParameters
 import io.titandata.remote.nop.NopRemote
 import io.titandata.remote.nop.NopRemoteProvider
+import io.titandata.storage.OperationData
 import io.titandata.storage.zfs.ZfsStorageProvider
+import java.util.UUID
 import org.jetbrains.exposed.sql.transactions.transaction
 
 class OperationOrchestratorTest : StringSpec() {
@@ -33,26 +41,25 @@ class OperationOrchestratorTest : StringSpec() {
     @SpyK
     var nopRemoteProvider = NopRemoteProvider()
 
-    @InjectMockKs
-    @OverrideMockKs
-    var providers = ProviderModule("test")
+    lateinit var vs: String
 
     @InjectMockKs
     @OverrideMockKs
-    lateinit var provider: OperationOrchestrator
+    var providers = ProviderModule("test")
 
     override fun beforeSpec(spec: Spec) {
         providers.metadata.init()
     }
 
     override fun beforeTest(testCase: TestCase) {
-        provider = OperationOrchestrator(providers)
         providers.metadata.clear()
-        transaction {
+        vs = transaction {
             providers.metadata.createRepository(Repository(name = "foo"))
             providers.metadata.createVolumeSet("foo", null, true)
         }
-        return MockKAnnotations.init(this)
+        val ret = MockKAnnotations.init(this)
+
+        return ret
     }
 
     override fun afterTest(testCase: TestCase, result: TestResult) {
@@ -61,61 +68,230 @@ class OperationOrchestratorTest : StringSpec() {
 
     override fun testCaseOrder() = TestCaseOrder.Random
 
-    fun addOperation(type: Operation.Type = Operation.Type.PULL) {
-        provider.addOperation(OperationExecutor(providers,
-                provider.buildOperation(type, "id", "remote", "commit"),
-                "foo", NopRemote(name = "remote"),
-                NopParameters()))
+    fun buildOperation(type: Operation.Type = Operation.Type.PULL): OperationData {
+        return OperationData(operation = Operation(
+                id = vs,
+                type = type,
+                state = Operation.State.RUNNING,
+                remote = "remote",
+                commitId = "id"
+        ), params = NopParameters(), metadataOnly = false)
     }
 
     init {
-        /* TODO
+        "get operation succeeds" {
+            transaction {
+                providers.metadata.createOperation("foo", vs, buildOperation())
+                val op = providers.operations.getOperation("foo", vs)
+                op.id shouldBe vs
+                op.remote shouldBe "remote"
+                op.commitId shouldBe "id"
+            }
+        }
+
+        "get operation fails if incorrect repo specified" {
+            transaction {
+                providers.metadata.createOperation("foo", vs, buildOperation())
+                providers.metadata.createRepository(Repository(name = "bar"))
+            }
+            shouldThrow<NoSuchObjectException> {
+                providers.operations.getOperation("bar", vs)
+            }
+        }
+
+        "get operation fails for invalid operation id" {
+            shouldThrow<IllegalArgumentException> {
+                providers.operations.getOperation("foo", "bad/id")
+            }
+        }
+
+        "get operation fails for invalid repository name" {
+            shouldThrow<IllegalArgumentException> {
+                providers.operations.getOperation("bad/repo", UUID.randomUUID().toString())
+            }
+        }
+
+        "get operation fails for non-existent repository" {
+            shouldThrow<NoSuchObjectException> {
+                providers.operations.getOperation("bar", UUID.randomUUID().toString())
+            }
+        }
+
+        "get operation fails for non-existent operation" {
+            shouldThrow<NoSuchObjectException> {
+                providers.operations.getOperation("repo", UUID.randomUUID().toString())
+            }
+        }
+
         "list operations for non-existent repository fails" {
             shouldThrow<NoSuchObjectException> {
-                provider.listOperations("bar")
+                providers.operations.listOperations("bar")
+            }
+        }
+
+        "list operations fails with invalid repo name" {
+            shouldThrow<IllegalArgumentException> {
+                providers.operations.listOperations("bad/repo")
             }
         }
 
         "list operations returns empty list" {
-            val result = provider.listOperations("foo")
+            val result = providers.operations.listOperations("foo")
             result.size shouldBe 0
         }
 
-        "list operations returns list of current operations" {
-            addOperation()
-            val result = provider.listOperations("foo")
+        "list operations succeeds" {
+            transaction {
+                providers.metadata.createOperation("foo", vs, buildOperation())
+            }
+            val result = providers.operations.listOperations("foo")
             result.size shouldBe 1
-            result[0].id shouldBe "id"
-            result[0].remote shouldBe "remote"
-            result[0].commitId shouldBe "commit"
+            result[0].id shouldBe vs
+            result[0].commitId shouldBe "id"
         }
 
-        "get operation fails for unknown operation" {
-            shouldThrow<NoSuchObjectException> {
-                provider.getOperation("repo", "id")
+        "pull fails for invalid repo name" {
+            shouldThrow<IllegalArgumentException> {
+                providers.operations.startPull("bad/repo", "remote", "id", NopParameters())
             }
         }
 
-        "get operation should fail if known id but wrong repo" {
-            addOperation()
-            shouldThrow<NoSuchObjectException> {
-                provider.getOperation("bar", "id")
+        "pull fails for invalid remote name" {
+            shouldThrow<IllegalArgumentException> {
+                providers.operations.startPull("foo", "bad/remote", "id", NopParameters())
             }
         }
 
-        "get operation succeeds" {
-            addOperation()
-            val result = provider.getOperation("foo", "id")
-            result.id shouldBe "id"
-            result.remote shouldBe "remote"
-            result.commitId shouldBe "commit"
-        }
-
-        "abort operation fails for unknown id" {
-            shouldThrow<NoSuchObjectException> {
-                provider.abortOperation("foo", "id")
+        "pull fails for invalid commit id" {
+            shouldThrow<IllegalArgumentException> {
+                providers.operations.startPull("foo", "remote", "bad/id", NopParameters())
             }
         }
+
+        "pull fails for non-existent repo" {
+            shouldThrow<NoSuchObjectException> {
+                providers.operations.startPull("bar", "remote", "id", NopParameters())
+            }
+        }
+
+        "pull for non-existent remote fails" {
+            shouldThrow<NoSuchObjectException> {
+                providers.operations.startPull("foo", "remote", "id", NopParameters())
+            }
+        }
+
+        "pull fails for mismatched remote fails" {
+            providers.remotes.addRemote("foo", NopRemote(name = "remote"))
+            shouldThrow<IllegalArgumentException> {
+                providers.operations.startPull("foo", "remote", "commit", EngineParameters())
+            }
+        }
+
+        "pull fails for non-existent remote commit" {
+            providers.remotes.addRemote("foo", NopRemote(name = "remote"))
+            every { nopRemoteProvider.validateOperation(any(), any(), any(), any(), any()) } throws NoSuchObjectException("")
+            shouldThrow<NoSuchObjectException> {
+                providers.operations.startPull("foo", "remote", "id", NopParameters())
+            }
+        }
+
+        "pull fails if local commit exists" {
+            providers.remotes.addRemote("foo", NopRemote(name = "remote"))
+            transaction {
+                providers.metadata.createCommit("foo", providers.metadata.getActiveVolumeSet("foo"), Commit(id = "id"))
+            }
+            shouldThrow<ObjectExistsException> {
+                providers.operations.startPull("foo", "remote", "id", NopParameters())
+            }
+        }
+
+        "pull fails if local commit does not exist and metadata only set" {
+            providers.remotes.addRemote("foo", NopRemote(name = "remote"))
+            shouldThrow<NoSuchObjectException> {
+                providers.operations.startPull("foo", "remote", "id", NopParameters(), true)
+            }
+        }
+
+        "push fails for invalid repo name" {
+            shouldThrow<IllegalArgumentException> {
+                providers.operations.startPush("bad/repo", "remote", "id", NopParameters())
+            }
+        }
+
+        "push fails for invalid remote name" {
+            shouldThrow<IllegalArgumentException> {
+                providers.operations.startPush("foo", "bad/remote", "id", NopParameters())
+            }
+        }
+
+        "push fails for invalid commit id" {
+            shouldThrow<IllegalArgumentException> {
+                providers.operations.startPush("foo", "remote", "bad/id", NopParameters())
+            }
+        }
+
+        "push fails for non-existent repo" {
+            shouldThrow<NoSuchObjectException> {
+                providers.operations.startPush("bar", "remote", "id", NopParameters())
+            }
+        }
+
+        "push for non-existent remote fails" {
+            shouldThrow<NoSuchObjectException> {
+                providers.operations.startPush("foo", "remote", "id", NopParameters())
+            }
+        }
+
+        "push fails for mismatched remote fails" {
+            providers.remotes.addRemote("foo", NopRemote(name = "remote"))
+            shouldThrow<IllegalArgumentException> {
+                providers.operations.startPush("foo", "remote", "id", EngineParameters())
+            }
+        }
+
+        "push fails if local commit cannot be found" {
+            providers.remotes.addRemote("foo", NopRemote(name = "remote"))
+            shouldThrow<NoSuchObjectException> {
+                providers.operations.startPush("foo", "remote", "id", NopParameters())
+            }
+        }
+
+        "push fails if remote commit exists" {
+            providers.remotes.addRemote("foo", NopRemote(name = "remote"))
+            transaction {
+                providers.metadata.createCommit("foo", providers.metadata.getActiveVolumeSet("foo"), Commit(id = "id"))
+            }
+            every { nopRemoteProvider.validateOperation(any(), any(), any(), any(), any()) } throws ObjectExistsException("")
+            shouldThrow<ObjectExistsException> {
+                providers.operations.startPush("foo", "remote", "id", NopParameters())
+            }
+        }
+
+        "abort operation fails for bad repository name" {
+            shouldThrow<IllegalArgumentException> {
+                providers.operations.abortOperation("bad/repo", vs)
+            }
+        }
+
+        "abort operation fails for bad operation name" {
+            shouldThrow<IllegalArgumentException> {
+                providers.operations.abortOperation("foo", "badid")
+            }
+        }
+
+        "abort operation fails for unknown repository" {
+            shouldThrow<NoSuchObjectException> {
+                providers.operations.abortOperation("bar", vs)
+            }
+        }
+
+        "abort operation fails for unknown operation" {
+            shouldThrow<NoSuchObjectException> {
+                providers.operations.abortOperation("bar", UUID.randomUUID().toString())
+            }
+        }
+
+        /* TODO
 
         "abort operation succeeds" {
             addOperation()
@@ -123,50 +299,6 @@ class OperationOrchestratorTest : StringSpec() {
             provider.abortOperation("foo", "id")
         }
 
-        "pull for non-existent remote fails" {
-            shouldThrow<NoSuchObjectException> {
-                provider.startPull("foo", "remote", "commit", NopParameters())
-            }
-        }
-
-        "pull fails for mismatched remote fails" {
-            transaction {
-                providers.metadata.addRemote("foo", NopRemote(name = "remote"))
-            }
-            shouldThrow<IllegalArgumentException> {
-                provider.startPull("foo", "remote", "commit", EngineParameters())
-            }
-        }
-
-        "pull fails for non-existent remote commit" {
-            transaction {
-                providers.metadata.addRemote("foo", NopRemote(name = "remote"))
-            }
-            every { nopRemoteProvider.validateOperation(any(), any(), any(), any(), any()) } throws NoSuchObjectException("")
-            shouldThrow<NoSuchObjectException> {
-                provider.startPull("foo", "remote", "commit", NopParameters())
-            }
-        }
-
-        "pull fails if local commit exists" {
-            transaction {
-                providers.metadata.addRemote("foo", NopRemote(name = "remote"))
-            }
-            every { zfsStorageProvider.getCommit(any(), any()) } returns Commit(id = "commit")
-            shouldThrow<ObjectExistsException> {
-                provider.startPull("foo", "remote", "commit", NopParameters())
-            }
-        }
-
-        "pull fails if local commit does not exist and metadata only set" {
-            transaction {
-                providers.metadata.addRemote("foo", NopRemote(name = "remote"))
-            }
-            every { zfsStorageProvider.getCommit(any(), any()) } throws NoSuchObjectException("")
-            shouldThrow<ObjectExistsException> {
-                provider.startPull("foo", "remote", "commit", NopParameters(), true)
-            }
-        }
 
         "pull succeeds" {
             transaction {
@@ -273,42 +405,6 @@ class OperationOrchestratorTest : StringSpec() {
             var op = provider.startPull("foo", "remote", "commit2", NopParameters())
             provider.getExecutor("foo", op.id).join()
             provider.getOperation("foo", op.id)
-        }
-
-        "push for non-existent remote fails" {
-            shouldThrow<NoSuchObjectException> {
-                provider.startPush("foo", "remote", "commit", NopParameters())
-            }
-        }
-
-        "push fails for mismatched remote" {
-            transaction {
-                providers.metadata.addRemote("foo", NopRemote(name = "remote"))
-            }
-            shouldThrow<IllegalArgumentException> {
-                provider.startPush("foo", "remote", "commit", EngineParameters())
-            }
-        }
-
-        "push fails if local commit cannot be found" {
-            transaction {
-                providers.metadata.addRemote("foo", NopRemote(name = "remote"))
-            }
-            every { zfsStorageProvider.getCommit(any(), any()) } throws NoSuchObjectException("")
-            shouldThrow<NoSuchObjectException> {
-                provider.startPush("foo", "remote", "commit", NopParameters())
-            }
-        }
-
-        "push fails if remote commit exists" {
-            transaction {
-                providers.metadata.addRemote("foo", NopRemote(name = "remote"))
-            }
-            every { zfsStorageProvider.getCommit(any(), any()) } returns Commit(id = "commit")
-            every { nopRemoteProvider.validateOperation(any(), any(), any(), any(), any()) } throws ObjectExistsException("")
-            shouldThrow<ObjectExistsException> {
-                provider.startPush("foo", "remote", "commit", NopParameters())
-            }
         }
 
         "push succeeds" {

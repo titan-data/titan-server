@@ -50,25 +50,7 @@ class OperationOrchestrator(val providers: ProviderModule) {
         val log = LoggerFactory.getLogger(OperationOrchestrator::class.java)
     }
 
-    private val activeOperations: MutableMap<String, OperationExecutor> = mutableMapOf()
-
-    internal fun addOperation(exec: OperationExecutor) {
-        activeOperations.put(exec.operation.id, exec)
-    }
-
-    internal fun removeOperation(exec: OperationExecutor) {
-        activeOperations.remove(exec.operation.id)
-    }
-
-    internal fun buildOperation(type: Operation.Type, volumeSet: String, remote: String, commitId: String): Operation {
-        return Operation(
-                volumeSet,
-                type,
-                Operation.State.RUNNING,
-                remote,
-                commitId
-        )
-    }
+    private val executors: MutableMap<String, OperationExecutor> = mutableMapOf()
 
     internal fun createAndStartOperation(
         type: Operation.Type,
@@ -121,7 +103,7 @@ class OperationOrchestrator(val providers: ProviderModule) {
                 providers.metadata.createVolume(vs, v)
             }
             providers.metadata.createVolume(vs, Volume(name = "_scratch"))
-            val op = buildOperation(type, vs, remote.name, commitId)
+            val op = Operation(id = vs, type = type, state = Operation.State.RUNNING, remote = remote.name, commitId = commitId)
             providers.metadata.createOperation(repository, vs, OperationData(
                     metadataOnly = metadataOnly,
                     params = params,
@@ -151,8 +133,8 @@ class OperationOrchestrator(val providers: ProviderModule) {
         }
 
         // Run executor
-        val exec = OperationExecutor(providers, operation, repository, remote, params, false, metadataOnly)
-        addOperation(exec)
+        val exec = OperationExecutor(providers, operation, repository, remote, params, metadataOnly)
+        executors.put(exec.operation.id, exec)
         val message = when (type) {
             Operation.Type.PULL -> "Pulling $commitId from '${remote.name}'"
             Operation.Type.PUSH -> "Pushing $commitId to '${remote.name}'"
@@ -163,17 +145,13 @@ class OperationOrchestrator(val providers: ProviderModule) {
     }
 
     internal fun getExecutor(repository: String, id: String): OperationExecutor {
-        val op = activeOperations[id]
+        providers.repositories.getRepository(repository)
+        NameUtil.validateOperationId(id)
+        val op = executors[id]
         if (op == null || op.repo != repository) {
             throw NoSuchObjectException("no such operation '$id' in repository '$repository'")
         }
         return op
-    }
-
-    private fun getRemote(repository: String, remote: String): Remote {
-        return transaction {
-            providers.metadata.getRemote(repository, remote)
-        }
     }
 
     @Synchronized
@@ -183,8 +161,8 @@ class OperationOrchestrator(val providers: ProviderModule) {
             for (r in providers.metadata.listRepositories()) {
                 for (op in providers.metadata.listOperations(r.name)) {
                     val exec = OperationExecutor(providers, op.operation, r.name,
-                            getRemote(r.name, op.operation.remote), op.params, true, op.metadataOnly)
-                    addOperation(exec)
+                            providers.remotes.getRemote(r.name, op.operation.remote), op.params, op.metadataOnly)
+                    executors.put(exec.operation.id, exec)
                     if (op.operation.state == Operation.State.RUNNING) {
                         log.info("retrying operation ${op.operation.id} after restart")
                         exec.addProgress(ProgressEntry(ProgressEntry.Type.MESSAGE,
@@ -198,12 +176,12 @@ class OperationOrchestrator(val providers: ProviderModule) {
 
     @Synchronized
     fun clearState() {
-        val values = activeOperations.values
+        val values = executors.values
         for (exec in values) {
             exec.abort()
             exec.join()
         }
-        activeOperations.clear()
+        executors.clear()
     }
 
     @Synchronized
@@ -211,28 +189,37 @@ class OperationOrchestrator(val providers: ProviderModule) {
         val exec = getExecutor(repository, id)
         val ret = exec.getProgress()
         // When you get the progress of an operation that's done, then we remove it from the history
-        when (exec.operation.state) {
-            Operation.State.COMPLETE -> removeOperation(exec)
-            Operation.State.ABORTED -> removeOperation(exec)
-            Operation.State.FAILED -> removeOperation(exec)
-            else -> {}
+        val remove = when (exec.operation.state) {
+            Operation.State.COMPLETE -> true
+            Operation.State.ABORTED -> true
+            Operation.State.FAILED -> true
+            else -> false
+        }
+        if (remove) {
+            transaction {
+                providers.metadata.deleteOperation(id)
+            }
+            executors.remove(exec.operation.id)
         }
         return ret
     }
 
     fun listOperations(repository: String): List<Operation> {
-        NameUtil.validateRepoName(repository)
-
+        providers.repositories.getRepository(repository)
         return transaction {
             providers.metadata.listOperations(repository).map { it.operation }
         }
     }
 
-    // TODO - check that operation is actually for given repo
-    @Suppress("UNUSED_PARAMETER")
     fun getOperation(repository: String, id: String): Operation {
+        NameUtil.validateOperationId(id)
+        providers.repositories.getRepository(repository)
         return transaction {
-            providers.metadata.getOperation(id).operation
+            val op = providers.metadata.getOperation(id).operation
+            if (providers.metadata.getVolumeSetRepo(op.id) != repository) {
+                throw NoSuchObjectException("no such operation '$id' in repository '$repository'")
+            }
+            op
         }
     }
 
@@ -254,7 +241,8 @@ class OperationOrchestrator(val providers: ProviderModule) {
     ): Operation {
 
         log.info("pull $commitId from $remote in $repository")
-        val r = getRemote(repository, remote)
+        NameUtil.validateCommitId(commitId)
+        val r = providers.remotes.getRemote(repository, remote)
         if (r.provider != params.provider) {
             throw IllegalArgumentException("operation parameters type (${params.provider}) doesn't match type of remote '$remote' (${r.provider})")
         }
@@ -275,7 +263,7 @@ class OperationOrchestrator(val providers: ProviderModule) {
             }
         } catch (e: NoSuchObjectException) {
             if (metadataOnly) {
-                throw ObjectExistsException("no such commit '$commitId' in repository '$repository'")
+                throw NoSuchObjectException("no such commit '$commitId' in repository '$repository'")
             }
         }
 
@@ -292,7 +280,8 @@ class OperationOrchestrator(val providers: ProviderModule) {
     ): Operation {
 
         log.info("push $commitId to $remote in $repository")
-        val r = getRemote(repository, remote)
+        NameUtil.validateCommitId(commitId)
+        val r = providers.remotes.getRemote(repository, remote)
         if (r.provider != params.provider) {
             throw IllegalArgumentException("operation parameters type (${params.provider}) doesn't match type of remote '$remote' (${r.provider})")
         }

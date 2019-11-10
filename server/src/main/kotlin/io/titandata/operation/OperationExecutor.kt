@@ -25,7 +25,6 @@ class OperationExecutor(
     val repo: String,
     val remote: Remote,
     val params: RemoteParameters,
-    val isResume: Boolean = false,
     val metadataOnly: Boolean = false
 ) : Runnable {
 

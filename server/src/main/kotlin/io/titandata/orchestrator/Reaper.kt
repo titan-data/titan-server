@@ -31,44 +31,121 @@ class Reaper(val providers: ProviderModule) : Runnable {
     override fun run() {
         lock.lock()
         try {
-            var deleted = 1
+            var changed = true
             while (true) {
-                if (deleted == 0) {
+                if (!changed) {
                     cv.await()
                 }
+
+                log.debug("reaping storage objects")
+
+                changed = false
+                // First pass - delete commits without clones
                 try {
-                    deleted = reapCommits()
+                    changed = reapCommits() || changed
                 } catch (e: Throwable) {
                     log.error("error during reaping", e)
                 }
+
+                // Next pass, mark any inactive volume sets that no longer have commits as deleting
+                markEmptyVolumeSets()
+
+                // Delete any volumes explicitly marked for deletion
+                changed = reapVolumes() || changed
+
+                // Now go and delete any volume sets that don't have commits
+                changed = reapVolumeSets() || changed
             }
         } finally {
             lock.unlock()
         }
     }
 
-    fun reapCommits(): Int {
+    /*
+     * When reaping commits, we look for any that have been marked deleting and do not have any clones.
+     */
+    fun reapCommits(): Boolean {
         val commits = transaction {
             providers.metadata.listDeletingCommits().filter {
                 !providers.metadata.hasClones(it)
             }
         }
 
-        var deleted = 0
+        var ret = false
         for (c in commits) {
             val volumes = transaction {
                 providers.metadata.listVolumes(c.volumeSet).map { it.name }
             }
             try {
                 providers.storage.deleteCommit(c.volumeSet, c.guid, volumes)
-                deleted++
+                transaction {
+                    providers.metadata.deleteCommit(c)
+                }
+                ret = true
             } catch (e: Throwable) {
                 log.error("error deleting commit ${c.guid}", e)
             }
         }
 
-        return deleted
+        return ret
     }
 
-    // TODO - reap volumesets
+    fun markEmptyVolumeSets() {
+        val volumeSets = transaction {
+            providers.metadata.listInactiveVolumeSets().filter {
+                providers.metadata.isVolumeSetEmpty(it) &&
+                        !providers.metadata.operationExists(it)
+            }
+        }
+
+        transaction {
+            for (vs in volumeSets) {
+                providers.metadata.markVolumeSetDeleting(vs)
+            }
+        }
+    }
+
+    fun reapVolumeSets(): Boolean {
+        val volumeSets = transaction {
+            providers.metadata.listDeletingVolumeSets().filter {
+                providers.metadata.isVolumeSetEmpty(it)
+            }
+        }
+
+        var ret = false
+        for (vs in volumeSets) {
+            val volumes = transaction {
+                providers.metadata.listVolumes(vs)
+            }
+            for (vol in volumes) {
+                providers.storage.deleteVolume(vs, vol.name)
+                transaction {
+                    providers.metadata.deleteVolume(vs, vol.name)
+                }
+            }
+            providers.storage.deleteVolumeSet(vs)
+            transaction {
+                providers.metadata.deleteVolumeSet(vs)
+            }
+            ret = true
+        }
+
+        return ret
+    }
+
+    // We don't recursively mark volumes deleted, this is only true when volumes are explicitly deleted
+    fun reapVolumes(): Boolean {
+        val volumes = transaction {
+            providers.metadata.listDeletingVolumes()
+        }
+        var ret = false
+        for ((vs, vol) in volumes) {
+            providers.storage.deleteVolume(vs, vol)
+            transaction {
+                providers.metadata.deleteVolume(vs, vol)
+            }
+            ret = true
+        }
+        return ret
+    }
 }

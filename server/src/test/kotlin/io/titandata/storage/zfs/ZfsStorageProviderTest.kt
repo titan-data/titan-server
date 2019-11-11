@@ -49,7 +49,7 @@ class ZfsStorageProviderTest : StringSpec() {
             every { executor.exec(*anyVararg()) } returns ""
             provider.createVolumeSet("vs")
             verifyAll {
-                executor.exec("zfs", "create", "test/data/vs")
+                executor.exec("zfs", "create", "-o", "mountpoint=legacy", "test/data/vs")
             }
         }
 
@@ -57,7 +57,7 @@ class ZfsStorageProviderTest : StringSpec() {
             every { executor.exec(*anyVararg()) } returns ""
             provider.cloneVolumeSet("source", "commit", "dest", listOf("one", "two"))
             verifyAll {
-                executor.exec("zfs", "create", "test/data/dest")
+                executor.exec("zfs", "create", "-o", "mountpoint=legacy", "test/data/dest")
                 executor.exec("zfs", "clone", "test/data/source/one@commit", "test/data/dest/one")
                 executor.exec("zfs", "clone", "test/data/source/two@commit", "test/data/dest/two")
             }
@@ -68,7 +68,7 @@ class ZfsStorageProviderTest : StringSpec() {
             provider.deleteVolumeSet("vs")
             verifyAll {
                 executor.exec("zfs", "destroy", "test/data/vs")
-                executor.exec("rm", "-rf", "/var/lib/test/vs")
+                executor.exec("rm", "-rf", "/var/lib/test/mnt/vs")
             }
         }
 
@@ -140,14 +140,14 @@ class ZfsStorageProviderTest : StringSpec() {
             provider.deleteVolume("vs", "vol")
             verifyAll {
                 executor.exec("zfs", "destroy", "test/data/vs/vol")
-                executor.exec("rmdir", "/var/lib/test/vs/vol")
+                executor.exec("rmdir", "/var/lib/test/mnt/vs/vol")
             }
         }
 
         "mount volume succeeds" {
             every { executor.exec(*anyVararg()) } returns ""
             val mountpoint = provider.mountVolume("vs", "vol")
-            mountpoint shouldBe "/var/lib/test/vs/vol"
+            mountpoint shouldBe "/var/lib/test/mnt/vs/vol"
             verifyAll {
                 executor.exec("mkdir", "-p", mountpoint)
                 executor.exec("mount", "-t", "zfs", "test/data/vs/vol", mountpoint)
@@ -158,7 +158,7 @@ class ZfsStorageProviderTest : StringSpec() {
             every { executor.exec(*anyVararg()) } returns ""
             provider.unmountVolume("vs", "vol")
             verifyAll {
-                executor.exec("umount", "/var/lib/test/vs/vol")
+                executor.exec("umount", "/var/lib/test/mnt/vs/vol")
             }
         }
 
@@ -174,7 +174,7 @@ class ZfsStorageProviderTest : StringSpec() {
                 provider.unmountVolume("vs", "vol")
             }
             verifyAll {
-                executor.exec("umount", "/var/lib/test/vs/vol")
+                executor.exec("umount", "/var/lib/test/mnt/vs/vol")
                 executor.exec("lsof")
             }
         }
@@ -187,7 +187,7 @@ class ZfsStorageProviderTest : StringSpec() {
             }
             ex.output shouldBe "target is busy"
             verifyAll {
-                executor.exec("umount", "/var/lib/test/vs/vol")
+                executor.exec("umount", "/var/lib/test/mnt/vs/vol")
                 executor.exec("lsof")
             }
         }

@@ -270,18 +270,25 @@ class MetadataProvider(val inMemory: Boolean = true, val databaseName: String = 
         }) {
             it[state] = VolumeState.DELETING
         }
-        // Mark all volumes in volumeset as deleting
-        Volumes.update({
-            Volumes.volumeSet eq uuid
-        }) {
-            it[state] = VolumeState.DELETING
-        }
         // Mark all commits in volumeset deleting
         Commits.update({
             Commits.volumeSet eq uuid
         }) {
             it[state] = VolumeState.DELETING
         }
+    }
+
+    fun isVolumeSetEmpty(volumeSet: String): Boolean {
+        val uuid = UUID.fromString(volumeSet)
+        return Commits.select {
+            Commits.volumeSet eq uuid
+        }.count() == 0
+    }
+
+    fun listInactiveVolumeSets(): List<String> {
+        return VolumeSets.select {
+            VolumeSets.state eq VolumeState.INACTIVE
+        }.map { it[VolumeSets.id].toString() }
     }
 
     fun markAllVolumeSetsDeleting(repo: String) {
@@ -359,6 +366,12 @@ class MetadataProvider(val inMemory: Boolean = true, val databaseName: String = 
 
     fun listAllVolumes(): List<Volume> {
         return Volumes.selectAll().map { convertVolume(it) }
+    }
+
+    fun listDeletingVolumes(): List<Pair<String, String>> {
+        return Volumes.select {
+            Volumes.state eq VolumeState.DELETING
+        }.map { Pair(it[Volumes.volumeSet].toString(), it[Volumes.name]) }
     }
 
     private fun convertCommit(it: ResultRow) = Commit(
@@ -634,6 +647,13 @@ class MetadataProvider(val inMemory: Boolean = true, val databaseName: String = 
         }.map { convertOperation(it) }
                 .firstOrNull()
                 ?: throw NoSuchObjectException("no such operation '$id'")
+    }
+
+    fun operationExists(id: String): Boolean {
+        val uuid = UUID.fromString(id)
+        return Operations.select {
+            Operations.volumeSet eq uuid
+        }.count() > 0
     }
 
     fun updateOperationState(id: String, state: Operation.State) {

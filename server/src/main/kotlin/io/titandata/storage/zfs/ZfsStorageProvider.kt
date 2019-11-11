@@ -35,7 +35,7 @@ class ZfsStorageProvider(
      * Create a new volume set. This is simply an empty placeholder volumeset.
      */
     override fun createVolumeSet(volumeSet: String) {
-        executor.exec("zfs", "create", "$poolName/data/$volumeSet")
+        executor.exec("zfs", "create", "-o", "mountpoint=legacy", "$poolName/data/$volumeSet")
     }
 
     /*
@@ -63,7 +63,7 @@ class ZfsStorageProvider(
 
         // Try to delete the directory, but it may not exist if no volumes have been created
         try {
-            executor.exec("rm", "-rf", "/var/lib/$poolName/$volumeSet")
+            executor.exec("rm", "-rf", "/var/lib/$poolName/mnt/$volumeSet")
         } catch (e: CommandException) {
             if (!e.output.contains("No such file or directory")) {
                 throw e
@@ -74,8 +74,8 @@ class ZfsStorageProvider(
     override fun getVolumeStatus(volumeSet: String, volume: String): RepositoryVolumeStatus {
         val output = executor.exec("zfs", "list", "-pHo",
                 "logicalreferenced,referenced", "$poolName/data/$volumeSet/$volume")
-        val regex = "([^\t]+)\t([^\t]+)$".toRegex()
-        val result = regex.find(output)
+        val regex = "^([^\t]+)\t([^\t]+)$".toRegex()
+        val result = regex.find(output.trim())
         val volumeLogical = result!!.groupValues.get(1).toLong()
         val volumeActual = result.groupValues.get(2).toLong()
         return RepositoryVolumeStatus(
@@ -137,7 +137,7 @@ class ZfsStorageProvider(
     }
 
     override fun getVolumeMountpoint(volumeSet: String, volumeName: String): String {
-        return "/var/lib/$poolName/$volumeSet/$volumeName"
+        return "/var/lib/$poolName/mnt/$volumeSet/$volumeName"
     }
 
     override fun mountVolume(volumeSet: String, volumeName: String): String {

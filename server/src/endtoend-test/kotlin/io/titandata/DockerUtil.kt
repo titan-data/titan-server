@@ -5,7 +5,9 @@
 package io.titandata
 
 import com.jcraft.jsch.JSch
+import io.titandata.client.apis.VolumeApi
 import io.titandata.exception.CommandException
+import io.titandata.models.VolumeRequest
 import io.titandata.util.CommandExecutor
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -29,6 +31,8 @@ class DockerUtil(
     private val timeout = 1000L
     private val sshUser = "root"
     private val sshPassword = "root"
+    private val url = "http://localhost:$port"
+    private val volumeApi = VolumeApi(url)
 
     fun url(path: String): String {
         return "http://localhost:$port/v1/$path"
@@ -127,15 +131,21 @@ class DockerUtil(
         }
     }
 
+    fun getVolumePath(volume: String): String {
+        return volumeApi.getVolumePath(VolumeRequest(name = volume)).mountpoint!!
+    }
+
     fun writeFile(volume: String, filename: String, content: String) {
-        val path = "/var/lib/$identity/mnt/$volume/$filename"
+        val mountpoint = getVolumePath(volume)
+        val path = "$mountpoint/$filename"
         // Using 'docker cp' can mess with volume mounts, leave this as simple as possible
         executor.exec("docker", "exec", "$identity-server", "sh", "-c",
                 "echo \"$content\" > $path")
     }
 
     fun readFile(volume: String, filename: String): String {
-        val path = "/var/lib/$identity/mnt/$volume/$filename"
+        val mountpoint = getVolumePath(volume)
+        val path = "$mountpoint/$filename"
         return executor.exec("docker", "exec", "$identity-server", "cat", path)
     }
 

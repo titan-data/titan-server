@@ -88,7 +88,7 @@ class VolumeSetMetadataTest : StringSpec() {
             }
         }
 
-        "mark volumeset deleting marks all volumes and commits" {
+        "mark volumeset deleting marks all commits" {
             transaction {
                 md.createRepository(Repository(name = "foo"))
                 val vs = md.createVolumeSet("foo")
@@ -97,10 +97,7 @@ class VolumeSetMetadataTest : StringSpec() {
                 md.createCommit("foo", vs, commit)
                 md.markVolumeSetDeleting(vs)
                 shouldThrow<NoSuchObjectException> {
-                    md.getVolume(vs, "vol")
-                }
-                shouldThrow<NoSuchObjectException> {
-                    md.getCommit("foo", "vol")
+                    md.getCommit("foo", "id")
                 }
             }
         }
@@ -148,6 +145,39 @@ class VolumeSetMetadataTest : StringSpec() {
                 shouldThrow<NullPointerException> {
                     md.getActiveVolumeSet("foo")
                 }
+            }
+        }
+
+        "volume set detected as empty" {
+            transaction {
+                md.createRepository(Repository(name = "foo"))
+                val vs = md.createVolumeSet("foo", null, true)
+                md.isVolumeSetEmpty(vs) shouldBe true
+            }
+        }
+
+        "volume set detected as non-empty" {
+            transaction {
+                md.createRepository(Repository(name = "foo"))
+                val vs = md.createVolumeSet("foo", null, true)
+                md.createCommit("foo", vs, Commit("id"))
+                md.isVolumeSetEmpty(vs) shouldBe false
+            }
+        }
+
+        "list inactive volume sets returns empty list" {
+            transaction {
+                md.createRepository(Repository(name = "foo"))
+                md.createVolumeSet("foo", null, true)
+                md.listInactiveVolumeSets().size shouldBe 0
+            }
+        }
+
+        "list inactive volume sets returns non-empty list" {
+            transaction {
+                md.createRepository(Repository(name = "foo"))
+                md.createVolumeSet("foo")
+                md.listInactiveVolumeSets().size shouldBe 1
             }
         }
     }

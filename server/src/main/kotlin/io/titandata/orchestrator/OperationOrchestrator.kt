@@ -74,7 +74,7 @@ class OperationOrchestrator(val providers: ProviderModule) {
      * event that the chain is broken on the remote (because a commit has been deleted) or that we don't have any
      * appropriate commits locally, we simply use the latest commit and hope for the best.
      */
-    internal fun findLocalCommit(type: Operation.Type, repo: String, remote: Remote, params: RemoteParameters, commitId: String) : String? {
+    internal fun findLocalCommit(type: Operation.Type, repo: String, remote: Remote, params: RemoteParameters, commitId: String): String? {
         if (type == Operation.Type.PUSH) {
             return commitId
         } else {
@@ -111,8 +111,15 @@ class OperationOrchestrator(val providers: ProviderModule) {
      *      Volumes that correspond to the volumes in the current active volume set
      *      Operation with the given configuration
      */
-    internal fun createMetadata(repo: String, type : Operation.Type, remoteName: String, commitId: String,
-                                metadataOnly: Boolean, params: RemoteParameters, commit: String?) : Pair<String, Operation> {
+    internal fun createMetadata(
+        repo: String,
+        type: Operation.Type,
+        remoteName: String,
+        commitId: String,
+        metadataOnly: Boolean,
+        params: RemoteParameters,
+        commit: String?
+    ): Pair<String, Operation> {
         return transaction {
             val vs = providers.metadata.createVolumeSet(repo, commit)
             val volumes = providers.metadata.listVolumes(providers.metadata.getActiveVolumeSet(repo))
@@ -151,7 +158,6 @@ class OperationOrchestrator(val providers: ProviderModule) {
             }
             providers.storage.cloneVolumeSet(sourceVolumeSet, commit, volumeSet, volumes)
         }
-
     }
 
     /**

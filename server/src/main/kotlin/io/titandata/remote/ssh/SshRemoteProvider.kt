@@ -60,14 +60,13 @@ class SshRemoteProvider(val providers: ProviderModule) : BaseRemoteProvider() {
 
     fun getSshAuth(remote: Remote, params: RemoteParameters): Pair<String?, String?> {
         val sshRemote = remote as SshRemote
-        val sshParams = params as SshParameters
 
-        if (sshParams.password != null && sshParams.key != null) {
+        if (params.properties["password"] != null && params.properties["key"] != null) {
             throw IllegalArgumentException("only one of password or key can be specified")
-        } else if (sshRemote.password != null || sshParams.password != null) {
-            return Pair(sshParams.password ?: sshRemote.password, null)
-        } else if (sshParams.key != null) {
-            return Pair(null, sshParams.key)
+        } else if (sshRemote.password != null || params.properties["password"] != null) {
+            return Pair((params.properties["password"] ?: sshRemote.password).toString(), null)
+        } else if (params.properties["key"] != null) {
+            return Pair(null, params.properties["key"].toString())
         } else {
             throw IllegalArgumentException("one of password or key must be specified")
         }

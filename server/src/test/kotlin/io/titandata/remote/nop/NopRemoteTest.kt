@@ -11,7 +11,6 @@ import io.kotlintest.shouldBe
 import io.kotlintest.shouldThrow
 import io.kotlintest.specs.StringSpec
 import io.titandata.models.Remote
-import io.titandata.models.RemoteParameters
 import io.titandata.serialization.ModelTypeAdapters
 import io.titandata.serialization.RemoteUtil
 
@@ -62,17 +61,6 @@ class NopRemoteTest : StringSpec() {
             }
         }
 
-        "serializing a nop request succeeds" {
-            val result = gson.toJson(NopParameters())
-            result.shouldBe("{\"provider\":\"nop\",\"delay\":0}")
-        }
-
-        "deserializing a nop request succeeds" {
-            val result = gson.fromJson("{\"provider\":\"nop\"}", RemoteParameters::class.java)
-            result.shouldBeInstanceOf<NopParameters>()
-            result.provider shouldBe "nop"
-        }
-
         "converting to nop remote succeeds" {
             val (result, properties) = remoteUtil.toUri(NopRemote(name = "name"))
             result shouldBe "nop"
@@ -81,7 +69,6 @@ class NopRemoteTest : StringSpec() {
 
         "getting nop parameters succeeds" {
             val result = remoteUtil.getParameters(NopRemote(name = "name"))
-            result.shouldBeInstanceOf<NopParameters>()
             result.provider shouldBe "nop"
         }
     }

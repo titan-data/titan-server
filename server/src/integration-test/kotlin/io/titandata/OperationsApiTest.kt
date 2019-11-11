@@ -35,8 +35,8 @@ import io.titandata.models.Commit
 import io.titandata.models.Error
 import io.titandata.models.Operation
 import io.titandata.models.ProgressEntry
+import io.titandata.models.RemoteParameters
 import io.titandata.models.Repository
-import io.titandata.remote.nop.NopParameters
 import io.titandata.remote.nop.NopRemote
 import io.titandata.serialization.ModelTypeAdapters
 import io.titandata.storage.OperationData
@@ -104,11 +104,11 @@ class OperationsApiTest : StringSpec() {
         loadOperation(OperationData(operation = Operation(id = vs1,
                 type = Operation.Type.PUSH,
                 state = Operation.State.COMPLETE, remote = "remote", commitId = "commit1"),
-                params = NopParameters()))
+                params = RemoteParameters("nop")))
         loadOperation(OperationData(operation = Operation(id = vs2,
                 type = Operation.Type.PULL,
                 state = Operation.State.COMPLETE, remote = "remote", commitId = "commit2"),
-                params = NopParameters()))
+                params = RemoteParameters("nop")))
     }
 
     init {
@@ -159,7 +159,7 @@ class OperationsApiTest : StringSpec() {
             loadOperation(OperationData(Operation(id = vs2,
                     type = Operation.Type.PUSH, commitId = "commit",
                     state = Operation.State.RUNNING, remote = "remote"),
-                    params = NopParameters(delay = 10)))
+                    params = RemoteParameters("nop", mapOf("delay" to 10))))
             providers.operations.loadState()
             with(engine.handleRequest(HttpMethod.Delete, "/v1/repositories/foo/operations/$vs2")) {
                 response.status() shouldBe HttpStatusCode.NoContent
@@ -195,7 +195,7 @@ class OperationsApiTest : StringSpec() {
             loadOperation(OperationData(Operation(id = vs2,
                     type = Operation.Type.PUSH, commitId = "commit",
                     state = Operation.State.RUNNING, remote = "remote"),
-                    params = NopParameters(delay = 10)))
+                    params = RemoteParameters("nop", mapOf("delay" to 10))))
             providers.operations.loadState()
             delay(Duration.ofMillis(500))
             with(engine.handleRequest(HttpMethod.Get, "/v1/repositories/foo/operations/$vs2/progress")) {

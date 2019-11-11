@@ -56,18 +56,17 @@ class S3RemoteProvider(val providers: ProviderModule) : BaseRemoteProvider() {
 
     fun getClient(remote: Remote, params: RemoteParameters): AmazonS3 {
         remote as S3Remote
-        params as S3Parameters
 
-        val accessKey = params.accessKey ?: remote.accessKey
-            ?: throw IllegalArgumentException("missing access key")
-        val secretKey = params.secretKey ?: remote.secretKey
-            ?: throw IllegalArgumentException("missing secret key")
-        val region = params.region ?: remote.region
-            ?: throw IllegalArgumentException("missing region")
+        val accessKey = (params.properties.get("accessKey") ?: remote.accessKey
+            ?: throw IllegalArgumentException("missing access key")).toString()
+        val secretKey = (params.properties.get("secretKey") ?: remote.secretKey
+            ?: throw IllegalArgumentException("missing secret key")).toString()
+        val region = (params.properties.get("region") ?: remote.region
+            ?: throw IllegalArgumentException("missing region")).toString()
 
-        val creds = when (params.sessionToken) {
+        val creds = when (params.properties.get("sessionToken")) {
             null -> BasicAWSCredentials(accessKey, secretKey)
-            else -> BasicSessionCredentials(accessKey, secretKey, params.sessionToken)
+            else -> BasicSessionCredentials(accessKey, secretKey, params.properties.get("sessionToken").toString())
         }
         val provider = AWSStaticCredentialsProvider(creds)
 

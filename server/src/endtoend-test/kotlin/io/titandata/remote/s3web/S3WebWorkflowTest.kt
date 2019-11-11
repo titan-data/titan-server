@@ -21,11 +21,11 @@ import io.titandata.EndToEndTest
 import io.titandata.ProviderModule
 import io.titandata.client.infrastructure.ClientException
 import io.titandata.models.Commit
+import io.titandata.models.RemoteParameters
 import io.titandata.models.Repository
 import io.titandata.models.VolumeCreateRequest
 import io.titandata.models.VolumeMountRequest
 import io.titandata.models.VolumeRequest
-import io.titandata.remote.s3.S3Parameters
 import io.titandata.remote.s3.S3Remote
 import io.titandata.remote.s3.S3RemoteProvider
 import java.io.ByteArrayInputStream
@@ -35,6 +35,9 @@ import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider
 class S3WebWorkflowTest : EndToEndTest() {
 
     private val guid = UUID.randomUUID().toString()
+
+    val s3params = RemoteParameters("s3")
+    val s3webParams = RemoteParameters("s3web")
 
     fun clearBucket() {
         val remote = getS3Remote()
@@ -108,7 +111,7 @@ class S3WebWorkflowTest : EndToEndTest() {
             val remote = getS3Remote()
             val provider = S3RemoteProvider(ProviderModule("test"))
 
-            val s3 = provider.getClient(remote, S3Parameters())
+            val s3 = provider.getClient(remote, s3params)
             try {
                 val (bucket, key) = provider.getPath(remote, "id")
                 val metadata = ObjectMetadata()
@@ -176,36 +179,36 @@ class S3WebWorkflowTest : EndToEndTest() {
         }
 
         "list remote commits returns an empty list" {
-            val result = remoteApi.listRemoteCommits("foo", "web", S3WebParameters())
+            val result = remoteApi.listRemoteCommits("foo", "web", s3webParams)
             result.size shouldBe 0
         }
 
         "push commit succeeds" {
-            val op = operationApi.push("foo", "origin", "id", S3Parameters())
+            val op = operationApi.push("foo", "origin", "id", s3params)
             waitForOperation(op.id)
         }
 
         "list remote commits returns pushed commit" {
-            val commits = remoteApi.listRemoteCommits("foo", "web", S3WebParameters())
+            val commits = remoteApi.listRemoteCommits("foo", "web", s3webParams)
             commits.size shouldBe 1
             commits[0].id shouldBe "id"
             getTag(commits[0], "a") shouldBe "b"
         }
 
         "list remote commits filters out commit" {
-            val commits = remoteApi.listRemoteCommits("foo", "web", S3WebParameters(), listOf("e"))
+            val commits = remoteApi.listRemoteCommits("foo", "web", s3webParams, listOf("e"))
             commits.size shouldBe 0
         }
 
         "list remote commits filters include commit" {
-            val commits = remoteApi.listRemoteCommits("foo", "web", S3WebParameters(), listOf("a=b", "c=d"))
+            val commits = remoteApi.listRemoteCommits("foo", "web", s3webParams, listOf("a=b", "c=d"))
             commits.size shouldBe 1
             commits[0].id shouldBe "id"
         }
 
         "push of same commit fails" {
             val exception = shouldThrow<ClientException> {
-                operationApi.push("foo", "origin", "id", S3Parameters())
+                operationApi.push("foo", "origin", "id", s3params)
             }
             exception.code shouldBe "ObjectExistsException"
         }
@@ -216,18 +219,18 @@ class S3WebWorkflowTest : EndToEndTest() {
 
         "push to web fails" {
             val exception = shouldThrow<ClientException> {
-                operationApi.push("foo", "web", "id2", S3Parameters())
+                operationApi.push("foo", "web", "id2", s3params)
             }
             exception.code shouldBe "IllegalArgumentException"
         }
 
         "push second commit succeeds" {
-            val op = operationApi.push("foo", "origin", "id2", S3Parameters())
+            val op = operationApi.push("foo", "origin", "id2", s3params)
             waitForOperation(op.id)
         }
 
         "list remote commits records two commits" {
-            val commits = remoteApi.listRemoteCommits("foo", "web", S3WebParameters())
+            val commits = remoteApi.listRemoteCommits("foo", "web", s3webParams)
             commits.size shouldBe 2
             commits[0].id shouldBe "id2"
             commits[1].id shouldBe "id"
@@ -250,7 +253,7 @@ class S3WebWorkflowTest : EndToEndTest() {
         }
 
         "pull original commit succeeds" {
-            val op = operationApi.pull("foo", "web", "id", S3WebParameters())
+            val op = operationApi.pull("foo", "web", "id", s3webParams)
             waitForOperation(op.id)
         }
 

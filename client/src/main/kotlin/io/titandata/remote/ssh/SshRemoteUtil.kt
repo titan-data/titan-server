@@ -106,6 +106,6 @@ class SshRemoteUtil : RemoteUtilProvider() {
             password = String(input)
         }
 
-        return SshParameters(key = key, password = password)
+        return RemoteParameters("ssh", mapOf("key" to key, "password" to password))
     }
 }

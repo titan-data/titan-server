@@ -29,6 +29,6 @@ class NopRemoteUtil : RemoteUtilProvider() {
     }
 
     override fun getParameters(remote: Remote): RemoteParameters {
-        return NopParameters()
+        return RemoteParameters("nop")
     }
 }

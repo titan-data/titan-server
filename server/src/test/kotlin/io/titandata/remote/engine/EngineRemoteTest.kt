@@ -18,7 +18,6 @@ import io.mockk.impl.annotations.InjectMockKs
 import io.mockk.impl.annotations.MockK
 import io.mockk.impl.annotations.OverrideMockKs
 import io.titandata.models.Remote
-import io.titandata.models.RemoteParameters
 import io.titandata.serialization.ModelTypeAdapters
 import io.titandata.serialization.RemoteUtil
 import java.io.Console
@@ -135,20 +134,6 @@ class EngineRemoteTest : StringSpec() {
             result.password shouldBe "p"
         }
 
-        "serializing an engine request succeeds" {
-            val result = gson.toJson(EngineParameters(password = "p"))
-            result.shouldBe("{\"provider\":\"engine\",\"password\":\"p\"}")
-        }
-
-        "deserializing an engine request succeeds" {
-            val result = gson.fromJson("{\"provider\":\"engine\",\"password\":\"p\"}",
-                    RemoteParameters::class.java)
-            result.shouldBeInstanceOf<EngineParameters>()
-            val request = result as EngineParameters
-            request.provider shouldBe "engine"
-            request.password shouldBe "p"
-        }
-
         "engine remote to URI succeeds" {
             val (result, props) = remoteUtil.toUri(EngineRemote(name = "name", address = "host", username = "user",
                     repository = "foo"))
@@ -166,17 +151,14 @@ class EngineRemoteTest : StringSpec() {
         "get engine parameters succeeds" {
             val result = remoteUtil.getParameters(EngineRemote(name = "name", address = "host", username = "user",
                     repository = "foo", password = "pass"))
-            result.shouldBeInstanceOf<EngineParameters>()
-            result as EngineParameters
-            result.password shouldBe null
+            result.properties["password"] shouldBe null
         }
 
         "get engine parameters prompts for password" {
             every { console.readPassword(any()) } returns "pass".toCharArray()
             val result = engineUtil.getParameters(EngineRemote(name = "name", address = "host", username = "user",
                     repository = "foo"))
-            result as EngineParameters
-            result.password shouldBe "pass"
+            result.properties["password"] shouldBe "pass"
         }
     }
 }

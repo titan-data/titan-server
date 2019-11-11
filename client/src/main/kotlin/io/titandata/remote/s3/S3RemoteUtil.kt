@@ -123,6 +123,7 @@ class S3RemoteUtil : RemoteUtilProvider() {
             region = DefaultAwsRegionProviderChain().region?.id()
         }
 
-        return S3Parameters(accessKey = accessKey, secretKey = secretKey, region = region, sessionToken = sessionToken)
+        return RemoteParameters("s3",
+                mapOf("accessKey" to accessKey, "secretKey" to secretKey, "region" to region, "sessionToken" to sessionToken))
     }
 }

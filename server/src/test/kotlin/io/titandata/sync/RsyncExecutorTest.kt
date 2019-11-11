@@ -25,9 +25,9 @@ import io.titandata.exception.CommandException
 import io.titandata.models.Commit
 import io.titandata.models.Operation
 import io.titandata.models.ProgressEntry
+import io.titandata.models.RemoteParameters
 import io.titandata.models.Repository
 import io.titandata.operation.OperationExecutor
-import io.titandata.remote.ssh.SshParameters
 import io.titandata.remote.ssh.SshRemote
 import io.titandata.storage.OperationData
 import io.titandata.util.CommandExecutor
@@ -65,7 +65,7 @@ class RsyncExecutorTest : StringSpec() {
                     state = Operation.State.RUNNING,
                     remote = "remote",
                     commitId = "id"
-            ), params = SshParameters(), metadataOnly = false)
+            ), params = RemoteParameters("ssh"), metadataOnly = false)
             providers.metadata.createOperation("foo", vs, data)
             OperationExecutor(providers, data.operation, "foo", remote, data.params)
         }

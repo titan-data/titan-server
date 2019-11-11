@@ -10,7 +10,6 @@ import io.kotlintest.shouldBe
 import io.kotlintest.shouldThrow
 import io.kotlintest.specs.StringSpec
 import io.titandata.models.Remote
-import io.titandata.models.RemoteParameters
 import io.titandata.serialization.ModelTypeAdapters
 import io.titandata.serialization.RemoteUtil
 
@@ -97,19 +96,6 @@ class S3WebRemoteTest : StringSpec() {
             val remote = result as S3WebRemote
             remote.provider shouldBe "s3web"
             remote.url shouldBe "http://host/path"
-        }
-
-        "serializing a s3web request succeeds" {
-            val result = gson.toJson(S3WebParameters())
-            result.shouldBe("{\"provider\":\"s3web\"}")
-        }
-
-        "deserializing a s3web request succeeds" {
-            val result = gson.fromJson("{\"provider\":\"s3web\"}",
-                    RemoteParameters::class.java)
-            result.shouldBeInstanceOf<S3WebParameters>()
-            result as S3WebParameters
-            result.provider shouldBe "s3web"
         }
 
         "s3 web remote to URI succeeds" {

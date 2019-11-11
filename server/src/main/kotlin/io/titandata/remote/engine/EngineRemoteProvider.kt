@@ -44,12 +44,11 @@ class EngineRemoteProvider(val providers: ProviderModule) : BaseRemoteProvider()
 
     private fun connect(remote: Remote, params: RemoteParameters): Delphix {
         val engineRemote = remote as EngineRemote
-        val engineParams = params as EngineParameters
         val engine = Delphix(Http("http://${engineRemote.address}"))
-        if (engineRemote.password == null && engineParams.password == null) {
+        if (engineRemote.password == null && params.properties["password"] == null) {
             throw IllegalArgumentException("missing password in remote parameters")
         }
-        engine.login(engineRemote.username, engineParams.password ?: engineRemote.password!!)
+        engine.login(engineRemote.username, (params.properties["password"] ?: engineRemote.password!!).toString())
         return engine
     }
     private fun findInResult(result: JSONObject, lambda: (JSONObject) -> Boolean): JSONObject? {

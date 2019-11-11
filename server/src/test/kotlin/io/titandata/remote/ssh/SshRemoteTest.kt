@@ -18,7 +18,6 @@ import io.mockk.impl.annotations.InjectMockKs
 import io.mockk.impl.annotations.MockK
 import io.mockk.impl.annotations.OverrideMockKs
 import io.titandata.models.Remote
-import io.titandata.models.RemoteParameters
 import io.titandata.serialization.ModelTypeAdapters
 import io.titandata.serialization.RemoteUtil
 import java.io.Console
@@ -163,20 +162,6 @@ class SshRemoteTest : StringSpec() {
             remote.path shouldBe "/p"
         }
 
-        "serializing a ssh request succeeds" {
-            val result = gson.toJson(SshParameters(password = "p"))
-            result.shouldBe("{\"provider\":\"ssh\",\"password\":\"p\"}")
-        }
-
-        "deserializing a ssh request succeeds" {
-            val result = gson.fromJson("{\"provider\":\"ssh\",\"password\":\"p\"}",
-                    RemoteParameters::class.java)
-            result.shouldBeInstanceOf<SshParameters>()
-            val request = result as SshParameters
-            request.provider shouldBe "ssh"
-            request.password shouldBe "p"
-        }
-
         "basic SSH remote to URI succeeds" {
             val (uri, parameters) = remoteUtil.toUri(SshRemote(name = "name", username = "username", address = "host",
                     path = "/path"))
@@ -216,11 +201,9 @@ class SshRemoteTest : StringSpec() {
         "get basic SSH get parameters succeeds" {
             val params = remoteUtil.getParameters(SshRemote(name = "name", username = "username", address = "host",
                     path = "/path", password = "pass"))
-            params.shouldBeInstanceOf<SshParameters>()
-            params as SshParameters
             params.provider shouldBe "ssh"
-            params.password shouldBe null
-            params.key shouldBe null
+            params.properties["password"] shouldBe null
+            params.properties["key"] shouldBe null
         }
 
         "get SSH parameters with keyfile succeeds" {
@@ -231,9 +214,8 @@ class SshRemoteTest : StringSpec() {
                 keyFile.writeText("KEY")
                 val params = remoteUtil.getParameters(SshRemote(name = "name", username = "username", address = "host",
                         path = "/path", keyFile = keyFile.absolutePath))
-                params as SshParameters
-                params.password shouldBe null
-                params.key shouldBe "KEY"
+                params.properties["password"] shouldBe null
+                params.properties["key"] shouldBe "KEY"
             } finally {
                 temporaryFolder.delete()
             }
@@ -243,10 +225,8 @@ class SshRemoteTest : StringSpec() {
             every { console.readPassword(any()) } returns "pass".toCharArray()
             val params = sshUtil.getParameters(SshRemote(name = "name", username = "username", address = "host",
                     path = "/path"))
-            params.shouldBeInstanceOf<SshParameters>()
-            params as SshParameters
-            params.password shouldBe "pass"
-            params.key shouldBe null
+            params.properties["password"] shouldBe "pass"
+            params.properties["key"] shouldBe null
         }
     }
 }

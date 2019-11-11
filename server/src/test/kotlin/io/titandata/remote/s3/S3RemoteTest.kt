@@ -12,7 +12,6 @@ import io.kotlintest.shouldBe
 import io.kotlintest.shouldThrow
 import io.kotlintest.specs.StringSpec
 import io.titandata.models.Remote
-import io.titandata.models.RemoteParameters
 import io.titandata.serialization.ModelTypeAdapters
 import io.titandata.serialization.RemoteUtil
 
@@ -146,22 +145,6 @@ class S3RemoteTest : StringSpec() {
             remote.region shouldBe "REGION"
         }
 
-        "serializing a s3 request succeeds" {
-            val result = gson.toJson(S3Parameters(accessKey = "ACCESS", secretKey = "SECRET", region = "REGION"))
-            result.shouldBe("{\"provider\":\"s3\",\"accessKey\":\"ACCESS\",\"secretKey\":\"SECRET\",\"region\":\"REGION\"}")
-        }
-
-        "deserializing a s3 request succeeds" {
-            val result = gson.fromJson("{\"provider\":\"s3\",\"accessKey\":\"ACCESS\",\"secretKey\":\"SECRET\",\"region\":\"REGION\"}",
-                    RemoteParameters::class.java)
-            result.shouldBeInstanceOf<S3Parameters>()
-            result as S3Parameters
-            result.provider shouldBe "s3"
-            result.accessKey shouldBe "ACCESS"
-            result.secretKey shouldBe "SECRET"
-            result.region shouldBe "REGION"
-        }
-
         "s3 remote to URI succeeds" {
             val (uri, props) = remoteUtil.toUri(S3Remote(name = "name", bucket = "bucket", path = "path"))
             uri shouldBe "s3://bucket/path"
@@ -188,12 +171,10 @@ class S3RemoteTest : StringSpec() {
         "s3 get parameters succeeds" {
             val params = remoteUtil.getParameters(S3Remote(name = "name", bucket = "bucket", path = "path",
                     accessKey = "ACCESS", secretKey = "SECRET", region = "REGION"))
-            params.shouldBeInstanceOf<S3Parameters>()
-            params as S3Parameters
             params.provider shouldBe "s3"
-            params.accessKey shouldBe "ACCESS"
-            params.secretKey shouldBe "SECRET"
-            params.region shouldBe "REGION"
+            params.properties["accessKey"] shouldBe "ACCESS"
+            params.properties["secretKey"] shouldBe "SECRET"
+            params.properties["region"] shouldBe "REGION"
         }
 
         "getting credentials from environment succeeds" {
@@ -204,12 +185,10 @@ class S3RemoteTest : StringSpec() {
                 System.getenv("AWS_REGION") shouldBe "us-west-2"
                 System.getenv("AWS_SESSION_TOKEN") shouldBe "sessionToken"
                 val params = remoteUtil.getParameters(S3Remote(name = "name", bucket = "bucket", path = "path"))
-                params.shouldBeInstanceOf<S3Parameters>()
-                params as S3Parameters
-                params.accessKey shouldBe "accessKey"
-                params.secretKey shouldBe "secretKey"
-                params.sessionToken shouldBe "sessionToken"
-                params.region shouldBe "us-west-2"
+                params.properties["accessKey"] shouldBe "accessKey"
+                params.properties["secretKey"] shouldBe "secretKey"
+                params.properties["sessionToken"] shouldBe "sessionToken"
+                params.properties["region"] shouldBe "us-west-2"
             }
         }
     }

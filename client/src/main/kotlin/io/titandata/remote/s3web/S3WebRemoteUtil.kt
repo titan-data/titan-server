@@ -60,6 +60,6 @@ class S3WebRemoteUtil : RemoteUtilProvider() {
     }
 
     override fun getParameters(remote: Remote): RemoteParameters {
-        return S3WebParameters()
+        return RemoteParameters("s3web")
     }
 }

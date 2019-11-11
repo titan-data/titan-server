@@ -16,7 +16,7 @@ import java.net.URI
  *
  * For the purposes of the beta, we don't allow the configuration of the port, and always
  * connect over HTTP. If the password is not specified, then it will be up to the CLI to
- * provide the password as part of the EngineParameters object.
+ * provide the password as part of the properties.
  */
 class EngineRemoteUtil : RemoteUtilProvider() {
 
@@ -77,6 +77,6 @@ class EngineRemoteUtil : RemoteUtilProvider() {
             password = String(input)
         }
 
-        return EngineParameters(password = password)
+        return RemoteParameters("engine", mapOf("password" to password))
     }
 }

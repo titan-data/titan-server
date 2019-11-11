@@ -16,16 +16,18 @@ import io.titandata.EndToEndTest
 import io.titandata.client.infrastructure.ClientException
 import io.titandata.models.Commit
 import io.titandata.models.ProgressEntry
+import io.titandata.models.RemoteParameters
 import io.titandata.models.Repository
 import io.titandata.models.VolumeCreateRequest
 import io.titandata.models.VolumeMountRequest
 import io.titandata.models.VolumeRequest
-import io.titandata.serialization.RemoteUtil
 import java.time.OffsetDateTime
 import java.time.format.DateTimeFormatter
 import org.json.JSONObject
 
 class EngineWorkflowTest : EndToEndTest() {
+
+    val params = RemoteParameters("engine")
 
     fun waitForJob(engine: Delphix, result: JSONObject) {
         val actionResult: JSONObject = engine.action().read(result.getString("action")).getJSONObject("result")
@@ -74,8 +76,6 @@ class EngineWorkflowTest : EndToEndTest() {
         dockerUtil.stopServer(ignoreExceptions = false)
         clearEngine()
     }
-
-    private val remoteUtil = RemoteUtil()
 
     private fun getRemote(repo: String = "foo", name: String = "origin"): EngineRemote {
         val connection = System.getProperty("engine.connection")
@@ -132,13 +132,13 @@ class EngineWorkflowTest : EndToEndTest() {
 
         "list remote commits returns an error" {
             val e = shouldThrow<ClientException> {
-                remoteApi.listRemoteCommits("foo", "origin", EngineParameters())
+                remoteApi.listRemoteCommits("foo", "origin", params)
             }
             e.code shouldBe "NoSuchObjectException"
         }
 
         "push commit succeeds" {
-            val op = operationApi.push("foo", "origin", "id", EngineParameters())
+            val op = operationApi.push("foo", "origin", "id", params)
             val progress = waitForOperation(op.id)
             progress[0].type shouldBe ProgressEntry.Type.MESSAGE
             progress[0].message shouldBe "Pushing id to 'origin'"
@@ -161,7 +161,7 @@ class EngineWorkflowTest : EndToEndTest() {
         }
 
         "list remote commits returns pushed commit" {
-            val commits = remoteApi.listRemoteCommits("foo", "origin", EngineParameters())
+            val commits = remoteApi.listRemoteCommits("foo", "origin", params)
             commits.size shouldBe 1
             commits[0].id shouldBe "id"
             commits[0].properties["a"] shouldBe "b"
@@ -169,7 +169,7 @@ class EngineWorkflowTest : EndToEndTest() {
 
         "push of same commit fails" {
             val exception = shouldThrow<ClientException> {
-                operationApi.push("foo", "origin", "id", EngineParameters())
+                operationApi.push("foo", "origin", "id", params)
             }
             exception.code shouldBe "ObjectExistsException"
         }
@@ -190,7 +190,7 @@ class EngineWorkflowTest : EndToEndTest() {
         }
 
         "pull original commit succeeds" {
-            val op = operationApi.pull("foo", "origin", "id", EngineParameters())
+            val op = operationApi.pull("foo", "origin", "id", params)
             val progress = waitForOperation(op.id)
             progress[0].type shouldBe ProgressEntry.Type.MESSAGE
             progress[0].message shouldBe "Pulling id from 'origin'"
@@ -232,7 +232,7 @@ class EngineWorkflowTest : EndToEndTest() {
         }
 
         "list commits with password succeeds" {
-            val commits = remoteApi.listRemoteCommits("foo", "origin", EngineParameters(password = getRemote().password))
+            val commits = remoteApi.listRemoteCommits("foo", "origin", RemoteParameters("engine", mapOf("password" to getRemote().password)))
             commits.size shouldBe 1
             commits[0].id shouldBe "id"
             commits[0].properties["a"] shouldBe "b"
@@ -240,7 +240,7 @@ class EngineWorkflowTest : EndToEndTest() {
 
         "list commits without password fails" {
             val exception = shouldThrow<ClientException> {
-                remoteApi.listRemoteCommits("foo", "origin", EngineParameters())
+                remoteApi.listRemoteCommits("foo", "origin", params)
             }
             exception.code shouldBe "IllegalArgumentException"
         }

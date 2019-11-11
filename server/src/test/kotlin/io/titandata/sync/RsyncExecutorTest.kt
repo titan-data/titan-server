@@ -4,6 +4,7 @@
 
 package io.titandata.sync
 
+import io.kotlintest.Spec
 import io.kotlintest.TestCase
 import io.kotlintest.TestCaseOrder
 import io.kotlintest.TestResult
@@ -21,14 +22,18 @@ import io.mockk.just
 import io.mockk.mockk
 import io.titandata.ProviderModule
 import io.titandata.exception.CommandException
+import io.titandata.models.Commit
 import io.titandata.models.Operation
 import io.titandata.models.ProgressEntry
+import io.titandata.models.Repository
 import io.titandata.operation.OperationExecutor
 import io.titandata.remote.ssh.SshParameters
 import io.titandata.remote.ssh.SshRemote
+import io.titandata.storage.OperationData
 import io.titandata.util.CommandExecutor
 import java.io.ByteArrayInputStream
 import java.io.InputStream
+import org.jetbrains.exposed.sql.transactions.transaction
 
 class RsyncExecutorTest : StringSpec() {
 
@@ -41,13 +46,29 @@ class RsyncExecutorTest : StringSpec() {
 
     lateinit var operationExecutor: OperationExecutor
 
+    override fun beforeSpec(spec: Spec) {
+        providers.metadata.init()
+    }
+
     override fun beforeTest(testCase: TestCase) {
-        val operation = Operation(id = "id", type = Operation.Type.PUSH,
-                remote = "remote", commitId = "commitId")
-        val remote = SshRemote(name = "remote", address = "host", username = "root",
-                password = "root", path = "/path")
-        val request = SshParameters()
-        operationExecutor = OperationExecutor(providers, operation, "repo", remote, request)
+        providers.metadata.clear()
+        operationExecutor = transaction {
+            providers.metadata.createRepository(Repository("foo"))
+            val remote = SshRemote(name = "remote", address = "host", username = "root",
+                    password = "root", path = "/path")
+            providers.metadata.addRemote("foo", remote)
+            val vs = providers.metadata.createVolumeSet("foo")
+            providers.metadata.createCommit("foo", vs, Commit(id = "id"))
+            val data = OperationData(operation = Operation(
+                    id = vs,
+                    type = Operation.Type.PUSH,
+                    state = Operation.State.RUNNING,
+                    remote = "remote",
+                    commitId = "id"
+            ), params = SshParameters(), metadataOnly = false)
+            providers.metadata.createOperation("foo", vs, data)
+            OperationExecutor(providers, data.operation, "foo", remote, data.params)
+        }
         return MockKAnnotations.init(this)
     }
 

@@ -104,8 +104,6 @@ class VolumeOrchestratorTest : StringSpec() {
 
             providers.volumes.deleteVolume("foo", "vol")
 
-            // TODO - verify volume is deleting once query exists
-
             shouldThrow<NoSuchObjectException> {
                 providers.volumes.getVolume("foo", "vol")
             }

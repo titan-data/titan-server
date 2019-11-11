@@ -8,17 +8,39 @@ import io.kotlintest.Spec
 import io.kotlintest.TestCase
 import io.kotlintest.TestCaseOrder
 import io.kotlintest.TestResult
+import io.kotlintest.matchers.string.shouldContain
+import io.kotlintest.shouldBe
+import io.kotlintest.shouldThrow
 import io.kotlintest.specs.StringSpec
 import io.mockk.MockKAnnotations
+import io.mockk.Runs
 import io.mockk.clearAllMocks
+import io.mockk.every
 import io.mockk.impl.annotations.InjectMockKs
 import io.mockk.impl.annotations.MockK
 import io.mockk.impl.annotations.OverrideMockKs
 import io.mockk.impl.annotations.SpyK
+import io.mockk.just
+import io.mockk.mockk
+import io.mockk.slot
 import io.titandata.ProviderModule
+import io.titandata.exception.CommandException
+import io.titandata.exception.NoSuchObjectException
+import io.titandata.exception.ObjectExistsException
+import io.titandata.models.Commit
+import io.titandata.models.Operation
+import io.titandata.models.ProgressEntry
+import io.titandata.models.Repository
+import io.titandata.models.Volume
+import io.titandata.operation.OperationExecutor
+import io.titandata.storage.OperationData
 import io.titandata.storage.zfs.ZfsStorageProvider
 import io.titandata.util.CommandExecutor
+import java.io.ByteArrayInputStream
+import java.io.ByteArrayOutputStream
+import java.io.File
 import java.io.InputStream
+import org.jetbrains.exposed.sql.transactions.transaction
 
 class SshRemoteProviderTest : StringSpec() {
 
@@ -66,8 +88,21 @@ class SshRemoteProviderTest : StringSpec() {
         )
     }
 
+    fun createOperation(vs: String, type: Operation.Type = Operation.Type.PULL): OperationData {
+        val data = OperationData(operation = Operation(
+                id = vs,
+                type = type,
+                state = Operation.State.RUNNING,
+                remote = "remote",
+                commitId = "id"
+        ), params = SshParameters(), metadataOnly = false)
+        transaction {
+            providers.metadata.createOperation("foo", vs, data)
+        }
+        return data
+    }
+
     init {
-        /* TODO
         "list commits returns an empty list" {
             every { executor.exec(*anyVararg()) } returns ""
             val result = sshRemoteProvider.listCommits(getRemote(), SshParameters(), null)
@@ -183,11 +218,22 @@ class SshRemoteProviderTest : StringSpec() {
         }
 
         "run operation succeeds" {
-            val operation = Operation(id = "id", type = Operation.Type.PUSH,
-                    remote = "remote", commitId = "commitId")
-            val remote = getRemote()
-            val request = SshParameters()
-            val operationExecutor = OperationExecutor(providers, operation, "repo", remote, request)
+            val vs = transaction {
+                providers.metadata.createRepository(Repository(name = "repo"))
+                val vs = providers.metadata.createVolumeSet("repo", null, true)
+                providers.metadata.createVolume(vs, Volume(name = "v0", properties = emptyMap()))
+                providers.metadata.createVolume(vs, Volume(name = "v1", properties = mapOf("path" to "/volume")))
+                providers.metadata.createCommit("repo", vs, Commit("id"))
+                vs
+            }
+            val data = createOperation(vs, Operation.Type.PUSH)
+            val operationExecutor = OperationExecutor(providers, data.operation, "repo", getRemote(), data.params)
+
+            every { zfsStorageProvider.mountVolume(any(), any()) } returns "/mountpoint"
+            every { zfsStorageProvider.mountVolume(any(), "_scratch") } returns "/scratch"
+            every { zfsStorageProvider.unmountVolume(any(), any()) } just Runs
+            every { zfsStorageProvider.createVolume(any(), any()) } just Runs
+            every { zfsStorageProvider.deleteVolume(any(), any()) } just Runs
 
             val process = mockk<Process>()
             every { process.inputStream } answers { getResource("/rsync2.out") }
@@ -199,22 +245,6 @@ class SshRemoteProviderTest : StringSpec() {
             every { process.destroy() } just Runs
 
             every { executor.start(*anyVararg()) } returns process
-
-            transaction {
-                providers.metadata.createRepository(Repository(name = "repo", properties = emptyMap()))
-                val vs = providers.metadata.createVolumeSet("repo", true)
-                providers.metadata.createVolume(vs, Volume(name = "v0", properties = emptyMap()))
-                providers.metadata.createVolume(vs, Volume(name = "v1", properties = mapOf("path" to "/volume")))
-            }
-
-            every { zfsStorageProvider.mountOperationVolumes(any(), any(), any()) } returns
-                    "/var/operation"
-            every { zfsStorageProvider.getCommit(any(), any()) } returns Commit(id = "commitId", properties = mapOf())
-            every { zfsStorageProvider.unmountOperationVolumes(any(), any(), any()) } just Runs
-            every { zfsStorageProvider.createOperation("repo", any(), any()) } just Runs
-            every { zfsStorageProvider.createOperationScratch("repo", any()) } returns ""
-            every { zfsStorageProvider.destroyOperationScratch("repo", any()) } just Runs
-            every { zfsStorageProvider.getVolumeMountpoint(any(), any()) } returns "/"
 
             operationExecutor.run()
 
@@ -232,11 +262,22 @@ class SshRemoteProviderTest : StringSpec() {
         }
 
         "run operation fails if rsync fails" {
-            val operation = Operation(id = "id", type = Operation.Type.PUSH,
-                    remote = "remote", commitId = "commitId")
-            val remote = getRemote()
-            val request = SshParameters()
-            val operationExecutor = OperationExecutor(providers, operation, "repo", remote, request)
+            val vs = transaction {
+                providers.metadata.createRepository(Repository(name = "repo"))
+                val vs = providers.metadata.createVolumeSet("repo", null, true)
+                providers.metadata.createVolume(vs, Volume(name = "v0", properties = emptyMap()))
+                providers.metadata.createVolume(vs, Volume(name = "v1", properties = mapOf("path" to "/volume")))
+                providers.metadata.createCommit("repo", vs, Commit("id"))
+                vs
+            }
+            val data = createOperation(vs, Operation.Type.PUSH)
+            val operationExecutor = OperationExecutor(providers, data.operation, "repo", getRemote(), data.params)
+
+            every { zfsStorageProvider.mountVolume(any(), any()) } returns "/mountpoint"
+            every { zfsStorageProvider.mountVolume(any(), "_scratch") } returns "/scratch"
+            every { zfsStorageProvider.unmountVolume(any(), any()) } just Runs
+            every { zfsStorageProvider.createVolume(any(), any()) } just Runs
+            every { zfsStorageProvider.deleteVolume(any(), any()) } just Runs
 
             val process = mockk<Process>()
             every { process.inputStream } returns ByteArrayInputStream("".toByteArray())
@@ -249,32 +290,12 @@ class SshRemoteProviderTest : StringSpec() {
 
             every { executor.start(*anyVararg()) } returns process
 
-            transaction {
-                providers.metadata.createRepository(Repository(name = "repo", properties = emptyMap()))
-                val vs = providers.metadata.createVolumeSet("repo", true)
-                providers.metadata.createVolume(vs, Volume(name = "v0", properties = emptyMap()))
-                providers.metadata.createVolume(vs, Volume(name = "v1", properties = mapOf("path" to "/volume")))
-            }
-
-            every { zfsStorageProvider.mountOperationVolumes(any(), any(), any()) } returns
-                    "/var/operation"
-            every { zfsStorageProvider.getCommit(any(), any()) } returns Commit(id = "commitId", properties = mapOf())
-            every { zfsStorageProvider.unmountOperationVolumes(any(), any(), any()) } just Runs
-            every { zfsStorageProvider.createOperation("repo", any(), any()) } just Runs
-            every { zfsStorageProvider.createOperationScratch("repo", any()) } returns ""
-            every { zfsStorageProvider.destroyOperationScratch("repo", any()) } just Runs
-            every { zfsStorageProvider.getVolumeMountpoint(any(), any()) } returns "/"
-
             operationExecutor.run()
 
             val progress = operationExecutor.getProgress()
-
-            progress.size shouldBe 2
             progress[0].type shouldBe ProgressEntry.Type.START
             progress[1].type shouldBe ProgressEntry.Type.FAILED
             progress[1].message shouldContain "error string"
         }
-
-         */
     }
 }

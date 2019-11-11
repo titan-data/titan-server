@@ -10,6 +10,7 @@ import io.titandata.models.Operation
 import io.titandata.models.ProgressEntry
 import io.titandata.models.Remote
 import io.titandata.models.RemoteParameters
+import io.titandata.models.Volume
 import io.titandata.remote.RemoteProvider
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.slf4j.LoggerFactory
@@ -32,7 +33,7 @@ class OperationExecutor(
         val log = LoggerFactory.getLogger(OperationExecutor::class.java)
     }
 
-    private var thread: Thread? = null
+    internal var thread: Thread? = null
     private var lastProgress: Int = 0
     private var commit: Commit? = null
 
@@ -62,6 +63,7 @@ class OperationExecutor(
             provider.endOperation(this, operationData)
 
             addProgress(ProgressEntry(ProgressEntry.Type.COMPLETE))
+            operationData = null
         } catch (t: InterruptedException) {
             addProgress(ProgressEntry(ProgressEntry.Type.ABORT))
             log.info("${operation.type} operation ${operation.id} interrupted", t)
@@ -74,14 +76,8 @@ class OperationExecutor(
                         operation.type == Operation.Type.PULL && !metadataOnly) {
                     // It shouldn't be possible for commit to be null here, or else it would've failed
                     providers.commits.createCommit(repo, commit!!, operation.id)
-                } else {
-                    transaction {
-                        providers.metadata.deleteOperation(operation.id)
-                        providers.metadata.markVolumeSetDeleting(operation.id)
-                    }
-                    providers.reaper.signal()
                 }
-                operationData = null
+                // If an operation fails, then we don't explicitly delete it but wait for the last progress to be consumed
             } catch (t: Throwable) {
                 log.error("finalization of ${operation.type} failed", t)
             } finally {
@@ -95,10 +91,13 @@ class OperationExecutor(
     fun syncData(provider: RemoteProvider, data: Any?) {
         val operationId = operation.id
             val volumes = transaction {
-                providers.metadata.listVolumes(operationId).filter { it.name != "_scratch" }
+                val vols = providers.metadata.listVolumes(operationId)
+                providers.metadata.createVolume(operation.id, Volume(name = "_scratch"))
+                vols
             }
-        val scratch = providers.storage.mountVolume(operationId, "_scratch")
+        providers.storage.createVolume(operation.id, "_scratch")
         try {
+            val scratch = providers.storage.mountVolume(operationId, "_scratch")
             for (volume in volumes) {
                 val mountpoint = providers.storage.mountVolume(operationId, volume.name)
                 try {
@@ -113,6 +112,10 @@ class OperationExecutor(
             }
         } finally {
             providers.storage.unmountVolume(operationId, "_scratch")
+            providers.storage.deleteVolume(operationId, "_scratch")
+            transaction {
+                providers.metadata.deleteVolume(operationId, "_scratch")
+            }
         }
     }
 

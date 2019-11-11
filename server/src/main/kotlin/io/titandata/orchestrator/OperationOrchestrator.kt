@@ -11,7 +11,6 @@ import io.titandata.models.Operation
 import io.titandata.models.ProgressEntry
 import io.titandata.models.Remote
 import io.titandata.models.RemoteParameters
-import io.titandata.models.Volume
 import io.titandata.operation.OperationExecutor
 import io.titandata.storage.OperationData
 import org.jetbrains.exposed.sql.transactions.transaction
@@ -102,7 +101,6 @@ class OperationOrchestrator(val providers: ProviderModule) {
             for (v in volumes) {
                 providers.metadata.createVolume(vs, v)
             }
-            providers.metadata.createVolume(vs, Volume(name = "_scratch"))
             val op = Operation(id = vs, type = type, state = Operation.State.RUNNING, remote = remote.name, commitId = commitId)
             providers.metadata.createOperation(repository, vs, OperationData(
                     metadataOnly = metadataOnly,
@@ -128,7 +126,6 @@ class OperationOrchestrator(val providers: ProviderModule) {
                     Pair(vs, providers.metadata.listVolumes(vs).map { it.name })
                 }
                 providers.storage.cloneVolumeSet(sourceVolumeSet, localCommit, volumeSet, volumes)
-                providers.storage.createVolume(volumeSet, "_scratch")
             }
         }
 
@@ -200,6 +197,11 @@ class OperationOrchestrator(val providers: ProviderModule) {
                 providers.metadata.deleteOperation(id)
             }
             executors.remove(exec.operation.id)
+            /*
+             * If the operation failed or this was a push operation, then this will leave an abandoned volumeset that
+             * will be reaped automatically.
+             */
+            providers.reaper.signal()
         }
         return ret
     }

@@ -20,12 +20,14 @@ import io.ktor.server.testing.handleRequest
 import io.ktor.server.testing.setBody
 import io.ktor.util.KtorExperimentalAPI
 import io.mockk.MockKAnnotations
+import io.mockk.Runs
 import io.mockk.clearAllMocks
 import io.mockk.every
 import io.mockk.impl.annotations.InjectMockKs
 import io.mockk.impl.annotations.MockK
 import io.mockk.impl.annotations.OverrideMockKs
 import io.mockk.impl.annotations.SpyK
+import io.mockk.just
 import io.mockk.verify
 import io.titandata.exception.CommandException
 import io.titandata.metadata.MetadataProvider
@@ -40,15 +42,10 @@ import org.jetbrains.exposed.sql.transactions.transaction
 @UseExperimental(KtorExperimentalAPI::class)
 class VolumesApiTest : StringSpec() {
 
+    lateinit var vs : String
+
     @MockK
-    lateinit var executor: CommandExecutor
-
-    @InjectMockKs
-    @OverrideMockKs
     var zfsStorageProvider = ZfsStorageProvider("test")
-
-    @SpyK
-    var metadata = MetadataProvider()
 
     @InjectMockKs
     @OverrideMockKs
@@ -70,6 +67,10 @@ class VolumesApiTest : StringSpec() {
 
     override fun beforeTest(testCase: TestCase) {
         providers.metadata.clear()
+        vs = transaction {
+            providers.metadata.createRepository(Repository(name = "foo", properties = emptyMap()))
+            providers.metadata.createVolumeSet("foo", null, true)
+        }
         return MockKAnnotations.init(this)
     }
 
@@ -85,14 +86,8 @@ class VolumesApiTest : StringSpec() {
      */
     init {
         "create volume succeeds" {
-            val guid = transaction {
-                providers.metadata.createRepository(Repository(name = "foo", properties = emptyMap()))
-                providers.metadata.createVolumeSet("foo", null, true)
-            }
-            every { executor.exec("zfs", "create", "-o",
-                    "io.titan-data:metadata={\"a\":\"b\"}", "test/repo/foo/$guid/vol") } returns ""
-            every { executor.exec("zfs", "snapshot", "test/repo/foo/$guid/vol@initial") } returns ""
-            every { executor.exec("mkdir", "-p", "/var/lib/test/mnt/foo/vol") } returns ""
+            every { zfsStorageProvider.createVolume(any(), any()) } just Runs
+            every { zfsStorageProvider.getVolumeMountpoint(any(), any())} returns ""
             with(engine.handleRequest(HttpMethod.Post, "/VolumeDriver.Create") {
                 setBody("{\"Name\":\"foo/vol\",\"Opts\":{\"a\":\"b\"}}")
             }) {
@@ -101,22 +96,18 @@ class VolumesApiTest : StringSpec() {
                 response.content shouldBe "{\"Err\":\"\"}"
 
                 verify {
-                    executor.exec("zfs", "create", "-o",
-                            "io.titan-data:metadata={\"a\":\"b\"}", "test/repo/foo/$guid/vol")
-                    executor.exec("zfs", "snapshot", "test/repo/foo/$guid/vol@initial")
-                    executor.exec("mkdir", "-p", "/var/lib/test/mnt/foo/vol")
+                    zfsStorageProvider.createVolume(vs, "vol")
                 }
             }
         }
 
         "create volume for unknown repo fails" {
-            every { executor.exec(*anyVararg()) } throws CommandException("", 1, "does not exist")
             with(engine.handleRequest(HttpMethod.Post, "/VolumeDriver.Create") {
-                setBody("{\"Name\":\"foo/vol\",\"Opts\":{\"a\":\"b\"}}")
+                setBody("{\"Name\":\"bar/vol\",\"Opts\":{\"a\":\"b\"}}")
             }) {
                 response.status() shouldBe HttpStatusCode.NotFound
                 response.contentType().toString() shouldBe "application/json; charset=UTF-8"
-                StringEscapeUtils.unescapeJson(response.content) shouldBe "{\"Err\":\"no such repository 'foo'\"}"
+                StringEscapeUtils.unescapeJson(response.content) shouldBe "{\"Err\":\"no such repository 'bar'\"}"
             }
         }
 
@@ -145,51 +136,42 @@ class VolumesApiTest : StringSpec() {
         }
 
         "remove volume succeeds" {
-            val guid = transaction {
-                providers.metadata.createRepository(Repository(name = "foo", properties = emptyMap()))
-                val vs = providers.metadata.createVolumeSet("foo", null, true)
+            transaction {
                 providers.metadata.createVolume(vs, Volume(name = "vol"))
-                vs
             }
-            every { executor.exec("zfs", "destroy", "-R", "test/repo/foo/$guid/vol") } returns ""
-            every { executor.exec("rmdir", "/var/lib/test/mnt/foo/vol") } returns ""
             with(engine.handleRequest(HttpMethod.Post, "/VolumeDriver.Remove") {
                 setBody("{\"Name\":\"foo/vol\"}")
             }) {
                 response.status() shouldBe HttpStatusCode.OK
                 response.contentType().toString() shouldBe "application/json; charset=UTF-8"
                 response.content shouldBe "{\"Err\":\"\"}"
-                verify {
-                    executor.exec("zfs", "destroy", "-R", "test/repo/foo/$guid/vol")
-                }
             }
         }
 
         "mount volume succeeds" {
-            val guid = transaction {
-                providers.metadata.createRepository(Repository(name = "foo", properties = emptyMap()))
-                val vs = providers.metadata.createVolumeSet("foo", null, true)
+            transaction {
                 providers.metadata.createVolume(vs, Volume(name = "vol"))
-                vs
             }
-            every { executor.exec("mount", "-t", "zfs", "test/repo/foo/$guid/vol",
-                    "/var/lib/test/mnt/foo/vol") } returns ""
+            every { zfsStorageProvider.mountVolume(any(), any()) } returns "/mountpoint"
+            every { zfsStorageProvider.getVolumeMountpoint(any(), any()) } returns "/mountpoint"
             with(engine.handleRequest(HttpMethod.Post, "/VolumeDriver.Mount") {
                 setBody("{\"Name\":\"foo/vol\"}")
             }) {
                 response.status() shouldBe HttpStatusCode.OK
                 response.contentType().toString() shouldBe "application/json; charset=UTF-8"
-                response.content shouldBe "{\"Err\":\"\",\"Mountpoint\":\"/var/lib/test/mnt/foo/vol\"}"
+                response.content shouldBe "{\"Err\":\"\",\"Mountpoint\":\"/mountpoint\"}"
 
                 verify {
-                    executor.exec("mount", "-t", "zfs", "test/repo/foo/$guid/vol",
-                            "/var/lib/test/mnt/foo/vol")
+                    zfsStorageProvider.mountVolume(vs, "vol")
                 }
             }
         }
 
         "unmount volume succeeds" {
-            every { executor.exec("umount", "/var/lib/test/mnt/foo/vol") } returns ""
+            transaction {
+                providers.metadata.createVolume(vs, Volume(name = "vol"))
+            }
+            every { zfsStorageProvider.unmountVolume(any(), any()) } just Runs
             with(engine.handleRequest(HttpMethod.Post, "/VolumeDriver.Unmount") {
                 setBody("{\"Name\":\"foo/vol\"}")
             }) {
@@ -198,32 +180,30 @@ class VolumesApiTest : StringSpec() {
                 response.content shouldBe "{\"Err\":\"\"}"
 
                 verify {
-                    executor.exec("umount", "/var/lib/test/mnt/foo/vol")
+                    zfsStorageProvider.unmountVolume(vs, "vol")
                 }
             }
         }
 
         "get path succeeds" {
             transaction {
-                providers.metadata.createRepository(Repository(name = "foo", properties = emptyMap()))
-                val vs = providers.metadata.createVolumeSet("foo", null, true)
-                providers.metadata.createVolume(vs, Volume(name = "vol", properties = emptyMap()))
+                providers.metadata.createVolume(vs, Volume(name = "vol"))
             }
+            every { zfsStorageProvider.getVolumeMountpoint(any(), any()) } returns "/mountpoint"
             with(engine.handleRequest(HttpMethod.Post, "/VolumeDriver.Path") {
                 setBody("{\"Name\":\"foo/vol\"}")
             }) {
                 response.status() shouldBe HttpStatusCode.OK
                 response.contentType().toString() shouldBe "application/json; charset=UTF-8"
-                response.content shouldBe "{\"Err\":\"\",\"Mountpoint\":\"/var/lib/test/mnt/foo/vol\"}"
+                response.content shouldBe "{\"Err\":\"\",\"Mountpoint\":\"/mountpoint\"}"
             }
         }
 
         "get volume succeeds" {
             transaction {
-                providers.metadata.createRepository(Repository(name = "foo", properties = emptyMap()))
-                val vs = providers.metadata.createVolumeSet("foo", null, true)
-                providers.metadata.createVolume(vs, Volume("vol", properties = mapOf("a" to "b")))
+                providers.metadata.createVolume(vs, Volume(name = "vol", properties = mapOf("a" to "b")))
             }
+            every { zfsStorageProvider.getVolumeMountpoint(any(), any()) } returns "/mountpoint"
             with(engine.handleRequest(HttpMethod.Post, "/VolumeDriver.Get") {
                 setBody("{\"Name\":\"foo/vol\"}")
             }) {
@@ -232,7 +212,7 @@ class VolumesApiTest : StringSpec() {
                 response.content shouldBe "{\"Err\":\"\"," +
                         "\"Volume\":{" +
                         "\"Name\":\"foo/vol\"," +
-                        "\"Mountpoint\":\"/var/lib/test/mnt/foo/vol\"," +
+                        "\"Mountpoint\":\"/mountpoint\"," +
                         "\"Status\":{}," +
                         "\"properties\":{\"a\":\"b\"}" +
                         "}}"
@@ -241,11 +221,10 @@ class VolumesApiTest : StringSpec() {
 
         "list volumes succeeds" {
             transaction {
-                providers.metadata.createRepository(Repository(name = "foo", properties = emptyMap()))
-                val vs = providers.metadata.createVolumeSet("foo", null, true)
                 providers.metadata.createVolume(vs, Volume(name = "one", properties = mapOf("a" to "b")))
                 providers.metadata.createVolume(vs, Volume(name = "two", properties = mapOf("c" to "d")))
             }
+            every { zfsStorageProvider.getVolumeMountpoint(any(), any()) } returns "/mountpoint"
 
             with(engine.handleRequest(HttpMethod.Post, "/VolumeDriver.List")) {
                 response.status() shouldBe HttpStatusCode.OK
@@ -253,12 +232,12 @@ class VolumesApiTest : StringSpec() {
                 response.content shouldBe "{\"Err\":\"\"," +
                         "\"Volumes\":[{" +
                         "\"Name\":\"foo/one\"," +
-                        "\"Mountpoint\":\"/var/lib/test/mnt/foo/one\"," +
+                        "\"Mountpoint\":\"/mountpoint\"," +
                         "\"Status\":{}," +
                         "\"properties\":{\"a\":\"b\"}" +
                         "},{" +
                         "\"Name\":\"foo/two\"," +
-                        "\"Mountpoint\":\"/var/lib/test/mnt/foo/two\"," +
+                        "\"Mountpoint\":\"/mountpoint\"," +
                         "\"Status\":{}," +
                         "\"properties\":{\"c\":\"d\"}" +
                         "}]}"

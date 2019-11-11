@@ -10,6 +10,8 @@ import io.kotlintest.TestCase
 import io.kotlintest.TestCaseOrder
 import io.kotlintest.TestResult
 import io.kotlintest.shouldBe
+import io.kotlintest.shouldNotBe
+import io.kotlintest.shouldThrow
 import io.kotlintest.specs.StringSpec
 import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
@@ -22,13 +24,18 @@ import io.ktor.server.testing.handleRequest
 import io.ktor.server.testing.setBody
 import io.ktor.util.KtorExperimentalAPI
 import io.mockk.MockKAnnotations
+import io.mockk.Runs
 import io.mockk.clearAllMocks
 import io.mockk.every
 import io.mockk.impl.annotations.InjectMockKs
 import io.mockk.impl.annotations.MockK
 import io.mockk.impl.annotations.OverrideMockKs
 import io.mockk.verify
+import io.mockk.just
 import io.titandata.exception.CommandException
+import io.titandata.exception.NoSuchObjectException
+import io.titandata.models.Commit
+import io.titandata.models.CommitStatus
 import io.titandata.models.Error
 import io.titandata.models.Repository
 import io.titandata.orchestrator.OperationOrchestrator
@@ -40,15 +47,10 @@ import org.jetbrains.exposed.sql.transactions.transaction
 @UseExperimental(KtorExperimentalAPI::class)
 class CommitsApiTest : StringSpec() {
 
+    lateinit var vs : String
+
     @MockK
-    lateinit var executor: CommandExecutor
-
-    @MockK(relaxed = true)
-    lateinit var operationProvider: OperationOrchestrator
-
-    @InjectMockKs
-    @OverrideMockKs
-    var zfsStorageProvider = ZfsStorageProvider("test")
+    lateinit var zfsStorageProvider: ZfsStorageProvider
 
     @InjectMockKs
     @OverrideMockKs
@@ -70,6 +72,10 @@ class CommitsApiTest : StringSpec() {
 
     override fun beforeTest(testCase: TestCase) {
         providers.metadata.clear()
+        vs = transaction {
+            providers.metadata.createRepository(Repository("foo"))
+            providers.metadata.createVolumeSet("foo", null, true)
+        }
         return MockKAnnotations.init(this)
     }
 
@@ -81,8 +87,7 @@ class CommitsApiTest : StringSpec() {
 
     init {
         "list empty commits succeeds" {
-            every { executor.exec(*anyVararg()) } returns ""
-            with(engine.handleRequest(HttpMethod.Get, "/v1/repositories/repo/commits")) {
+            with(engine.handleRequest(HttpMethod.Get, "/v1/repositories/foo/commits")) {
                 response.status() shouldBe HttpStatusCode.OK
                 response.contentType().toString() shouldBe "application/json; charset=UTF-8"
                 response.content shouldBe "[]"
@@ -90,23 +95,20 @@ class CommitsApiTest : StringSpec() {
         }
 
         "list commits succeeds" {
-            every { executor.exec(*anyVararg()) } returns arrayOf(
-                    "test/repo/foo@ignore\toff\t{}",
-                    "test/repo/foo/guid1@hash1\toff\t{\"a\":\"b\"}",
-                    "test/repo/foo/guid2@hash2\toff\t{\"c\":\"d\"}"
-            ).joinToString("\n")
+            transaction {
+                providers.metadata.createCommit("foo", vs, Commit(id = "hash1", properties = mapOf("a" to "b", "timestamp" to "2019-09-20T13:45:38Z")))
+                providers.metadata.createCommit("foo", vs, Commit(id = "hash2", properties = mapOf("c" to "d", "timestamp" to "2019-09-20T13:45:37Z")))
+            }
             with(engine.handleRequest(HttpMethod.Get, "/v1/repositories/foo/commits")) {
                 response.status() shouldBe HttpStatusCode.OK
-                response.content shouldBe "[{\"id\":\"hash1\",\"properties\":{\"a\":\"b\"}},{\"id\":\"hash2\",\"properties\":{\"c\":\"d\"}}]"
+                response.content shouldBe "[{\"id\":\"hash1\",\"properties\":{\"a\":\"b\",\"timestamp\":\"2019-09-20T13:45:38Z\"}},{\"id\":\"hash2\",\"properties\":{\"c\":\"d\",\"timestamp\":\"2019-09-20T13:45:37Z\"}}]"
             }
         }
-
         "list commits filters result with exact match" {
-            every { executor.exec(*anyVararg()) } returns arrayOf(
-                    "test/repo/foo@ignore\toff\t{}",
-                    "test/repo/foo/guid1@hash1\toff\t{\"tags\":{\"a\":\"b\"}}",
-                    "test/repo/foo/guid2@hash2\toff\t{\"tags\":{\"c\":\"d\"}}"
-            ).joinToString("\n")
+            transaction {
+                providers.metadata.createCommit("foo", vs, Commit(id = "hash1", properties = mapOf("tags" to mapOf("a" to "b"))))
+                providers.metadata.createCommit("foo", vs, Commit(id = "hash2", properties = mapOf("tags" to mapOf("c" to "d"))))
+            }
             with(engine.handleRequest(HttpMethod.Get, "/v1/repositories/foo/commits?tag=a=b")) {
                 response.status() shouldBe HttpStatusCode.OK
                 response.content shouldBe "[{\"id\":\"hash1\",\"properties\":{\"tags\":{\"a\":\"b\"}}}]"
@@ -114,11 +116,10 @@ class CommitsApiTest : StringSpec() {
         }
 
         "list commits filters result with exists match" {
-            every { executor.exec(*anyVararg()) } returns arrayOf(
-                    "test/repo/foo@ignore\toff\t{}",
-                    "test/repo/foo/guid1@hash1\toff\t{\"tags\":{\"a\":\"b\"}}",
-                    "test/repo/foo/guid2@hash2\toff\t{\"tags\":{\"c\":\"d\"}}"
-            ).joinToString("\n")
+            transaction {
+                providers.metadata.createCommit("foo", vs, Commit(id = "hash1", properties = mapOf("tags" to mapOf("a" to "b"))))
+                providers.metadata.createCommit("foo", vs, Commit(id = "hash2", properties = mapOf("tags" to mapOf("c" to "d"))))
+            }
             with(engine.handleRequest(HttpMethod.Get, "/v1/repositories/foo/commits?tag=a")) {
                 response.status() shouldBe HttpStatusCode.OK
                 response.content shouldBe "[{\"id\":\"hash1\",\"properties\":{\"tags\":{\"a\":\"b\"}}}]"
@@ -126,11 +127,10 @@ class CommitsApiTest : StringSpec() {
         }
 
         "list commits filters result with compound match" {
-            every { executor.exec(*anyVararg()) } returns arrayOf(
-                    "test/repo/foo@ignore\toff\t{}",
-                    "test/repo/foo/guid1@hash1\toff\t{\"tags\":{\"a\":\"b\",\"c\":\"d\"}}",
-                    "test/repo/foo/guid2@hash2\toff\t{\"tags\":{\"c\":\"d\"}}"
-            ).joinToString("\n")
+            transaction {
+                providers.metadata.createCommit("foo", vs, Commit(id = "hash1", properties = mapOf("tags" to mapOf("a" to "b", "c" to "d"))))
+                providers.metadata.createCommit("foo", vs, Commit(id = "hash2", properties = mapOf("tags" to mapOf("c" to "d"))))
+            }
             with(engine.handleRequest(HttpMethod.Get, "/v1/repositories/foo/commits?tag=a=b&tag=c=d")) {
                 response.status() shouldBe HttpStatusCode.OK
                 response.content shouldBe "[{\"id\":\"hash1\",\"properties\":{\"tags\":{\"a\":\"b\",\"c\":\"d\"}}}]"
@@ -138,7 +138,6 @@ class CommitsApiTest : StringSpec() {
         }
 
         "list commits fails with non existent repository" {
-            every { executor.exec(*anyVararg()) } throws CommandException("", 1, "does not exist")
             with(engine.handleRequest(HttpMethod.Get, "/v1/repositories/repo/commits")) {
                 response.status() shouldBe HttpStatusCode.NotFound
                 val error = Gson().fromJson(response.content, Error::class.java)
@@ -148,8 +147,9 @@ class CommitsApiTest : StringSpec() {
         }
 
         "get commit succeeds" {
-            every { executor.exec("zfs", "list", "-Ho", "name,defer_destroy", "-t", "snapshot", "-d", "2", "test/repo/foo") } returns "test/repo/foo/guid@hash\toff"
-            every { executor.exec("zfs", "list", "-Ho", "io.titan-data:metadata", "test/repo/foo/guid@hash") } returns "{\"a\":\"b\"}"
+            transaction {
+                providers.metadata.createCommit("foo", vs, Commit(id = "hash", properties = mapOf("a" to "b")))
+            }
             with(engine.handleRequest(HttpMethod.Get, "/v1/repositories/foo/commits/hash")) {
                 response.status() shouldBe HttpStatusCode.OK
                 response.content shouldBe "{\"id\":\"hash\",\"properties\":{\"a\":\"b\"}}"
@@ -157,15 +157,10 @@ class CommitsApiTest : StringSpec() {
         }
 
         "get commit status succeeds" {
-            every { executor.exec("zfs", "list", "-Ho", "name,defer_destroy", "-t", "snapshot", "-d", "2", "test/repo/foo") } returns "test/repo/foo/guid@hash\toff"
-            every { executor.exec("zfs", "list", "-Ho", "io.titan-data:metadata", "test/repo/foo/guid@hash") } returns "{\"a\":\"b\"}"
-            every { executor.exec("zfs", "list", "-Hpo", "name,logicalreferenced,referenced,used", "-t",
-                    "snapshot", "-r", "test/repo/foo/guid") } returns arrayOf(
-                    "test/repo/foo/guid@hash\t1\t1\t1",
-                    "test/repo/foo/guid/v0@hash\t1\t2\t3",
-                    "test/repo/foo/guid/v0@otherhash\t2\t2\t2",
-                    "test/repo/foo/guid/v1@hash\t2\t4\t6"
-            ).joinToString("\n")
+            transaction {
+                providers.metadata.createCommit("foo", vs, Commit("hash"))
+            }
+            every { zfsStorageProvider.getCommitStatus(any(), any(), any()) } returns CommitStatus(logicalSize = 3, actualSize = 6, uniqueSize = 9)
             with(engine.handleRequest(HttpMethod.Get, "/v1/repositories/foo/commits/hash/status")) {
                 response.status() shouldBe HttpStatusCode.OK
                 response.content shouldBe "{\"logicalSize\":3,\"actualSize\":6,\"uniqueSize\":9}"
@@ -173,17 +168,15 @@ class CommitsApiTest : StringSpec() {
         }
 
         "get commit from non-existent repo returns no such object" {
-            every { executor.exec(*anyVararg()) } throws CommandException("", 1, "does not exist")
-            with(engine.handleRequest(HttpMethod.Get, "/v1/repositories/foo/commits/hash")) {
+            with(engine.handleRequest(HttpMethod.Get, "/v1/repositories/bar/commits/hash")) {
                 response.status() shouldBe HttpStatusCode.NotFound
                 val error = Gson().fromJson(response.content, Error::class.java)
                 error.code shouldBe "NoSuchObjectException"
-                error.message shouldBe "no such repository 'foo'"
+                error.message shouldBe "no such repository 'bar'"
             }
         }
 
         "get non-existent commit returns no such object" {
-            every { executor.exec(*anyVararg()) } returns ""
             with(engine.handleRequest(HttpMethod.Get, "/v1/repositories/foo/commits/hash")) {
                 response.status() shouldBe HttpStatusCode.NotFound
                 val error = Gson().fromJson(response.content, Error::class.java)
@@ -193,58 +186,54 @@ class CommitsApiTest : StringSpec() {
         }
 
         "get bad commit id returns bad request" {
-            every { executor.exec(*anyVararg()) } returns ""
             with(engine.handleRequest(HttpMethod.Get, "/v1/repositories/foo/commits/bad@hash")) {
                 response.status() shouldBe HttpStatusCode.BadRequest
                 val error = Gson().fromJson(response.content, Error::class.java)
                 error.code shouldBe "IllegalArgumentException"
-                error.message shouldBe "invalid commit name, can only contain alphanumeric characters, '-', ':', '.', or '_'"
+                error.message shouldBe "invalid commit id, can only contain alphanumeric characters, '-', ':', '.', or '_'"
             }
         }
 
         "update commit succeeds" {
-            every { executor.exec(*anyVararg()) } returns ""
-            every { executor.exec("zfs", "list", "-Ho", "name,defer_destroy", "-t", "snapshot",
-                    "-d", "2", "test/repo/foo") } returns "test/repo/foo/guid@hash\toff\n"
+            transaction {
+                providers.metadata.createCommit("foo", vs, Commit("hash"))
+            }
             with(engine.handleRequest(HttpMethod.Post, "/v1/repositories/foo/commits/hash") {
                 addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
                 setBody("{\"id\":\"hash\",\"properties\":{\"a\":\"b\"}}")
             }) {
                 response.status() shouldBe HttpStatusCode.OK
-                verify {
-                    executor.exec("zfs", "set", "io.titan-data:metadata={\"a\":\"b\"}", "test/repo/foo/guid@hash")
+                transaction {
+                    val commit = providers.metadata.getCommit("foo", "hash").second
+                    commit.properties["a"] shouldBe "b"
                 }
             }
         }
 
         "delete commit succeeds" {
-            val guid = transaction {
-                providers.metadata.createRepository(Repository(name = "foo", properties = emptyMap()))
-                providers.metadata.createVolumeSet("foo", null, true)
+            transaction {
+                providers.metadata.createCommit("foo", vs, Commit("hash"))
             }
-            every { executor.exec("zfs", "list", "-Ho", "name,defer_destroy", "-t", "snapshot", "-d", "2", "test/repo/foo") } returns "test/repo/foo/$guid@hash\toff"
-            every { executor.exec("zfs", "destroy", "-rd", "test/repo/foo/$guid@hash") } returns ""
             with(engine.handleRequest(HttpMethod.Delete, "/v1/repositories/foo/commits/hash")) {
                 response.status() shouldBe HttpStatusCode.NoContent
+                shouldThrow<NoSuchObjectException> {
+                    transaction {
+                        providers.metadata.getCommit("foo", "hash")
+                    }
+                }
             }
         }
 
         "delete commit from non-existent repo returns no such object" {
-            every { executor.exec(*anyVararg()) } throws CommandException("", 1, "does not exist")
-            with(engine.handleRequest(HttpMethod.Delete, "/v1/repositories/foo/commits/hash")) {
+            with(engine.handleRequest(HttpMethod.Delete, "/v1/repositories/bar/commits/hash")) {
                 response.status() shouldBe HttpStatusCode.NotFound
                 val error = Gson().fromJson(response.content, Error::class.java)
                 error.code shouldBe "NoSuchObjectException"
-                error.message shouldBe "no such repository 'foo'"
+                error.message shouldBe "no such repository 'bar'"
             }
         }
 
         "delete non-existent commit returns no such object" {
-            transaction {
-                providers.metadata.createRepository(Repository(name = "foo", properties = emptyMap()))
-                providers.metadata.createVolumeSet("foo", null, true)
-            }
-            every { executor.exec(*anyVararg()) } returns ""
             with(engine.handleRequest(HttpMethod.Delete, "/v1/repositories/foo/commits/hash")) {
                 response.status() shouldBe HttpStatusCode.NotFound
                 val error = Gson().fromJson(response.content, Error::class.java)
@@ -254,49 +243,48 @@ class CommitsApiTest : StringSpec() {
         }
 
         "create commit succeeds" {
-            val guid = transaction {
-                providers.metadata.createRepository(Repository(name = "foo", properties = emptyMap()))
-                providers.metadata.createVolumeSet("foo", null, true)
-            }
-            every { executor.exec("zfs", "list", "-Ho", "name,defer_destroy", "-t", "snapshot", "-d", "2", "test/repo/foo") } returns ""
-            every { executor.exec("zfs", "snapshot", "-r", "-o", "io.titan-data:metadata={\"a\":\"b\"}", "test/repo/foo/$guid@hash") } returns ""
-            every { executor.exec("zfs", "list", "-Hpo", "creation", "test/repo/foo/$guid@hash") } returns "1556492646"
-            every { executor.exec("zfs", "set", "io.titan-data:metadata={\"a\":\"b\",\"timestamp\":\"2019-04-28T23:04:06Z\"}", "test/repo/foo/$guid@hash") } returns ""
+            every { zfsStorageProvider.createCommit(any(), any(), any()) } just Runs
             with(engine.handleRequest(HttpMethod.Post, "/v1/repositories/foo/commits") {
                 addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
-                setBody("{\"id\":\"hash\",\"properties\":{\"a\":\"b\"}}")
+                setBody("{\"id\":\"hash\",\"properties\":{\"a\":\"b\",\"timestamp\":\"2019-04-28T23:04:06Z\"}}")
             }) {
                 response.status() shouldBe HttpStatusCode.Created
                 response.contentType().toString() shouldBe "application/json; charset=UTF-8"
                 response.content shouldBe "{\"id\":\"hash\",\"properties\":{\"a\":\"b\",\"timestamp\":\"2019-04-28T23:04:06Z\"}}"
+                verify {
+                    zfsStorageProvider.createCommit(vs, "hash", emptyList())
+                }
             }
         }
 
-        "create commit in non-existen repo returns no such object" {
-            every { executor.exec(*anyVararg()) } throws CommandException("", 1, "does not exist")
-            with(engine.handleRequest(HttpMethod.Post, "/v1/repositories/foo/commits") {
+        "create commit in non-existent repo returns no such object" {
+            with(engine.handleRequest(HttpMethod.Post, "/v1/repositories/bar/commits") {
                 addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
                 setBody("{\"id\":\"hash\",\"properties\":{\"a\":\"b\"}}")
             }) {
                 response.status() shouldBe HttpStatusCode.NotFound
                 val error = Gson().fromJson(response.content, Error::class.java)
                 error.code shouldBe "NoSuchObjectException"
-                error.message shouldBe "no such repository 'foo'"
+                error.message shouldBe "no such repository 'bar'"
             }
         }
 
         "checkout commit succeeds" {
-            val guid = transaction {
-                providers.metadata.createRepository(Repository(name = "foo", properties = emptyMap()))
-                providers.metadata.createVolumeSet("foo", null, true)
+            transaction {
+                providers.metadata.createCommit("foo", vs, Commit("hash"))
             }
-            every { executor.exec(*anyVararg()) } returns ""
-            every { executor.exec("zfs", "list", "-Ho", "name,defer_destroy", "-t", "snapshot",
-                    "-d", "2", "test/repo/foo")
-            } returns "test/repo/foo/$guid@hash\toff"
+
+            every { zfsStorageProvider.cloneVolumeSet(any(), any(), any(), any()) } just Runs
 
             with(engine.handleRequest(HttpMethod.Post, "/v1/repositories/foo/commits/hash/checkout")) {
                 response.status() shouldBe HttpStatusCode.NoContent
+                val activeVs = transaction {
+                    providers.metadata.getActiveVolumeSet("foo")
+                }
+                activeVs shouldNotBe vs
+                verify {
+                    zfsStorageProvider.cloneVolumeSet(vs, "hash", activeVs, emptyList())
+                }
             }
         }
     }

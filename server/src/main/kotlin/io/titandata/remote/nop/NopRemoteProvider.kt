@@ -24,7 +24,7 @@ class NopRemoteProvider : BaseRemoteProvider() {
     }
 
     override fun getCommit(remote: Remote, commitId: String, params: RemoteParameters): Commit {
-        return Commit(id = commitId, properties = mapOf())
+        return Commit(id = commitId, properties = emptyMap())
     }
 
     override fun validateOperation(

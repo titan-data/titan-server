@@ -12,18 +12,23 @@ import io.kotlintest.shouldBe
 import io.kotlintest.shouldThrow
 import io.kotlintest.specs.StringSpec
 import io.mockk.MockKAnnotations
+import io.mockk.Runs
 import io.mockk.clearAllMocks
 import io.mockk.every
 import io.mockk.impl.annotations.InjectMockKs
 import io.mockk.impl.annotations.MockK
 import io.mockk.impl.annotations.OverrideMockKs
 import io.mockk.impl.annotations.SpyK
+import io.mockk.just
+import io.mockk.verify
 import io.titandata.ProviderModule
 import io.titandata.exception.NoSuchObjectException
 import io.titandata.exception.ObjectExistsException
 import io.titandata.models.Commit
 import io.titandata.models.Operation
+import io.titandata.models.ProgressEntry
 import io.titandata.models.Repository
+import io.titandata.models.Volume
 import io.titandata.remote.engine.EngineParameters
 import io.titandata.remote.nop.NopParameters
 import io.titandata.remote.nop.NopRemote
@@ -55,7 +60,9 @@ class OperationOrchestratorTest : StringSpec() {
         providers.metadata.clear()
         vs = transaction {
             providers.metadata.createRepository(Repository(name = "foo"))
-            providers.metadata.createVolumeSet("foo", null, true)
+            val vs = providers.metadata.createVolumeSet("foo", null, true)
+            providers.metadata.createVolume(vs, Volume(name="volume"))
+            vs
         }
         val ret = MockKAnnotations.init(this)
 
@@ -291,35 +298,139 @@ class OperationOrchestratorTest : StringSpec() {
             }
         }
 
-        /* TODO
+        "create storage with no commit creates new volume set" {
+            every { zfsStorageProvider.createVolumeSet(any()) } just Runs
+            every { zfsStorageProvider.createVolume(any(), any())} just Runs
 
-        "abort operation succeeds" {
-            addOperation()
-            provider.getOperation("foo", "id")
-            provider.abortOperation("foo", "id")
+            val newVolumeSet = transaction {
+                providers.metadata.createVolumeSet("foo")
+            }
+
+            providers.operations.createStorage("foo", newVolumeSet, null)
+
+            verify {
+                zfsStorageProvider.createVolumeSet(newVolumeSet)
+                zfsStorageProvider.createVolume(newVolumeSet, "volume")
+            }
         }
 
+        "create storage with existing commit clones volume set" {
+            every { zfsStorageProvider.cloneVolumeSet(any(), any(), any(), any()) } just Runs
+
+            val (commitVs, commit) = transaction {
+                val cvs = providers.metadata.createVolumeSet("foo")
+                providers.metadata.createVolume(cvs, Volume(name="volume"))
+                providers.metadata.createCommit("foo", cvs, Commit("id"))
+                providers.metadata.getCommit("foo", "id")
+            }
+
+            val newVs = transaction {
+                providers.metadata.createVolumeSet("foo")
+            }
+
+            providers.operations.createStorage("foo", newVs, commit.id)
+
+            verify {
+                zfsStorageProvider.cloneVolumeSet(commitVs, commit.id, newVs, listOf("volume"))
+            }
+        }
+
+        "create metadata succeeds" {
+            transaction {
+                providers.metadata.createCommit("foo", vs, Commit("sourceCommit"))
+            }
+            val (opVs, op) = providers.operations.createMetadata("foo", Operation.Type.PULL,
+                    "origin", "id", true, NopParameters(), "sourceCommit")
+
+            transaction {
+                val volumes = providers.metadata.listVolumes(opVs)
+                volumes.size shouldBe 1
+                volumes[0].name shouldBe "volume"
+
+                providers.metadata.getCommitSource(opVs) shouldBe "sourceCommit"
+
+                op.id shouldBe opVs
+                op.commitId shouldBe "id"
+                op.remote shouldBe "origin"
+            }
+        }
+
+        "find local commit returns commit id for push" {
+            val commit = providers.operations.findLocalCommit(Operation.Type.PUSH, "foo", NopRemote(name="remote"),
+                    NopParameters(), "id")
+            commit shouldBe "id"
+        }
+
+        "find local commit returns null if no remote commits exist" {
+            every { nopRemoteProvider.getCommit(any(), any(), any()) } throws NoSuchObjectException("")
+            val commit = providers.operations.findLocalCommit(Operation.Type.PULL, "foo", NopRemote(name="remote"),
+                    NopParameters(), "id")
+            commit shouldBe null
+        }
+
+        "find local commit returns source of remote commit" {
+            transaction {
+                providers.metadata.createCommit("foo", vs, Commit(id="one"))
+                providers.metadata.createCommit("foo", vs, Commit(id="two"))
+            }
+            every { nopRemoteProvider.getCommit(any(), "three", any()) } returns Commit(id="three", properties=mapOf("tags" to mapOf(
+                    "source" to "two"
+            )))
+            every { nopRemoteProvider.getCommit(any(), "two", any()) } returns Commit(id="three", properties=mapOf("tags" to mapOf(
+                    "source" to "one"
+            )))
+            every { nopRemoteProvider.getCommit(any(), "one", any()) } throws NoSuchObjectException("")
+            val commit = providers.operations.findLocalCommit(Operation.Type.PULL, "foo", NopRemote(name="remote"),
+                    NopParameters(), "three")
+            commit shouldBe "two"
+        }
+
+        "find local commit follows remote chain if local commit is missing" {
+            transaction {
+                providers.metadata.createCommit("foo", vs, Commit(id="one"))
+            }
+            every { nopRemoteProvider.getCommit(any(), "three", any()) } returns Commit(id="three", properties=mapOf("tags" to mapOf(
+                    "source" to "two"
+            )))
+            every { nopRemoteProvider.getCommit(any(), "two", any()) } returns Commit(id="three", properties=mapOf("tags" to mapOf(
+                    "source" to "one"
+            )))
+            every { nopRemoteProvider.getCommit(any(), "one", any()) } throws NoSuchObjectException("")
+            val commit = providers.operations.findLocalCommit(Operation.Type.PULL, "foo", NopRemote(name="remote"),
+                    NopParameters(), "three")
+            commit shouldBe "one"
+        }
+
+        "find local commit returns null if remote commit doesn't have source tag" {
+            every { nopRemoteProvider.getCommit(any(), "three", any()) } returns Commit(id="three")
+            val commit = providers.operations.findLocalCommit(Operation.Type.PULL, "foo", NopRemote(name="remote"),
+                    NopParameters(), "three")
+            commit shouldBe null
+        }
 
         "pull succeeds" {
             transaction {
                 providers.metadata.addRemote("foo", NopRemote(name = "remote"))
             }
-            every { zfsStorageProvider.getCommit(any(), any()) } throws NoSuchObjectException("")
-            every { zfsStorageProvider.createOperation("foo", any(), any()) } just Runs
-            every { zfsStorageProvider.commitOperation("foo", any(), any()) } just Runs
-            every { zfsStorageProvider.createOperationScratch("foo", any()) } returns ""
-            every { zfsStorageProvider.mountOperationVolumes("foo", any(), any()) } returns ""
-            every { zfsStorageProvider.unmountOperationVolumes("foo", any(), any()) } just Runs
-            every { zfsStorageProvider.destroyOperationScratch("foo", any()) } just Runs
-            var op = provider.startPull("foo", "remote", "commit", NopParameters())
+            every { zfsStorageProvider.mountVolume(any(), any()) } returns "/mountpoint"
+            every { zfsStorageProvider.mountVolume(any(), "_scratch") } returns "/scratch"
+            every { zfsStorageProvider.unmountVolume(any(), any()) } just Runs
+            every { zfsStorageProvider.createCommit(any(), any(), any()) } just Runs
+            every { zfsStorageProvider.createVolume(any(), any()) } just Runs
+            every { zfsStorageProvider.deleteVolume(any(), any()) } just Runs
+            every { zfsStorageProvider.createVolumeSet(any()) } just Runs
+            every { nopRemoteProvider.pullVolume(any(), any(), any(), any(), any()) } just Runs
+
+            var op = providers.operations.startPull("foo", "remote", "commit", NopParameters())
             op.commitId shouldBe "commit"
             op.type shouldBe Operation.Type.PULL
             op.remote shouldBe "remote"
-            provider.getExecutor("foo", op.id).join()
-            op = provider.getOperation("foo", op.id)
+            providers.operations.getExecutor("foo", op.id).join()
+
+            op = providers.operations.getOperation("foo", op.id)
             op.state shouldBe Operation.State.COMPLETE
 
-            val progress = provider.getProgress("foo", op.id)
+            val progress = providers.operations.getProgress("foo", op.id)
             progress.size shouldBe 4
             progress[0].type shouldBe ProgressEntry.Type.MESSAGE
             progress[1].type shouldBe ProgressEntry.Type.START
@@ -328,7 +439,7 @@ class OperationOrchestratorTest : StringSpec() {
             progress[3].type shouldBe ProgressEntry.Type.COMPLETE
 
             shouldThrow<NoSuchObjectException> {
-                provider.getOperation("foo", op.id)
+                providers.operations.getOperation("foo", op.id)
             }
         }
 
@@ -336,20 +447,18 @@ class OperationOrchestratorTest : StringSpec() {
             transaction {
                 providers.metadata.addRemote("foo", NopRemote(name = "remote"))
             }
-            every { zfsStorageProvider.getCommit(any(), any()) } throws NoSuchObjectException("")
+            every { zfsStorageProvider.createVolumeSet(any()) } just Runs
+            every { zfsStorageProvider.createVolume(any(), any()) } just Runs
             every { nopRemoteProvider.startOperation(any()) } throws Exception("error")
-            every { zfsStorageProvider.createOperation("foo", any(), any()) } just Runs
-            every { zfsStorageProvider.discardOperation("foo", any()) } just Runs
-            every { zfsStorageProvider.createOperationScratch("foo", any()) } returns ""
-            every { zfsStorageProvider.mountOperationVolumes("foo", any(), any()) } returns ""
-            every { zfsStorageProvider.unmountOperationVolumes("foo", any(), any()) } just Runs
-            every { zfsStorageProvider.destroyOperationScratch("foo", any()) } just Runs
-            var op = provider.startPull("foo", "remote", "commit", NopParameters())
-            provider.getExecutor("foo", op.id).join()
-            op = provider.getOperation("foo", op.id)
+            every { nopRemoteProvider.pullVolume(any(), any(), any(), any(), any()) } just Runs
+
+            var op = providers.operations.startPull("foo", "remote", "commit", NopParameters())
+            providers.operations.getExecutor("foo", op.id).join()
+
+            op = providers.operations.getOperation("foo", op.id)
             op.state shouldBe Operation.State.FAILED
 
-            val progress = provider.getProgress("foo", op.id)
+            val progress = providers.operations.getProgress("foo", op.id)
             progress.size shouldBe 2
             progress[0].type shouldBe ProgressEntry.Type.MESSAGE
             progress[0].message shouldBe "Pulling commit from 'remote'"
@@ -361,51 +470,61 @@ class OperationOrchestratorTest : StringSpec() {
             transaction {
                 providers.metadata.addRemote("foo", NopRemote(name = "remote"))
             }
-            every { zfsStorageProvider.getCommit(any(), any()) } throws NoSuchObjectException("")
-            every { nopRemoteProvider.startOperation(any()) } throws InterruptedException("error")
-            every { zfsStorageProvider.createOperation("foo", any(), any()) } just Runs
-            every { zfsStorageProvider.discardOperation("foo", any()) } just Runs
-            every { zfsStorageProvider.createOperationScratch("foo", any()) } returns ""
-            every { zfsStorageProvider.mountOperationVolumes("foo", any(), any()) } returns ""
-            every { zfsStorageProvider.unmountOperationVolumes("foo", any(), any()) } just Runs
-            every { zfsStorageProvider.destroyOperationScratch("foo", any()) } just Runs
-            var op = provider.startPull("foo", "remote", "commit", NopParameters())
-            provider.getExecutor("foo", op.id).join()
-            op = provider.getOperation("foo", op.id)
+            every { zfsStorageProvider.createVolumeSet(any()) } just Runs
+            every { zfsStorageProvider.createVolume(any(), any()) } just Runs
+            every { nopRemoteProvider.startOperation(any()) } throws InterruptedException()
+            every { nopRemoteProvider.pullVolume(any(), any(), any(), any(), any()) } just Runs
+
+            var op = providers.operations.startPull("foo", "remote", "commit", NopParameters())
+            providers.operations.getExecutor("foo", op.id).join()
+
+            op = providers.operations.getOperation("foo", op.id)
             op.state shouldBe Operation.State.ABORTED
 
-            val progress = provider.getProgress("foo", op.id)
+            val progress = providers.operations.getProgress("foo", op.id)
             progress.size shouldBe 2
             progress[1].type shouldBe ProgressEntry.Type.ABORT
         }
 
         "pull fails if conflicting operation is in progress" {
-            addOperation()
             transaction {
                 providers.metadata.addRemote("foo", NopRemote(name = "remote"))
+                providers.metadata.createOperation("foo", vs, buildOperation())
             }
-            every { zfsStorageProvider.getCommit(any(), any()) } throws NoSuchObjectException("")
             shouldThrow<ObjectExistsException> {
-                provider.startPull("foo", "remote", "commit", NopParameters())
+                providers.operations.startPull("foo", "remote", "id", NopParameters())
             }
         }
 
         "pull succeeds if non-conflicting operation is in progress" {
-            addOperation(type = Operation.Type.PUSH)
             transaction {
                 providers.metadata.addRemote("foo", NopRemote(name = "remote"))
+                providers.metadata.createOperation("foo", vs, buildOperation(Operation.Type.PUSH))
             }
-            every { zfsStorageProvider.getCommit(any(), any()) } throws NoSuchObjectException("")
-            every { zfsStorageProvider.createOperation("foo", any(), any()) } just Runs
-            every { zfsStorageProvider.commitOperation("foo", any(), any()) } just Runs
-            every { zfsStorageProvider.createOperationScratch("foo", any()) } returns ""
-            every { zfsStorageProvider.mountOperationVolumes("foo", any(), any()) } returns ""
-            every { zfsStorageProvider.unmountOperationVolumes("foo", any(), any()) } just Runs
-            every { zfsStorageProvider.destroyOperationScratch("foo", any()) } just Runs
-            var op = provider.startPull("foo", "remote", "commit2", NopParameters())
-            provider.getExecutor("foo", op.id).join()
-            provider.getOperation("foo", op.id)
+            every { zfsStorageProvider.mountVolume(any(), any()) } returns "/mountpoint"
+            every { zfsStorageProvider.mountVolume(any(), "_scratch") } returns "/scratch"
+            every { zfsStorageProvider.unmountVolume(any(), any()) } just Runs
+            every { zfsStorageProvider.createCommit(any(), any(), any()) } just Runs
+            every { zfsStorageProvider.createVolume(any(), any()) } just Runs
+            every { zfsStorageProvider.deleteVolume(any(), any()) } just Runs
+            every { zfsStorageProvider.createVolumeSet(any()) } just Runs
+            every { nopRemoteProvider.pullVolume(any(), any(), any(), any(), any()) } just Runs
+
+            var op = providers.operations.startPull("foo", "remote", "commit", NopParameters())
+            providers.operations.getExecutor("foo", op.id).join()
+            op = providers.operations.getOperation("foo", op.id)
+            op.state shouldBe Operation.State.COMPLETE
         }
+
+        /* TODO
+
+        "abort operation succeeds" {
+            addOperation()
+            provider.getOperation("foo", "id")
+            provider.abortOperation("foo", "id")
+        }
+
+
 
         "push succeeds" {
             transaction {

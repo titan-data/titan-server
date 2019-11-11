@@ -34,7 +34,6 @@ import io.titandata.models.Repository
 import io.titandata.models.RepositoryVolumeStatus
 import io.titandata.models.Volume
 import io.titandata.storage.zfs.ZfsStorageProvider
-import io.titandata.util.CommandExecutor
 import java.util.concurrent.TimeUnit
 import org.jetbrains.exposed.sql.transactions.transaction
 
@@ -127,9 +126,9 @@ class RepositoriesApiTest : StringSpec() {
             transaction {
                 providers.metadata.createRepository(Repository(name = "foo", properties = emptyMap()))
                 val vs = providers.metadata.createVolumeSet("foo", null, true)
-                providers.metadata.createVolume(vs, Volume(name="volume", properties=mapOf("path" to "/var/a")))
+                providers.metadata.createVolume(vs, Volume(name = "volume", properties = mapOf("path" to "/var/a")))
             }
-            every { zfsStorageProvider.getVolumeStatus(any(), any()) } returns RepositoryVolumeStatus(name="volume", logicalSize = 5, actualSize = 10)
+            every { zfsStorageProvider.getVolumeStatus(any(), any()) } returns RepositoryVolumeStatus(name = "volume", logicalSize = 5, actualSize = 10)
             with(engine.handleRequest(HttpMethod.Get, "/v1/repositories/foo/status")) {
                 response.status() shouldBe HttpStatusCode.OK
                 response.contentType().toString() shouldBe "application/json; charset=UTF-8"

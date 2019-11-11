@@ -26,15 +26,11 @@ import io.mockk.every
 import io.mockk.impl.annotations.InjectMockKs
 import io.mockk.impl.annotations.MockK
 import io.mockk.impl.annotations.OverrideMockKs
-import io.mockk.impl.annotations.SpyK
 import io.mockk.just
 import io.mockk.verify
-import io.titandata.exception.CommandException
-import io.titandata.metadata.MetadataProvider
 import io.titandata.models.Repository
 import io.titandata.models.Volume
 import io.titandata.storage.zfs.ZfsStorageProvider
-import io.titandata.util.CommandExecutor
 import java.util.concurrent.TimeUnit
 import org.apache.commons.text.StringEscapeUtils
 import org.jetbrains.exposed.sql.transactions.transaction
@@ -42,7 +38,7 @@ import org.jetbrains.exposed.sql.transactions.transaction
 @UseExperimental(KtorExperimentalAPI::class)
 class VolumesApiTest : StringSpec() {
 
-    lateinit var vs : String
+    lateinit var vs: String
 
     @MockK
     var zfsStorageProvider = ZfsStorageProvider("test")
@@ -87,7 +83,7 @@ class VolumesApiTest : StringSpec() {
     init {
         "create volume succeeds" {
             every { zfsStorageProvider.createVolume(any(), any()) } just Runs
-            every { zfsStorageProvider.getVolumeMountpoint(any(), any())} returns ""
+            every { zfsStorageProvider.getVolumeMountpoint(any(), any()) } returns ""
             with(engine.handleRequest(HttpMethod.Post, "/VolumeDriver.Create") {
                 setBody("{\"Name\":\"foo/vol\",\"Opts\":{\"a\":\"b\"}}")
             }) {

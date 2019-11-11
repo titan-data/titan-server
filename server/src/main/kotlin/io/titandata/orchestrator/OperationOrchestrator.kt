@@ -100,6 +100,12 @@ class OperationOrchestrator(val providers: ProviderModule) {
             } catch (e: NoSuchObjectException) {
                 // If we can't find a remote commit in the chain, then default to latest
             }
+
+            if (localCommit == null) {
+                localCommit = transaction {
+                    providers.metadata.getLastCommit(repo)
+                }
+            }
             return localCommit
         }
     }
@@ -181,16 +187,14 @@ class OperationOrchestrator(val providers: ProviderModule) {
                 providers.metadata.listOperations(r.name)
             }
             for (op in operations) {
+                val exec = OperationExecutor(providers, op.operation, r.name,
+                        providers.remotes.getRemote(r.name, op.operation.remote), op.params, op.metadataOnly)
+                executors.put(exec.operation.id, exec)
                 if (op.operation.state == Operation.State.RUNNING) {
-                    val exec = OperationExecutor(providers, op.operation, r.name,
-                            providers.remotes.getRemote(r.name, op.operation.remote), op.params, op.metadataOnly)
-                    executors.put(exec.operation.id, exec)
-                    if (op.operation.state == Operation.State.RUNNING) {
-                        log.info("retrying operation ${op.operation.id} after restart")
-                        exec.addProgress(ProgressEntry(ProgressEntry.Type.MESSAGE,
-                                "Retrying operation after restart"))
-                        exec.start()
-                    }
+                    log.info("retrying operation ${op.operation.id} after restart")
+                    exec.addProgress(ProgressEntry(ProgressEntry.Type.MESSAGE,
+                            "Retrying operation after restart"))
+                    exec.start()
                 }
             }
         }

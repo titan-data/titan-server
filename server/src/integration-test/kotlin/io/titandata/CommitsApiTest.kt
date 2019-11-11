@@ -30,24 +30,21 @@ import io.mockk.every
 import io.mockk.impl.annotations.InjectMockKs
 import io.mockk.impl.annotations.MockK
 import io.mockk.impl.annotations.OverrideMockKs
-import io.mockk.verify
 import io.mockk.just
-import io.titandata.exception.CommandException
+import io.mockk.verify
 import io.titandata.exception.NoSuchObjectException
 import io.titandata.models.Commit
 import io.titandata.models.CommitStatus
 import io.titandata.models.Error
 import io.titandata.models.Repository
-import io.titandata.orchestrator.OperationOrchestrator
 import io.titandata.storage.zfs.ZfsStorageProvider
-import io.titandata.util.CommandExecutor
 import java.util.concurrent.TimeUnit
 import org.jetbrains.exposed.sql.transactions.transaction
 
 @UseExperimental(KtorExperimentalAPI::class)
 class CommitsApiTest : StringSpec() {
 
-    lateinit var vs : String
+    lateinit var vs: String
 
     @MockK
     lateinit var zfsStorageProvider: ZfsStorageProvider

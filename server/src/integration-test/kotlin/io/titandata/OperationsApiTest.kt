@@ -6,6 +6,7 @@ package io.titandata
 
 import com.google.gson.Gson
 import com.google.gson.GsonBuilder
+import com.google.gson.reflect.TypeToken
 import io.kotlintest.Spec
 import io.kotlintest.TestCase
 import io.kotlintest.TestCaseOrder
@@ -23,26 +24,28 @@ import io.ktor.server.testing.handleRequest
 import io.ktor.server.testing.setBody
 import io.ktor.util.KtorExperimentalAPI
 import io.mockk.MockKAnnotations
+import io.mockk.Runs
 import io.mockk.clearAllMocks
 import io.mockk.every
 import io.mockk.impl.annotations.InjectMockKs
 import io.mockk.impl.annotations.MockK
 import io.mockk.impl.annotations.OverrideMockKs
+import io.mockk.just
 import io.titandata.models.Commit
 import io.titandata.models.Error
 import io.titandata.models.Operation
+import io.titandata.models.ProgressEntry
 import io.titandata.models.Repository
 import io.titandata.remote.nop.NopParameters
 import io.titandata.remote.nop.NopRemote
 import io.titandata.serialization.ModelTypeAdapters
 import io.titandata.storage.OperationData
 import io.titandata.storage.zfs.ZfsStorageProvider
-import io.titandata.util.CommandExecutor
 import java.time.Duration
+import java.util.UUID
 import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.time.delay
 import org.jetbrains.exposed.sql.transactions.transaction
-import java.util.*
 
 @UseExperimental(KtorExperimentalAPI::class)
 class OperationsApiTest : StringSpec() {
@@ -50,8 +53,8 @@ class OperationsApiTest : StringSpec() {
     @MockK
     var zfsStorageProvider = ZfsStorageProvider("test")
 
-    lateinit var vs1 : String
-    lateinit var vs2 : String
+    lateinit var vs1: String
+    lateinit var vs2: String
 
     @InjectMockKs
     @OverrideMockKs
@@ -79,7 +82,7 @@ class OperationsApiTest : StringSpec() {
         transaction {
             providers.metadata.createRepository(Repository(name = "foo", properties = mapOf()))
             providers.metadata.addRemote("foo", NopRemote(name = "remote"))
-            vs1 = providers.metadata.createVolumeSet("foo")
+            vs1 = providers.metadata.createVolumeSet("foo", null, true)
             vs2 = providers.metadata.createVolumeSet("foo")
         }
         return MockKAnnotations.init(this)
@@ -185,45 +188,46 @@ class OperationsApiTest : StringSpec() {
             }
         }
 
-        /*
-        "get progress returns correct state" {
-            loadOperations("foo", OperationData(Operation(id = "id",
+        "get resumed progress returns correct state" {
+            transaction {
+                providers.metadata.createCommit("foo", vs1, Commit("commit"))
+            }
+            loadOperation(OperationData(Operation(id = vs2,
                     type = Operation.Type.PUSH, commitId = "commit",
                     state = Operation.State.RUNNING, remote = "remote"),
                     params = NopParameters(delay = 10)))
+            providers.operations.loadState()
             delay(Duration.ofMillis(500))
-            with(engine.handleRequest(HttpMethod.Get, "/v1/repositories/foo/operations/id/progress")) {
+            with(engine.handleRequest(HttpMethod.Get, "/v1/repositories/foo/operations/$vs2/progress")) {
                 response.status() shouldBe HttpStatusCode.OK
-                response.content shouldBe "[{\"type\":\"MESSAGE\",\"message\":\"Retrying operation after restart\"},{\"type\":\"START\",\"message\":\"Running operation\"}]"
+                val entries: List<ProgressEntry> = gson.fromJson(response.content, object : TypeToken<List<ProgressEntry>>() { }.type)
+                entries.size shouldBe 2
+                entries[0].type shouldBe ProgressEntry.Type.MESSAGE
+                entries[0].message shouldBe "Retrying operation after restart"
+                entries[1].type shouldBe ProgressEntry.Type.START
+                entries[1].message shouldBe "Running operation"
             }
         }
 
         "get progress of completed operation removes operation" {
             loadTestOperations()
-            with(engine.handleRequest(HttpMethod.Get, "/v1/repositories/foo/operations/id1/progress")) {
+            providers.operations.loadState()
+            with(engine.handleRequest(HttpMethod.Get, "/v1/repositories/foo/operations/$vs1/progress")) {
                 response.status() shouldBe HttpStatusCode.OK
                 response.content shouldBe "[]"
             }
 
-            with(engine.handleRequest(HttpMethod.Get, "/v1/repositories/foo/operations/id1")) {
+            with(engine.handleRequest(HttpMethod.Get, "/v1/repositories/foo/operations/$vs1")) {
                 response.status() shouldBe HttpStatusCode.NotFound
             }
         }
 
         "push starts operation" {
             transaction {
-                providers.metadata.createRepository(Repository(name = "foo", properties = mapOf()))
-                providers.metadata.addRemote("foo", NopRemote(name = "remote"))
+                providers.metadata.createCommit("foo", vs1, Commit("commit"))
             }
-            every { executor.exec("zfs", "list", "-Ho", "name,io.titan-data:metadata",
-                    "test/repo/foo") } returns "test/repo/foo\t{}"
-            every { executor.exec("zfs", "list", "-Ho", "name,io.titan-data:metadata",
-                    "-d", "1", "test/repo") } returns "test/repo/foo\t{}"
-            every { executor.exec("zfs", "list", "-Ho", "name,defer_destroy", "-t",
-                    "snapshot", "-d", "2", "test/repo/foo") } returns
-                    "test/repo/foo/guid@commit\toff"
-            every { executor.exec("zfs", "list", "-Ho", "io.titan-data:metadata",
-                    "test/repo/foo/guid@commit") } returns "{}"
+
+            every { zfsStorageProvider.cloneVolumeSet(any(), any(), any(), any()) } just Runs
 
             val result = engine.handleRequest(HttpMethod.Post, "/v1/repositories/foo/remotes/remote/commits/commit/push") {
                 addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
@@ -241,16 +245,7 @@ class OperationsApiTest : StringSpec() {
         }
 
         "pull starts operation" {
-            transaction {
-                providers.metadata.createRepository(Repository(name = "foo", properties = mapOf()))
-                providers.metadata.addRemote("foo", NopRemote(name = "remote"))
-            }
-            every { executor.exec("zfs", "list", "-Ho", "name,io.titan-data:metadata",
-                    "test/repo/foo") } returns "test/repo/foo\t{}"
-            every { executor.exec("zfs", "list", "-Ho", "name,io.titan-data:metadata",
-                    "-d", "1", "test/repo") } returns "test/repo/foo\t{}"
-            every { executor.exec("zfs", "list", "-Ho", "name,defer_destroy", "-t",
-                    "snapshot", "-d", "2", "test/repo/foo") } returns ""
+            every { zfsStorageProvider.createVolumeSet(any()) } just Runs
 
             val result = engine.handleRequest(HttpMethod.Post, "/v1/repositories/foo/remotes/remote/commits/commit/pull") {
                 addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
@@ -267,6 +262,5 @@ class OperationsApiTest : StringSpec() {
                 response.status() shouldBe HttpStatusCode.OK
             }
         }
-         */
     }
 }

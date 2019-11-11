@@ -171,12 +171,13 @@ class RepositoryOrchestratorTest : StringSpec() {
             status.lastCommit shouldBe "id"
             status.sourceCommit shouldBe "id"
             status.volumeStatus.size shouldBe 2
-            status.volumeStatus[0].actualSize shouldBe 10
-            status.volumeStatus[0].actualSize shouldBe 10
-            status.volumeStatus[0].logicalSize shouldBe 20
-            status.volumeStatus[1].name shouldBe "vol"
-            status.volumeStatus[1].logicalSize shouldBe 20
-            status.volumeStatus[1].name shouldBe "vol"
+            val vols = status.volumeStatus.sortedBy { it.name }
+            vols[0].actualSize shouldBe 10
+            vols[0].actualSize shouldBe 10
+            vols[0].logicalSize shouldBe 20
+            vols[0].name shouldBe "vol1"
+            vols[1].logicalSize shouldBe 20
+            vols[1].name shouldBe "vol2"
         }
     }
 }

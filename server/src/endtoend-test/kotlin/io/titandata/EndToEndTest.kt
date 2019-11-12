@@ -7,10 +7,10 @@ package io.titandata
 import io.kotlintest.TestCaseOrder
 import io.kotlintest.specs.StringSpec
 import io.titandata.client.apis.CommitsApi
+import io.titandata.client.apis.DockerVolumeApi
 import io.titandata.client.apis.OperationsApi
 import io.titandata.client.apis.RemotesApi
 import io.titandata.client.apis.RepositoriesApi
-import io.titandata.client.apis.VolumeApi
 import io.titandata.models.Commit
 import io.titandata.models.ProgressEntry
 import io.titandata.serialization.RemoteUtil
@@ -22,7 +22,7 @@ abstract class EndToEndTest : StringSpec() {
     val remoteUtil = RemoteUtil()
     val url = "http://localhost:${dockerUtil.port}"
     val repoApi = RepositoriesApi(url)
-    val volumeApi = VolumeApi(url)
+    val volumeApi = DockerVolumeApi(url)
     val commitApi = CommitsApi(url)
     val remoteApi = RemotesApi(url)
     val operationApi = OperationsApi(url)

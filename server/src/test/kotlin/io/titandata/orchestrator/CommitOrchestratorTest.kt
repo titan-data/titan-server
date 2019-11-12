@@ -27,7 +27,7 @@ import io.titandata.exception.NoSuchObjectException
 import io.titandata.exception.ObjectExistsException
 import io.titandata.models.Commit
 import io.titandata.models.Repository
-import io.titandata.models.Volume
+import io.titandata.models.docker.DockerVolume
 import io.titandata.storage.zfs.ZfsStorageProvider
 import org.jetbrains.exposed.sql.transactions.transaction
 
@@ -54,8 +54,8 @@ class CommitOrchestratorTest : StringSpec() {
         transaction {
             providers.metadata.createRepository(Repository(name = "foo"))
             vs = providers.metadata.createVolumeSet("foo", null, true)
-            providers.metadata.createVolume(vs, Volume(name = "vol1"))
-            providers.metadata.createVolume(vs, Volume(name = "vol2"))
+            providers.metadata.createVolume(vs, DockerVolume(name = "vol1"))
+            providers.metadata.createVolume(vs, DockerVolume(name = "vol2"))
         }
         val ret = MockKAnnotations.init(this)
         every { zfsStorageProvider.createCommit(any(), any(), any()) } just Runs

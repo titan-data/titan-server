@@ -28,7 +28,7 @@ import io.titandata.models.Commit
 import io.titandata.models.Operation
 import io.titandata.models.RemoteParameters
 import io.titandata.models.Repository
-import io.titandata.models.Volume
+import io.titandata.models.docker.DockerVolume
 import io.titandata.storage.OperationData
 import io.titandata.storage.zfs.ZfsStorageProvider
 import org.jetbrains.exposed.sql.transactions.transaction
@@ -66,7 +66,7 @@ class ReaperTest : StringSpec() {
             val vs = transaction {
                 providers.metadata.createRepository(Repository("foo"))
                 val vs = providers.metadata.createVolumeSet("foo")
-                providers.metadata.createVolume(vs, Volume(name = "volume"))
+                providers.metadata.createVolume(vs, DockerVolume(name = "volume"))
                 vs
             }
             providers.reaper.reapVolumes() shouldBe false
@@ -79,7 +79,7 @@ class ReaperTest : StringSpec() {
             val vs = transaction {
                 providers.metadata.createRepository(Repository("foo"))
                 val vs = providers.metadata.createVolumeSet("foo")
-                providers.metadata.createVolume(vs, Volume(name = "volume"))
+                providers.metadata.createVolume(vs, DockerVolume(name = "volume"))
                 providers.metadata.markVolumeDeleting(vs, "volume")
                 vs
             }
@@ -121,7 +121,7 @@ class ReaperTest : StringSpec() {
             val vs = transaction {
                 providers.metadata.createRepository(Repository("foo"))
                 val vs = providers.metadata.createVolumeSet("foo")
-                providers.metadata.createVolume(vs, Volume(name = "volume"))
+                providers.metadata.createVolume(vs, DockerVolume(name = "volume"))
                 providers.metadata.markVolumeSetDeleting(vs)
                 vs
             }
@@ -230,7 +230,7 @@ class ReaperTest : StringSpec() {
             val vs = transaction {
                 providers.metadata.createRepository(Repository("foo"))
                 val vs = providers.metadata.createVolumeSet("foo")
-                providers.metadata.createVolume(vs, Volume(name = "volume"))
+                providers.metadata.createVolume(vs, DockerVolume(name = "volume"))
                 providers.metadata.createCommit("foo", vs, Commit("id"))
                 providers.metadata.markCommitDeleting("foo", "id")
                 vs

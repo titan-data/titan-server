@@ -1,7 +1,7 @@
 package io.titandata.orchestrator
 
 import io.titandata.ProviderModule
-import io.titandata.models.Volume
+import io.titandata.models.docker.DockerVolume
 import org.jetbrains.exposed.sql.transactions.transaction
 
 class VolumeOrchestrator(val providers: ProviderModule) {
@@ -11,8 +11,8 @@ class VolumeOrchestrator(val providers: ProviderModule) {
      * Things like 'mountpoint' would only exist in the latter. For now, to minimize disruption as we go through
      * the metadata transition, we simply supplment the volume definition we get from the storage provider.
      */
-    fun convertVolume(repo: String, volumeSet: String, volume: Volume): Volume {
-        return Volume(
+    fun convertVolume(repo: String, volumeSet: String, volume: DockerVolume): DockerVolume {
+        return DockerVolume(
                 name = "$repo/${volume.name}",
                 properties = volume.properties,
                 mountpoint = providers.storage.getVolumeMountpoint(volumeSet, volume.name),
@@ -20,11 +20,11 @@ class VolumeOrchestrator(val providers: ProviderModule) {
         )
     }
 
-    fun createVolume(repo: String, name: String, properties: Map<String, Any>): Volume {
+    fun createVolume(repo: String, name: String, properties: Map<String, Any>): DockerVolume {
         NameUtil.validateVolumeName(name)
         providers.repositories.getRepository(repo)
 
-        val vol = Volume(name = name, properties = properties)
+        val vol = DockerVolume(name = name, properties = properties)
         val vs = transaction {
             val vs = providers.metadata.getActiveVolumeSet(repo)
             providers.metadata.createVolume(vs, vol)
@@ -45,7 +45,7 @@ class VolumeOrchestrator(val providers: ProviderModule) {
         providers.reaper.signal()
     }
 
-    fun getVolume(repo: String, name: String): Volume {
+    fun getVolume(repo: String, name: String): DockerVolume {
         NameUtil.validateVolumeName(name)
         providers.repositories.getRepository(repo)
 
@@ -79,9 +79,9 @@ class VolumeOrchestrator(val providers: ProviderModule) {
         providers.storage.unmountVolume(vs, name)
     }
 
-    fun listAllVolumes(): List<Volume> {
+    fun listAllVolumes(): List<DockerVolume> {
         return transaction {
-            val result = mutableListOf<Volume>()
+            val result = mutableListOf<DockerVolume>()
             for (repo in providers.metadata.listRepositories()) {
                 val vs = providers.metadata.getActiveVolumeSet(repo.name)
                 result.addAll(providers.metadata.listVolumes(vs).map { convertVolume(repo.name, vs, it) })

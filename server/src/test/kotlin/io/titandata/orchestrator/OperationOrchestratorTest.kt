@@ -30,7 +30,7 @@ import io.titandata.models.ProgressEntry
 import io.titandata.models.Remote
 import io.titandata.models.RemoteParameters
 import io.titandata.models.Repository
-import io.titandata.models.Volume
+import io.titandata.models.docker.DockerVolume
 import io.titandata.remote.nop.NopRemoteProvider
 import io.titandata.remote.s3.S3RemoteProvider
 import io.titandata.storage.OperationData
@@ -64,7 +64,7 @@ class OperationOrchestratorTest : StringSpec() {
         vs = transaction {
             providers.metadata.createRepository(Repository(name = "foo"))
             val vs = providers.metadata.createVolumeSet("foo", null, true)
-            providers.metadata.createVolume(vs, Volume(name = "volume"))
+            providers.metadata.createVolume(vs, DockerVolume(name = "volume"))
             vs
         }
         return MockKAnnotations.init(this)
@@ -322,7 +322,7 @@ class OperationOrchestratorTest : StringSpec() {
 
             val (commitVs, commit) = transaction {
                 val cvs = providers.metadata.createVolumeSet("foo")
-                providers.metadata.createVolume(cvs, Volume(name = "volume"))
+                providers.metadata.createVolume(cvs, DockerVolume(name = "volume"))
                 providers.metadata.createCommit("foo", cvs, Commit("id"))
                 providers.metadata.getCommit("foo", "id")
             }

@@ -10,7 +10,7 @@ import io.titandata.models.Operation
 import io.titandata.models.ProgressEntry
 import io.titandata.models.Remote
 import io.titandata.models.RemoteParameters
-import io.titandata.models.Volume
+import io.titandata.models.docker.DockerVolume
 import io.titandata.remote.RemoteProvider
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.slf4j.LoggerFactory
@@ -92,7 +92,7 @@ class OperationExecutor(
         val operationId = operation.id
             val volumes = transaction {
                 val vols = providers.metadata.listVolumes(operationId)
-                providers.metadata.createVolume(operation.id, Volume(name = "_scratch"))
+                providers.metadata.createVolume(operation.id, DockerVolume(name = "_scratch"))
                 vols
             }
         providers.storage.createVolume(operation.id, "_scratch")

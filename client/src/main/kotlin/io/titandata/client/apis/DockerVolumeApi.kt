@@ -12,19 +12,19 @@ import io.titandata.client.infrastructure.ResponseType
 import io.titandata.client.infrastructure.ServerException
 import io.titandata.client.infrastructure.Success
 import io.titandata.models.PluginDescription
-import io.titandata.models.VolumeCapabilitiesResponse
-import io.titandata.models.VolumeCreateRequest
-import io.titandata.models.VolumeGetResponse
-import io.titandata.models.VolumeListResponse
-import io.titandata.models.VolumeMountRequest
-import io.titandata.models.VolumePathResponse
-import io.titandata.models.VolumeRequest
-import io.titandata.models.VolumeResponse
+import io.titandata.models.docker.DockerVolumeCapabilitiesResponse
+import io.titandata.models.docker.DockerVolumeCreateRequest
+import io.titandata.models.docker.DockerVolumeGetResponse
+import io.titandata.models.docker.DockerVolumeListResponse
+import io.titandata.models.docker.DockerVolumeMountRequest
+import io.titandata.models.docker.DockerVolumePathResponse
+import io.titandata.models.docker.DockerVolumeRequest
+import io.titandata.models.docker.DockerVolumeResponse
 
-class VolumeApi(basePath: String = "http://localhost:5001") : ApiClient(basePath) {
+class DockerVolumeApi(basePath: String = "http://localhost:5001") : ApiClient(basePath) {
 
     @Suppress("UNCHECKED_CAST")
-    fun createVolume(volumeCreateRequest: VolumeCreateRequest) : VolumeResponse {
+    fun createVolume(volumeCreateRequest: DockerVolumeCreateRequest) : DockerVolumeResponse {
         val localVariableBody: Any? = volumeCreateRequest
         val localVariableQuery: Map<String,List<String>> = mapOf()
         val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
@@ -34,13 +34,13 @@ class VolumeApi(basePath: String = "http://localhost:5001") : ApiClient(basePath
                 query = localVariableQuery,
                 headers = localVariableHeaders
         )
-        val response = request<VolumeResponse>(
+        val response = request<DockerVolumeResponse>(
             localVariableConfig,
             localVariableBody
         )
 
         return when (response.responseType) {
-            ResponseType.Success -> checkResponse((response as Success<*>).data as VolumeResponse)
+            ResponseType.Success -> checkResponse((response as Success<*>).data as DockerVolumeResponse)
             ResponseType.ClientError -> throw ClientException.fromResponse(gson, response)
             ResponseType.ServerError -> throw ServerException.fromResponse(gson, response)
             else -> throw NotImplementedError(response.responseType.toString())
@@ -48,7 +48,7 @@ class VolumeApi(basePath: String = "http://localhost:5001") : ApiClient(basePath
     }
 
     @Suppress("UNCHECKED_CAST")
-    fun getCapabilities() : VolumeCapabilitiesResponse {
+    fun getCapabilities() : DockerVolumeCapabilitiesResponse {
         val localVariableBody: Any? = null
         val localVariableQuery: Map<String,List<String>> = mapOf()
         val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
@@ -58,13 +58,13 @@ class VolumeApi(basePath: String = "http://localhost:5001") : ApiClient(basePath
                 query = localVariableQuery,
                 headers = localVariableHeaders
         )
-        val response = request<VolumeCapabilitiesResponse>(
+        val response = request<DockerVolumeCapabilitiesResponse>(
             localVariableConfig,
             localVariableBody
         )
 
         return when (response.responseType) {
-            ResponseType.Success -> (response as Success<*>).data as VolumeCapabilitiesResponse
+            ResponseType.Success -> (response as Success<*>).data as DockerVolumeCapabilitiesResponse
             ResponseType.ClientError -> throw ClientException.fromResponse(gson, response)
             ResponseType.ServerError -> throw ServerException.fromResponse(gson, response)
             else -> throw NotImplementedError(response.responseType.toString())
@@ -96,7 +96,7 @@ class VolumeApi(basePath: String = "http://localhost:5001") : ApiClient(basePath
     }
 
     @Suppress("UNCHECKED_CAST")
-    fun getVolume(volumeRequest: VolumeRequest) : VolumeGetResponse {
+    fun getVolume(volumeRequest: DockerVolumeRequest) : DockerVolumeGetResponse {
         val localVariableBody: Any? = volumeRequest
         val localVariableQuery: Map<String,List<String>> = mapOf()
         val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
@@ -106,13 +106,13 @@ class VolumeApi(basePath: String = "http://localhost:5001") : ApiClient(basePath
                 query = localVariableQuery,
                 headers = localVariableHeaders
         )
-        val response = request<VolumeGetResponse>(
+        val response = request<DockerVolumeGetResponse>(
             localVariableConfig,
             localVariableBody
         )
 
         return when (response.responseType) {
-            ResponseType.Success -> checkResponse((response as Success<*>).data as VolumeGetResponse)
+            ResponseType.Success -> checkResponse((response as Success<*>).data as DockerVolumeGetResponse)
             ResponseType.ClientError -> throw ClientException.fromResponse(gson, response)
             ResponseType.ServerError -> throw ServerException.fromResponse(gson, response)
             else -> throw NotImplementedError(response.responseType.toString())
@@ -120,7 +120,7 @@ class VolumeApi(basePath: String = "http://localhost:5001") : ApiClient(basePath
     }
 
     @Suppress("UNCHECKED_CAST")
-    fun getVolumePath(volumeRequest: VolumeRequest) : VolumePathResponse {
+    fun getVolumePath(volumeRequest: DockerVolumeRequest) : DockerVolumePathResponse {
         val localVariableBody: Any? = volumeRequest
         val localVariableQuery: Map<String,List<String>> = mapOf()
         val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
@@ -130,13 +130,13 @@ class VolumeApi(basePath: String = "http://localhost:5001") : ApiClient(basePath
                 query = localVariableQuery,
                 headers = localVariableHeaders
         )
-        val response = request<VolumePathResponse>(
+        val response = request<DockerVolumePathResponse>(
             localVariableConfig,
             localVariableBody
         )
 
         return when (response.responseType) {
-            ResponseType.Success -> checkResponse((response as Success<*>).data as VolumePathResponse)
+            ResponseType.Success -> checkResponse((response as Success<*>).data as DockerVolumePathResponse)
             ResponseType.ClientError -> throw ClientException.fromResponse(gson, response)
             ResponseType.ServerError -> throw ServerException.fromResponse(gson, response)
             else -> throw NotImplementedError(response.responseType.toString())
@@ -144,7 +144,7 @@ class VolumeApi(basePath: String = "http://localhost:5001") : ApiClient(basePath
     }
 
     @Suppress("UNCHECKED_CAST")
-    fun listVolumes() : VolumeListResponse {
+    fun listVolumes() : DockerVolumeListResponse {
         val localVariableBody: Any? = null
         val localVariableQuery: Map<String,List<String>> = mapOf()
         val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
@@ -154,13 +154,13 @@ class VolumeApi(basePath: String = "http://localhost:5001") : ApiClient(basePath
                 query = localVariableQuery,
                 headers = localVariableHeaders
         )
-        val response = request<VolumeListResponse>(
+        val response = request<DockerVolumeListResponse>(
             localVariableConfig,
             localVariableBody
         )
 
         return when (response.responseType) {
-            ResponseType.Success -> checkResponse((response as Success<*>).data as VolumeListResponse)
+            ResponseType.Success -> checkResponse((response as Success<*>).data as DockerVolumeListResponse)
             ResponseType.ClientError -> throw ClientException.fromResponse(gson, response)
             ResponseType.ServerError -> throw ServerException.fromResponse(gson, response)
             else -> throw NotImplementedError(response.responseType.toString())
@@ -168,7 +168,7 @@ class VolumeApi(basePath: String = "http://localhost:5001") : ApiClient(basePath
     }
 
     @Suppress("UNCHECKED_CAST")
-    fun mountVolume(volumeMountRequest: VolumeMountRequest) : VolumePathResponse {
+    fun mountVolume(volumeMountRequest: DockerVolumeMountRequest) : DockerVolumePathResponse {
         val localVariableBody: Any? = volumeMountRequest
         val localVariableQuery: Map<String,List<String>> = mapOf()
         val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
@@ -178,13 +178,13 @@ class VolumeApi(basePath: String = "http://localhost:5001") : ApiClient(basePath
                 query = localVariableQuery,
                 headers = localVariableHeaders
         )
-        val response = request<VolumePathResponse>(
+        val response = request<DockerVolumePathResponse>(
             localVariableConfig,
             localVariableBody
         )
 
         return when (response.responseType) {
-            ResponseType.Success -> checkResponse((response as Success<*>).data as VolumePathResponse)
+            ResponseType.Success -> checkResponse((response as Success<*>).data as DockerVolumePathResponse)
             ResponseType.ClientError -> throw ClientException.fromResponse(gson, response)
             ResponseType.ServerError -> throw ServerException.fromResponse(gson, response)
             else -> throw NotImplementedError(response.responseType.toString())
@@ -192,7 +192,7 @@ class VolumeApi(basePath: String = "http://localhost:5001") : ApiClient(basePath
     }
 
     @Suppress("UNCHECKED_CAST")
-    fun removeVolume(volumeRequest: VolumeRequest) : VolumeResponse {
+    fun removeVolume(volumeRequest: DockerVolumeRequest) : DockerVolumeResponse {
         val localVariableBody: Any? = volumeRequest
         val localVariableQuery: Map<String,List<String>> = mapOf()
         val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
@@ -202,13 +202,13 @@ class VolumeApi(basePath: String = "http://localhost:5001") : ApiClient(basePath
                 query = localVariableQuery,
                 headers = localVariableHeaders
         )
-        val response = request<VolumeResponse>(
+        val response = request<DockerVolumeResponse>(
             localVariableConfig,
             localVariableBody
         )
 
         return when (response.responseType) {
-            ResponseType.Success -> checkResponse((response as Success<*>).data as VolumeResponse)
+            ResponseType.Success -> checkResponse((response as Success<*>).data as DockerVolumeResponse)
             ResponseType.ClientError -> throw ClientException.fromResponse(gson, response)
             ResponseType.ServerError -> throw ServerException.fromResponse(gson, response)
             else -> throw NotImplementedError(response.responseType.toString())
@@ -216,7 +216,7 @@ class VolumeApi(basePath: String = "http://localhost:5001") : ApiClient(basePath
     }
 
     @Suppress("UNCHECKED_CAST")
-    fun unmountVolume(volumeMountRequest: VolumeMountRequest) : VolumeResponse {
+    fun unmountVolume(volumeMountRequest: DockerVolumeMountRequest) : DockerVolumeResponse {
         val localVariableBody: Any? = volumeMountRequest
         val localVariableQuery: Map<String,List<String>> = mapOf()
         val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
@@ -226,41 +226,41 @@ class VolumeApi(basePath: String = "http://localhost:5001") : ApiClient(basePath
                 query = localVariableQuery,
                 headers = localVariableHeaders
         )
-        val response = request<VolumeResponse>(
+        val response = request<DockerVolumeResponse>(
             localVariableConfig,
             localVariableBody
         )
 
         return when (response.responseType) {
-            ResponseType.Success -> checkResponse((response as Success<*>).data as VolumeResponse)
+            ResponseType.Success -> checkResponse((response as Success<*>).data as DockerVolumeResponse)
             ResponseType.ClientError -> throw ClientException.fromResponse(gson, response)
             ResponseType.ServerError -> throw ServerException.fromResponse(gson, response)
             else -> throw NotImplementedError(response.responseType.toString())
         }
     }
 
-    fun checkResponse(response: VolumeResponse) : VolumeResponse {
+    fun checkResponse(response: DockerVolumeResponse) : DockerVolumeResponse {
         if (response.err != "") {
             throw ClientException(response.err)
         }
         return response
     }
 
-    fun checkResponse(response: VolumeGetResponse) : VolumeGetResponse {
+    fun checkResponse(response: DockerVolumeGetResponse) : DockerVolumeGetResponse {
         if (response.err != "") {
             throw ClientException(response.err)
         }
         return response
     }
 
-    fun checkResponse(response: VolumePathResponse) : VolumePathResponse {
+    fun checkResponse(response: DockerVolumePathResponse) : DockerVolumePathResponse {
         if (response.err != "") {
             throw ClientException(response.err)
         }
         return response
     }
 
-    fun checkResponse(response: VolumeListResponse) : VolumeListResponse {
+    fun checkResponse(response: DockerVolumeListResponse) : DockerVolumeListResponse {
         if (response.err != "") {
             throw ClientException(response.err)
         }

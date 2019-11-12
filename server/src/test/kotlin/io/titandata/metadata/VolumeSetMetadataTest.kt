@@ -8,7 +8,7 @@ import io.kotlintest.specs.StringSpec
 import io.titandata.exception.NoSuchObjectException
 import io.titandata.models.Commit
 import io.titandata.models.Repository
-import io.titandata.models.Volume
+import io.titandata.models.docker.DockerVolume
 import java.util.UUID
 import org.jetbrains.exposed.sql.transactions.transaction
 
@@ -92,7 +92,7 @@ class VolumeSetMetadataTest : StringSpec() {
             transaction {
                 md.createRepository(Repository(name = "foo"))
                 val vs = md.createVolumeSet("foo")
-                md.createVolume(vs, Volume(name = "vol"))
+                md.createVolume(vs, DockerVolume(name = "vol"))
                 val commit = Commit(id = "id")
                 md.createCommit("foo", vs, commit)
                 md.markVolumeSetDeleting(vs)

@@ -26,7 +26,7 @@ import io.titandata.models.ProgressEntry
 import io.titandata.models.Remote
 import io.titandata.models.RemoteParameters
 import io.titandata.models.Repository
-import io.titandata.models.Volume
+import io.titandata.models.docker.DockerVolume
 import io.titandata.orchestrator.Reaper
 import io.titandata.remote.nop.NopRemoteProvider
 import io.titandata.storage.OperationData
@@ -58,7 +58,7 @@ class OperationExecutorTest : StringSpec() {
         transaction {
             providers.metadata.createRepository(Repository(name = "foo"))
             vs = providers.metadata.createVolumeSet("foo", null, true)
-            providers.metadata.createVolume(vs, Volume(name = "volume"))
+            providers.metadata.createVolume(vs, DockerVolume(name = "volume"))
             providers.metadata.addRemote("foo", Remote("nop", "origin"))
         }
         val ret = MockKAnnotations.init(this)
@@ -194,7 +194,7 @@ class OperationExecutorTest : StringSpec() {
                 zfsStorageProvider.unmountVolume(data.operation.id, "volume")
                 zfsStorageProvider.createVolume(data.operation.id, "_scratch")
                 zfsStorageProvider.deleteVolume(data.operation.id, "_scratch")
-                nopRemoteProvider.pullVolume(executor, null, Volume(name = "volume"), "/mountpoint", "/scratch")
+                nopRemoteProvider.pullVolume(executor, null, DockerVolume(name = "volume"), "/mountpoint", "/scratch")
             }
         }
 
@@ -217,7 +217,7 @@ class OperationExecutorTest : StringSpec() {
                 zfsStorageProvider.unmountVolume(data.operation.id, "volume")
                 zfsStorageProvider.createVolume(data.operation.id, "_scratch")
                 zfsStorageProvider.deleteVolume(data.operation.id, "_scratch")
-                nopRemoteProvider.pushVolume(executor, null, Volume(name = "volume"), "/mountpoint", "/scratch")
+                nopRemoteProvider.pushVolume(executor, null, DockerVolume(name = "volume"), "/mountpoint", "/scratch")
             }
         }
 
@@ -237,7 +237,7 @@ class OperationExecutorTest : StringSpec() {
             data.operation.state shouldBe Operation.State.COMPLETE
 
             verify {
-                nopRemoteProvider.pullVolume(executor, null, Volume(name = "volume"), "/mountpoint", "/scratch")
+                nopRemoteProvider.pullVolume(executor, null, DockerVolume(name = "volume"), "/mountpoint", "/scratch")
                 zfsStorageProvider.createCommit(data.operation.id, "id", listOf("volume"))
             }
         }
@@ -261,7 +261,7 @@ class OperationExecutorTest : StringSpec() {
             data.operation.state shouldBe Operation.State.COMPLETE
 
             verify {
-                nopRemoteProvider.pushVolume(executor, null, Volume(name = "volume"), "/mountpoint", "/scratch")
+                nopRemoteProvider.pushVolume(executor, null, DockerVolume(name = "volume"), "/mountpoint", "/scratch")
             }
         }
 
@@ -281,7 +281,7 @@ class OperationExecutorTest : StringSpec() {
             data.operation.state shouldBe Operation.State.ABORTED
 
             verify {
-                nopRemoteProvider.pullVolume(executor, null, Volume(name = "volume"), "/mountpoint", "/scratch")
+                nopRemoteProvider.pullVolume(executor, null, DockerVolume(name = "volume"), "/mountpoint", "/scratch")
                 zfsStorageProvider.unmountVolume(data.operation.id, "_scratch")
                 zfsStorageProvider.unmountVolume(data.operation.id, "volume")
                 zfsStorageProvider.deleteVolume(data.operation.id, "_scratch")
@@ -308,7 +308,7 @@ class OperationExecutorTest : StringSpec() {
             data.operation.state shouldBe Operation.State.FAILED
 
             verify {
-                nopRemoteProvider.pullVolume(executor, null, Volume(name = "volume"), "/mountpoint", "/scratch")
+                nopRemoteProvider.pullVolume(executor, null, DockerVolume(name = "volume"), "/mountpoint", "/scratch")
                 zfsStorageProvider.unmountVolume(data.operation.id, "_scratch")
                 zfsStorageProvider.unmountVolume(data.operation.id, "volume")
                 zfsStorageProvider.deleteVolume(data.operation.id, "_scratch")

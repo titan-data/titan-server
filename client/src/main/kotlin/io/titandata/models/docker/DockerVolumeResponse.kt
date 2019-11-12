@@ -2,11 +2,11 @@
  * Copyright The Titan Project Contributors.
  */
 
-package io.titandata.models
+package io.titandata.models.docker
 
 import com.google.gson.annotations.SerializedName
 
-data class VolumeResponse(
+data class DockerVolumeResponse(
     @SerializedName("Err")
     var err: String = ""
 )

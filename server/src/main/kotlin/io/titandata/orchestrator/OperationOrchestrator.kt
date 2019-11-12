@@ -281,8 +281,9 @@ class OperationOrchestrator(val providers: ProviderModule) {
         if (r.provider != params.provider) {
             throw IllegalArgumentException("operation parameters type (${params.provider}) doesn't match type of remote '$remote' (${r.provider})")
         }
-        val remoteProvider = providers.remote(r.provider)
-        remoteProvider.validateOperation(r, commitId, Operation.Type.PULL, params, metadataOnly)
+        if (r.provider != "nop") {
+            providers.remote(r.provider).getCommit(r, commitId, params)
+        }
 
         val inProgress = transaction {
             providers.metadata.operationInProgress(repository, Operation.Type.PULL, commitId, null)
@@ -338,7 +339,18 @@ class OperationOrchestrator(val providers: ProviderModule) {
             throw ObjectExistsException("Push operation $inProgress to remote $remote already in progress for commit $commitId")
         }
 
-        remoteProvider.validateOperation(r, commitId, Operation.Type.PUSH, params, metadataOnly)
+        if (r.provider != "nop") {
+            try {
+                remoteProvider.getCommit(r, commitId, params)
+                if (!metadataOnly) {
+                    throw ObjectExistsException("commit $commitId exists in remote '$remote'")
+                }
+            } catch (e: NoSuchObjectException) {
+                if (metadataOnly) {
+                    throw e
+                }
+            }
+        }
 
         return createAndStartOperation(Operation.Type.PUSH, repository, r, commitId, params, metadataOnly)
     }

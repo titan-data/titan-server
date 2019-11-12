@@ -2,14 +2,13 @@ package io.titandata.metadata
 
 import io.kotlintest.Spec
 import io.kotlintest.TestCase
-import io.kotlintest.matchers.types.shouldBeInstanceOf
 import io.kotlintest.shouldBe
 import io.kotlintest.shouldThrow
 import io.kotlintest.specs.StringSpec
 import io.titandata.exception.NoSuchObjectException
 import io.titandata.models.Operation
+import io.titandata.models.RemoteParameters
 import io.titandata.models.Repository
-import io.titandata.remote.nop.NopParameters
 import io.titandata.storage.OperationData
 import org.jetbrains.exposed.sql.transactions.transaction
 
@@ -33,7 +32,7 @@ class OperationMetadataTest : StringSpec() {
     fun buildOperationData(id: String): OperationData {
         return OperationData(
                 metadataOnly = false,
-                params = NopParameters(),
+                params = RemoteParameters("nop"),
                 operation = Operation(
                         id = id,
                         type = Operation.Type.PULL,
@@ -49,7 +48,7 @@ class OperationMetadataTest : StringSpec() {
                 md.createOperation("foo", vs, buildOperationData(vs))
                 val op = md.getOperation(vs)
                 op.metadataOnly shouldBe false
-                op.params.shouldBeInstanceOf<NopParameters>()
+                op.params.provider shouldBe "nop"
                 op.operation.id shouldBe vs
                 op.operation.type shouldBe Operation.Type.PULL
                 op.operation.state shouldBe Operation.State.RUNNING

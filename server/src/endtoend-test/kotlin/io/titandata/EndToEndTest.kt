@@ -13,11 +13,13 @@ import io.titandata.client.apis.RepositoriesApi
 import io.titandata.client.apis.VolumesApi
 import io.titandata.models.Commit
 import io.titandata.models.ProgressEntry
+import io.titandata.serialization.RemoteUtil
 import org.slf4j.LoggerFactory
 
 abstract class EndToEndTest : StringSpec() {
 
     val dockerUtil = DockerUtil()
+    val remoteUtil = RemoteUtil()
     val url = "http://localhost:${dockerUtil.port}"
     val repoApi = RepositoriesApi(url)
     val volumeApi = VolumesApi(url)

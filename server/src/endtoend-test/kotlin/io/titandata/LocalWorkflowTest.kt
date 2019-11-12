@@ -1,12 +1,11 @@
 /*
- * Copyright The Titan Project Contributors.
+* Copyright The Titan Project Contributors.
  */
 
 package io.titandata
 
 import io.kotlintest.Spec
 import io.kotlintest.matchers.string.shouldStartWith
-import io.kotlintest.matchers.types.shouldBeInstanceOf
 import io.kotlintest.shouldBe
 import io.kotlintest.shouldNotBe
 import io.kotlintest.shouldThrow
@@ -14,10 +13,10 @@ import io.titandata.client.infrastructure.ClientException
 import io.titandata.models.Commit
 import io.titandata.models.Operation
 import io.titandata.models.ProgressEntry
+import io.titandata.models.Remote
+import io.titandata.models.RemoteParameters
 import io.titandata.models.Repository
 import io.titandata.models.Volume
-import io.titandata.remote.nop.NopParameters
-import io.titandata.remote.nop.NopRemote
 import java.time.Duration
 import kotlinx.coroutines.time.delay
 
@@ -27,6 +26,8 @@ class LocalWorkflowTest : EndToEndTest() {
             state = Operation.State.COMPLETE, type = Operation.Type.PUSH)
 
     var volumeMountpoint: String? = null
+    val remote = Remote("nop", "a")
+    val params = remoteUtil.getParameters(remote)
 
     override fun beforeSpec(spec: Spec) {
         dockerUtil.stopServer()
@@ -238,19 +239,19 @@ class LocalWorkflowTest : EndToEndTest() {
         }
 
         "add remote succeeds" {
-            val result = remoteApi.createRemote("foo", NopRemote(name = "a"))
+            val result = remoteApi.createRemote("foo", remote)
             result.name shouldBe "a"
         }
 
         "get remote succeeds" {
             val result = remoteApi.getRemote("foo", "a")
-            result.shouldBeInstanceOf<NopRemote>()
+            result.provider shouldBe "nop"
             result.name shouldBe "a"
         }
 
         "add duplicate remote fails" {
             val exception = shouldThrow<ClientException> {
-                remoteApi.createRemote("foo", NopRemote(name = "a"))
+                remoteApi.createRemote("foo", remote)
             }
             exception.code shouldBe "ObjectExistsException"
         }
@@ -262,17 +263,17 @@ class LocalWorkflowTest : EndToEndTest() {
         }
 
         "list remote commits succeeds" {
-            val result = remoteApi.listRemoteCommits("foo", "a", NopParameters())
+            val result = remoteApi.listRemoteCommits("foo", "a", params)
             result.size shouldBe 0
         }
 
         "get remote commit succeeds" {
-            val result = remoteApi.getRemoteCommit("foo", "a", "hash", NopParameters())
+            val result = remoteApi.getRemoteCommit("foo", "a", "hash", params)
             result.id shouldBe "hash"
         }
 
         "update remote name succeeds" {
-            remoteApi.updateRemote("foo", "a", NopRemote(name = "b"))
+            remoteApi.updateRemote("foo", "a", Remote("nop", "b"))
             val result = remoteApi.getRemote("foo", "b")
             result.name shouldBe "b"
             result.provider shouldBe "nop"
@@ -284,7 +285,7 @@ class LocalWorkflowTest : EndToEndTest() {
         }
 
         "push creates new operation" {
-            currentOp = operationApi.push("foo", "b", "id", NopParameters())
+            currentOp = operationApi.push("foo", "b", "id", params)
             currentOp.commitId shouldBe "id"
             currentOp.remote shouldBe "b"
             currentOp.type shouldBe Operation.Type.PUSH
@@ -331,7 +332,7 @@ class LocalWorkflowTest : EndToEndTest() {
         }
 
         "pull creates new operation" {
-            currentOp = operationApi.pull("foo", "b", "id2", NopParameters())
+            currentOp = operationApi.pull("foo", "b", "id2", params)
             currentOp.commitId shouldBe "id2"
             currentOp.remote shouldBe "b"
             currentOp.type shouldBe Operation.Type.PULL
@@ -390,13 +391,15 @@ class LocalWorkflowTest : EndToEndTest() {
 
         "push non-existent commit fails" {
             val exception = shouldThrow<ClientException> {
-                operationApi.push("foo", "b", "id3", NopParameters())
+                operationApi.push("foo", "b", "id3", params)
             }
             exception.code shouldBe "NoSuchObjectException"
         }
 
         "aborted operation is marked aborted" {
-            currentOp = operationApi.push("foo", "b", "id", NopParameters(delay = 10))
+            val props = params.properties.toMutableMap()
+            props["delay"] = 10
+            currentOp = operationApi.push("foo", "b", "id", RemoteParameters(params.provider, props))
             currentOp.state shouldBe Operation.State.RUNNING
             delay(Duration.ofMillis(1000))
             operationApi.deleteOperation("foo", currentOp.id)

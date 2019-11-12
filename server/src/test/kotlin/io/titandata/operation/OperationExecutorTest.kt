@@ -23,11 +23,11 @@ import io.titandata.exception.NoSuchObjectException
 import io.titandata.models.Commit
 import io.titandata.models.Operation
 import io.titandata.models.ProgressEntry
+import io.titandata.models.Remote
+import io.titandata.models.RemoteParameters
 import io.titandata.models.Repository
 import io.titandata.models.Volume
 import io.titandata.orchestrator.Reaper
-import io.titandata.remote.nop.NopParameters
-import io.titandata.remote.nop.NopRemote
 import io.titandata.remote.nop.NopRemoteProvider
 import io.titandata.storage.OperationData
 import io.titandata.storage.zfs.ZfsStorageProvider
@@ -59,7 +59,7 @@ class OperationExecutorTest : StringSpec() {
             providers.metadata.createRepository(Repository("foo"))
             vs = providers.metadata.createVolumeSet("foo", null, true)
             providers.metadata.createVolume(vs, Volume("volume", config = mapOf("mountpoint" to "/mountpoint")))
-            providers.metadata.addRemote("foo", NopRemote(name = "origin"))
+            providers.metadata.addRemote("foo", Remote("nop", "origin"))
         }
         val ret = MockKAnnotations.init(this)
         every { zfsStorageProvider.createCommit(any(), any(), any()) } just Runs
@@ -79,7 +79,7 @@ class OperationExecutorTest : StringSpec() {
                 state = Operation.State.RUNNING,
                 remote = "remote",
                 commitId = "id"
-        ), params = NopParameters(), metadataOnly = false)
+        ), params = RemoteParameters("nop"), metadataOnly = false)
         transaction {
             providers.metadata.createOperation("foo", vs, data)
         }
@@ -87,7 +87,7 @@ class OperationExecutorTest : StringSpec() {
     }
 
     fun getExecutor(data: OperationData): OperationExecutor {
-        return OperationExecutor(providers, data.operation, "foo", NopRemote(name = "origin"), NopParameters(),
+        return OperationExecutor(providers, data.operation, "foo", Remote("nop", "origin"), RemoteParameters("nop"),
                 data.metadataOnly)
     }
 

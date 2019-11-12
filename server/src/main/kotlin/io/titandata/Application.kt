@@ -51,7 +51,6 @@ import io.titandata.remote.nop.NopRemoteProvider
 import io.titandata.remote.s3.S3RemoteProvider
 import io.titandata.remote.s3web.S3WebRemoteProvider
 import io.titandata.remote.ssh.SshRemoteProvider
-import io.titandata.serialization.ModelTypeAdapters
 import io.titandata.storage.StorageProvider
 import io.titandata.storage.zfs.ZfsStorageProvider
 import io.titandata.util.CommandExecutor
@@ -89,7 +88,7 @@ class ProviderModule(pool: String, inMemory: Boolean = true) {
     val remotes = RemoteOrchestrator(this)
     val reaper = Reaper(this)
 
-    val gson = ModelTypeAdapters.configure(GsonBuilder()).create()
+    val gson = GsonBuilder().create()
     val commandExecutor = CommandExecutor()
 
     // Return the default storage provider
@@ -141,7 +140,7 @@ fun Application.main() {
 @KtorExperimentalAPI
 fun Application.mainProvider(providers: ProviderModule) {
     install(DefaultHeaders)
-    val gsonConverter = GsonConverter(ModelTypeAdapters.configure(GsonBuilder()).create())
+    val gsonConverter = GsonConverter(GsonBuilder().create())
     install(ContentNegotiation) {
         register(ContentType.Application.Json, gsonConverter)
         register(ContentType.parse("application/vnd.docker.plugins.v1.2+json"), gsonConverter)

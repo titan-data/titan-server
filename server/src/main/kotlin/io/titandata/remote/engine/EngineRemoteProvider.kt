@@ -43,13 +43,11 @@ class EngineRemoteProvider(val providers: ProviderModule) : BaseRemoteProvider()
     }
 
     private fun connect(remote: Remote, params: RemoteParameters): Delphix {
-        val engineRemote = remote as EngineRemote
-        val engineParams = params as EngineParameters
-        val engine = Delphix(Http("http://${engineRemote.address}"))
-        if (engineRemote.password == null && engineParams.password == null) {
+        val engine = Delphix(Http("http://${remote.properties["address"]}"))
+        if (remote.properties["password"] == null && params.properties["password"] == null) {
             throw IllegalArgumentException("missing password in remote parameters")
         }
-        engine.login(engineRemote.username, engineParams.password ?: engineRemote.password!!)
+        engine.login(remote.properties["username"] as String, (params.properties["password"] ?: remote.properties["password"]).toString())
         return engine
     }
     private fun findInResult(result: JSONObject, lambda: (JSONObject) -> Boolean): JSONObject? {
@@ -122,7 +120,7 @@ class EngineRemoteProvider(val providers: ProviderModule) : BaseRemoteProvider()
      * with this (or declare that al remotes must be created out of band of the CLI).
      */
     fun createRepo(engine: Delphix, executor: OperationExecutor) {
-        val name = (executor.remote as EngineRemote).repository
+        val name = executor.remote.properties["repository"] as String
 
         executor.addProgress(ProgressEntry(type = ProgressEntry.Type.START, message = "Creating remote repository"))
 
@@ -167,7 +165,7 @@ class EngineRemoteProvider(val providers: ProviderModule) : BaseRemoteProvider()
     }
 
     private fun listSnapshots(engine: Delphix, remote: Remote): List<JSONObject> {
-        val name = (remote as EngineRemote).repository
+        val name = remote.properties["repository"] as String
 
         if (!repoExists(engine, name)) {
             throw NoSuchObjectException("no such repo '$name' in remote '${remote.name}'")
@@ -227,7 +225,7 @@ class EngineRemoteProvider(val providers: ProviderModule) : BaseRemoteProvider()
     }
 
     private fun buildTimeflowPoint(engine: Delphix, operation: OperationExecutor): TimeflowPointParameters {
-        val repoName = (operation.remote as EngineRemote).repository
+        val repoName = operation.remote.properties["repository"] as String
 
         if (operation.operation.type == Operation.Type.PUSH) {
             val repo = findInGroup(engine, "repositories", repoName)
@@ -243,11 +241,10 @@ class EngineRemoteProvider(val providers: ProviderModule) : BaseRemoteProvider()
     }
 
     private fun buildSource(operation: OperationExecutor): AppDataVirtualSource {
-        val remote = operation.remote as EngineRemote
         val parameters: MutableMap<String, Any> = HashMap()
         parameters["operationId"] = operation.operation.id
         parameters["operationType"] = operation.operation.type
-        parameters["repository"] = remote.repository
+        parameters["repository"] = operation.remote.properties["repository"] as String
         if (operation.operation.type == Operation.Type.PUSH) {
             val commit = providers.commits.getCommit(operation.repo, operation.operation.commitId)
             parameters["hash"] = operation.operation.commitId
@@ -278,7 +275,7 @@ class EngineRemoteProvider(val providers: ProviderModule) : BaseRemoteProvider()
     override fun startOperation(operation: OperationExecutor): Any? {
         val engine = connect(operation.remote, operation.params)
 
-        val name = (operation.remote as EngineRemote).repository
+        val name = operation.remote.properties["repository"] as String
         if (!repoExists(engine, name)) {
             if (operation.operation.type == Operation.Type.PULL) {
                 throw NoSuchObjectException("no such repository '$name' in remote '${operation.remote.name}")
@@ -305,8 +302,8 @@ class EngineRemoteProvider(val providers: ProviderModule) : BaseRemoteProvider()
 
         val resultParams = getParameters(engine, operationRef)
 
-        return EngineOperation(engine, operationRef, operation.remote.address, resultParams.getString("sshUser"),
-                resultParams.getString("sshKey"))
+        return EngineOperation(engine, operationRef, operation.remote.properties["address"] as String,
+                resultParams.getString("sshUser"), resultParams.getString("sshKey"))
     }
 
     override fun endOperation(operation: OperationExecutor, data: Any?) {

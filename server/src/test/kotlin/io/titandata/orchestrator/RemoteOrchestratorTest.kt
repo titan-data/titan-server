@@ -8,7 +8,6 @@ import io.kotlintest.Spec
 import io.kotlintest.TestCase
 import io.kotlintest.TestCaseOrder
 import io.kotlintest.TestResult
-import io.kotlintest.matchers.types.shouldBeInstanceOf
 import io.kotlintest.shouldBe
 import io.kotlintest.shouldThrow
 import io.kotlintest.specs.StringSpec
@@ -23,15 +22,16 @@ import io.titandata.ProviderModule
 import io.titandata.exception.NoSuchObjectException
 import io.titandata.exception.ObjectExistsException
 import io.titandata.models.Commit
+import io.titandata.models.Remote
+import io.titandata.models.RemoteParameters
 import io.titandata.models.Repository
-import io.titandata.remote.nop.NopParameters
-import io.titandata.remote.nop.NopRemote
 import io.titandata.remote.nop.NopRemoteProvider
-import io.titandata.remote.s3.S3Remote
 import io.titandata.storage.zfs.ZfsStorageProvider
 import org.jetbrains.exposed.sql.transactions.transaction
 
 class RemoteOrchestratorTest : StringSpec() {
+
+    val params = RemoteParameters("nop")
 
     @MockK
     lateinit var zfsStorageProvider: ZfsStorageProvider
@@ -63,35 +63,32 @@ class RemoteOrchestratorTest : StringSpec() {
 
     init {
         "add remote succeeds" {
-            providers.remotes.addRemote("foo", NopRemote(name = "origin"))
+            providers.remotes.addRemote("foo", Remote("nop", "origin"))
         }
 
         "add remote with invalid repo name fails" {
             shouldThrow<IllegalArgumentException> {
-                providers.remotes.addRemote("bad/repo", NopRemote(name = "origin"))
+                providers.remotes.addRemote("bad/repo", Remote("nop", "origin"))
             }
         }
-
         "add remote with invalid name fails" {
             shouldThrow<IllegalArgumentException> {
-                providers.remotes.addRemote("foo", NopRemote(name = "bad/remote"))
+                providers.remotes.addRemote("foo", Remote("nop", "bad/remote"))
             }
         }
 
         "add remote to non-existent repo fails" {
             shouldThrow<NoSuchObjectException> {
-                providers.remotes.addRemote("bar", NopRemote(name = "origin"))
+                providers.remotes.addRemote("bar", Remote("nop", "origin"))
             }
         }
 
         "get remote succeeds" {
-            providers.remotes.addRemote("foo", S3Remote(name = "origin", bucket = "bucket"))
+            providers.remotes.addRemote("foo", Remote("s3", "origin", mapOf("bucket" to "bucket")))
             val remote = providers.remotes.getRemote("foo", "origin")
-            remote.shouldBeInstanceOf<S3Remote>()
-            remote as S3Remote
             remote.provider shouldBe "s3"
-            remote.bucket shouldBe "bucket"
             remote.name shouldBe "origin"
+            remote.properties["bucket"] shouldBe "bucket"
         }
 
         "get remote with invalid repo name fails" {
@@ -113,8 +110,8 @@ class RemoteOrchestratorTest : StringSpec() {
         }
 
         "list remotes succeeds" {
-            providers.remotes.addRemote("foo", NopRemote(name = "one"))
-            providers.remotes.addRemote("foo", NopRemote(name = "two"))
+            providers.remotes.addRemote("foo", Remote("nop", "one"))
+            providers.remotes.addRemote("foo", Remote("nop", "two"))
             val remotes = providers.remotes.listRemotes("foo").sortedBy { it.name }
             remotes.size shouldBe 2
             remotes[0].name shouldBe "one"
@@ -134,7 +131,7 @@ class RemoteOrchestratorTest : StringSpec() {
         }
 
         "remove remote succeeds" {
-            providers.remotes.addRemote("foo", NopRemote(name = "origin"))
+            providers.remotes.addRemote("foo", Remote("nop", "origin"))
             providers.remotes.removeRemote("foo", "origin")
             shouldThrow<NoSuchObjectException> {
                 providers.remotes.getRemote("foo", "origin")
@@ -166,51 +163,50 @@ class RemoteOrchestratorTest : StringSpec() {
         }
 
         "update remote succeeds" {
-            providers.remotes.addRemote("foo", NopRemote(name = "origin"))
-            providers.remotes.updateRemote("foo", "origin", S3Remote(name = "origin2", bucket = "bucket"))
+            providers.remotes.addRemote("foo", Remote("nop", "origin"))
+            providers.remotes.updateRemote("foo", "origin", Remote("s3", "origin2", mapOf("bucket" to "bucket")))
             providers.remotes.listRemotes("foo").size shouldBe 1
             val remote = providers.remotes.getRemote("foo", "origin2")
-            remote.shouldBeInstanceOf<S3Remote>()
+            remote.provider shouldBe "s3"
             remote.name shouldBe "origin2"
-            remote as S3Remote
-            remote.bucket shouldBe "bucket"
+            remote.properties["bucket"] shouldBe "bucket"
         }
 
         "update remote with invalid repo name fails" {
             shouldThrow<IllegalArgumentException> {
-                providers.remotes.updateRemote("bad/repo", "origin", NopRemote(name = "origin"))
+                providers.remotes.updateRemote("bad/repo", "origin", Remote("nop", "origin"))
             }
         }
 
         "update remote with invalid name fails" {
             shouldThrow<IllegalArgumentException> {
-                providers.remotes.updateRemote("foo", "bad/repo", NopRemote(name = "origin"))
+                providers.remotes.updateRemote("foo", "bad/repo", Remote("nop", "origin"))
             }
         }
 
         "update remote with invalid new name fails" {
             shouldThrow<IllegalArgumentException> {
-                providers.remotes.updateRemote("foo", "origin", NopRemote(name = "bad/repo"))
+                providers.remotes.updateRemote("foo", "origin", Remote("nop", "bad/repo"))
             }
         }
 
         "update remote from non-existent repo fails" {
             shouldThrow<NoSuchObjectException> {
-                providers.remotes.updateRemote("bar", "origin", NopRemote(name = "origin"))
+                providers.remotes.updateRemote("bar", "origin", Remote("nop", "origin"))
             }
         }
 
         "update non-existent remote fails" {
             shouldThrow<NoSuchObjectException> {
-                providers.remotes.updateRemote("foo", "origin", NopRemote(name = "origin"))
+                providers.remotes.updateRemote("foo", "origin", Remote("nop", "origin"))
             }
         }
 
         "update remote to existing name fails" {
-            providers.remotes.addRemote("foo", NopRemote(name = "one"))
-            providers.remotes.addRemote("foo", NopRemote(name = "two"))
+            providers.remotes.addRemote("foo", Remote("nop", "one"))
+            providers.remotes.addRemote("foo", Remote("nop", "two"))
             shouldThrow<ObjectExistsException> {
-                providers.remotes.updateRemote("foo", "one", NopRemote(name = "two"))
+                providers.remotes.updateRemote("foo", "one", Remote("nop", "two"))
             }
         }
 
@@ -218,8 +214,8 @@ class RemoteOrchestratorTest : StringSpec() {
             every { nopRemoteProvider.listCommits(any(), any(), any()) } returns
                     listOf(Commit(id = "one"),
                             Commit(id = "two"))
-            providers.remotes.addRemote("foo", NopRemote(name = "origin"))
-            val result = providers.remotes.listRemoteCommits("foo", "origin", NopParameters(), null)
+            providers.remotes.addRemote("foo", Remote("nop", "origin"))
+            val result = providers.remotes.listRemoteCommits("foo", "origin", params, null)
             result.size shouldBe 2
             result[0].id shouldBe "one"
             result[1].id shouldBe "two"
@@ -227,57 +223,57 @@ class RemoteOrchestratorTest : StringSpec() {
 
         "list remote commits with invalid repo name fails" {
             shouldThrow<IllegalArgumentException> {
-                providers.remotes.listRemoteCommits("bad/repo", "origin", NopParameters(), null)
+                providers.remotes.listRemoteCommits("bad/repo", "origin", params, null)
             }
         }
 
         "list remote commits with invalid remote name fails" {
             shouldThrow<IllegalArgumentException> {
-                providers.remotes.listRemoteCommits("foo", "bad/remote", NopParameters(), null)
+                providers.remotes.listRemoteCommits("foo", "bad/remote", params, null)
             }
         }
 
         "list remote commits for non-existent repo fails" {
             shouldThrow<NoSuchObjectException> {
-                providers.remotes.listRemoteCommits("bar", "origin", NopParameters(), null)
+                providers.remotes.listRemoteCommits("bar", "origin", params, null)
             }
         }
 
         "list remote commits for non-existent remote fails" {
             shouldThrow<NoSuchObjectException> {
-                providers.remotes.listRemoteCommits("foo", "origin", NopParameters(), null)
+                providers.remotes.listRemoteCommits("foo", "origin", params, null)
             }
         }
 
         "get remote commit succeeds" {
             every { nopRemoteProvider.getCommit(any(), any(), any()) } returns
                     Commit(id = "one")
-            providers.remotes.addRemote("foo", NopRemote(name = "origin"))
-            val result = providers.remotes.getRemoteCommit("foo", "origin", NopParameters(), "id")
+            providers.remotes.addRemote("foo", Remote("nop", "origin"))
+            val result = providers.remotes.getRemoteCommit("foo", "origin", params, "id")
             result.id shouldBe "one"
         }
 
         "get remote commit with invalid repo name fails" {
             shouldThrow<IllegalArgumentException> {
-                providers.remotes.getRemoteCommit("bad/repo", "origin", NopParameters(), "id")
+                providers.remotes.getRemoteCommit("bad/repo", "origin", params, "id")
             }
         }
 
         "get remote commit with invalid remote name fails" {
             shouldThrow<IllegalArgumentException> {
-                providers.remotes.getRemoteCommit("foo", "bad/remote", NopParameters(), "id")
+                providers.remotes.getRemoteCommit("foo", "bad/remote", params, "id")
             }
         }
 
         "get remote commit for non-existent repo fails" {
             shouldThrow<NoSuchObjectException> {
-                providers.remotes.getRemoteCommit("bar", "origin", NopParameters(), "id")
+                providers.remotes.getRemoteCommit("bar", "origin", params, "id")
             }
         }
 
         "get remote commit for non-existent remote fails" {
             shouldThrow<NoSuchObjectException> {
-                providers.remotes.getRemoteCommit("foo", "origin", NopParameters(), "id")
+                providers.remotes.getRemoteCommit("foo", "origin", params, "id")
             }
         }
     }

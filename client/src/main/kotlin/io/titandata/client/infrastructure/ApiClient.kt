@@ -4,13 +4,12 @@
 
 package io.titandata.client.infrastructure
 
-import io.titandata.serialization.ModelTypeAdapters
 import com.google.gson.GsonBuilder
 import okhttp3.*
 import java.io.File
 
 open class ApiClient(val baseUrl: String) {
-    protected val gson = ModelTypeAdapters.configure(GsonBuilder()).create()
+    protected val gson = GsonBuilder().create()
 
     companion object {
         protected const val ContentType = "Content-Type"

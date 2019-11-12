@@ -156,7 +156,7 @@ class DockerVolumesApiTest : StringSpec() {
                 response.content shouldBe "{\"Err\":\"\",\"Mountpoint\":\"/mountpoint\"}"
 
                 verify {
-                    zfsStorageProvider.activateVolume(vs, "vol", emptyMap())
+                    zfsStorageProvider.activateVolume(vs, "vol", mapOf("mountpoint" to "/mountpoint"))
                 }
             }
         }

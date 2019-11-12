@@ -43,7 +43,7 @@ fun Route.DockerVolumeApi(providers: ProviderModule) {
         return DockerVolume(
                 name = "$repo/${volume.name}",
                 properties = volume.properties,
-                mountpoint = volume.config["moutnpoint"] as String,
+                mountpoint = volume.config["mountpoint"] as String,
                 status = mapOf<String, Any>()
         )
     }

@@ -221,8 +221,8 @@ class SshRemoteProviderTest : StringSpec() {
             val vs = transaction {
                 providers.metadata.createRepository(Repository(name = "repo"))
                 val vs = providers.metadata.createVolumeSet("repo", null, true)
-                providers.metadata.createVolume(vs, Volume("v0"))
-                providers.metadata.createVolume(vs, Volume(name = "v1", properties = mapOf("path" to "/volume")))
+                providers.metadata.createVolume(vs, Volume("v0", config = mapOf("mountpoint" to "/mountpoint")))
+                providers.metadata.createVolume(vs, Volume(name = "v1", properties = mapOf("path" to "/volume"), config = mapOf("mountpoint" to "/mountpoint")))
                 providers.metadata.createCommit("repo", vs, Commit("id"))
                 vs
             }
@@ -264,8 +264,8 @@ class SshRemoteProviderTest : StringSpec() {
             val vs = transaction {
                 providers.metadata.createRepository(Repository("repo"))
                 val vs = providers.metadata.createVolumeSet("repo", null, true)
-                providers.metadata.createVolume(vs, Volume("v0"))
-                providers.metadata.createVolume(vs, Volume("v1", properties = mapOf("path" to "/volume")))
+                providers.metadata.createVolume(vs, Volume("v0", config = mapOf("mountpoint" to "/mountpoint")))
+                providers.metadata.createVolume(vs, Volume("v1", properties = mapOf("path" to "/volume"), config = mapOf("mountpoint" to "/mountpoint")))
                 providers.metadata.createCommit("repo", vs, Commit("id"))
                 vs
             }

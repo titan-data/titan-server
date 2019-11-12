@@ -61,7 +61,7 @@ class OperationOrchestratorTest : StringSpec() {
         vs = transaction {
             providers.metadata.createRepository(Repository("foo"))
             val vs = providers.metadata.createVolumeSet("foo", null, true)
-            providers.metadata.createVolume(vs, Volume("volume"))
+            providers.metadata.createVolume(vs, Volume("volume", config = mapOf("mountpoint" to "/mountpoint")))
             vs
         }
         val ret = MockKAnnotations.init(this)
@@ -523,7 +523,7 @@ class OperationOrchestratorTest : StringSpec() {
             every { zfsStorageProvider.createVolume(any(), any()) } returns mapOf("mountpoint" to "/mountpoint")
             every { zfsStorageProvider.deleteVolume(any(), any(), any()) } just Runs
             every { zfsStorageProvider.createCommit(any(), any(), any()) } just Runs
-            every { zfsStorageProvider.createVolumeSet(any()) } just Runs
+            every { zfsStorageProvider.cloneVolumeSet(any(), any(), any(), any()) } just Runs
 
             var op = providers.operations.startPush("foo", "remote", "id", NopParameters())
             op.commitId shouldBe "id"
@@ -614,7 +614,7 @@ class OperationOrchestratorTest : StringSpec() {
             every { zfsStorageProvider.createVolume(any(), any()) } returns mapOf("mountpoint" to "/mountpoint")
             every { zfsStorageProvider.deleteVolume(any(), any(), any()) } just Runs
             every { zfsStorageProvider.createCommit(any(), any(), any()) } just Runs
-            every { zfsStorageProvider.createVolumeSet(any()) } just Runs
+            every { zfsStorageProvider.cloneVolumeSet(any(), any(), any(), any()) } just Runs
 
             var op = providers.operations.startPush("foo", "remote", "id", NopParameters())
             providers.operations.getExecutor("foo", op.id).join()
@@ -634,7 +634,7 @@ class OperationOrchestratorTest : StringSpec() {
             every { zfsStorageProvider.createVolume(any(), any()) } returns mapOf("mountpoint" to "/mountpoint")
             every { zfsStorageProvider.deleteVolume(any(), any(), any()) } just Runs
             every { zfsStorageProvider.createCommit(any(), any(), any()) } just Runs
-            every { zfsStorageProvider.createVolumeSet(any()) } just Runs
+            every { zfsStorageProvider.cloneVolumeSet(any(), any(), any(), any()) } just Runs
 
             providers.operations.loadState()
             providers.operations.getExecutor("foo", vs).join()

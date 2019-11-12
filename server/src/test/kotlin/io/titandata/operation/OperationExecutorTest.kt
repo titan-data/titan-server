@@ -58,7 +58,7 @@ class OperationExecutorTest : StringSpec() {
         transaction {
             providers.metadata.createRepository(Repository("foo"))
             vs = providers.metadata.createVolumeSet("foo", null, true)
-            providers.metadata.createVolume(vs, Volume("volume"))
+            providers.metadata.createVolume(vs, Volume("volume", config = mapOf("mountpoint" to "/mountpoint")))
             providers.metadata.addRemote("foo", NopRemote(name = "origin"))
         }
         val ret = MockKAnnotations.init(this)
@@ -179,7 +179,7 @@ class OperationExecutorTest : StringSpec() {
             every { zfsStorageProvider.activateVolume(any(), any(), any()) } just Runs
             every { zfsStorageProvider.inactivateVolume(any(), any(), any()) } just Runs
             every { zfsStorageProvider.createVolume(any(), any()) } returns mapOf("mountpoint" to "/mountpoint")
-            every { zfsStorageProvider.createVolume(any(), "_scratch") } returns mapOf("mountpoint" to "/mountpoint")
+            every { zfsStorageProvider.createVolume(any(), "_scratch") } returns mapOf("mountpoint" to "/scratch")
             every { zfsStorageProvider.deleteVolume(any(), any(), any()) } just Runs
 
             val data = createOperation()
@@ -193,7 +193,7 @@ class OperationExecutorTest : StringSpec() {
                 zfsStorageProvider.inactivateVolume(data.operation.id, "volume", mapOf("mountpoint" to "/mountpoint"))
                 zfsStorageProvider.createVolume(data.operation.id, "_scratch")
                 zfsStorageProvider.deleteVolume(data.operation.id, "_scratch", mapOf("mountpoint" to "/scratch"))
-                nopRemoteProvider.pullVolume(executor, null, Volume(name = "volume"), "/mountpoint", "/scratch")
+                nopRemoteProvider.pullVolume(executor, null, Volume(name = "volume", config = mapOf("mountpoint" to "/mountpoint")), "/mountpoint", "/scratch")
             }
         }
 
@@ -201,7 +201,7 @@ class OperationExecutorTest : StringSpec() {
             every { zfsStorageProvider.activateVolume(any(), any(), any()) } just Runs
             every { zfsStorageProvider.inactivateVolume(any(), any(), any()) } just Runs
             every { zfsStorageProvider.createVolume(any(), any()) } returns mapOf("mountpoint" to "/mountpoint")
-            every { zfsStorageProvider.createVolume(any(), "_scratch") } returns mapOf("mountpoint" to "/mountpoint")
+            every { zfsStorageProvider.createVolume(any(), "_scratch") } returns mapOf("mountpoint" to "/scratch")
             every { zfsStorageProvider.deleteVolume(any(), any(), any()) } just Runs
 
             val data = createOperation(Operation.Type.PUSH)
@@ -215,7 +215,7 @@ class OperationExecutorTest : StringSpec() {
                 zfsStorageProvider.inactivateVolume(data.operation.id, "volume", mapOf("mountpoint" to "/mountpoint"))
                 zfsStorageProvider.createVolume(data.operation.id, "_scratch")
                 zfsStorageProvider.deleteVolume(data.operation.id, "_scratch", mapOf("mountpoint" to "/scratch"))
-                nopRemoteProvider.pushVolume(executor, null, Volume(name = "volume"), "/mountpoint", "/scratch")
+                nopRemoteProvider.pushVolume(executor, null, Volume(name = "volume", config = mapOf("mountpoint" to "/mountpoint")), "/mountpoint", "/scratch")
             }
         }
 
@@ -223,7 +223,7 @@ class OperationExecutorTest : StringSpec() {
             every { zfsStorageProvider.activateVolume(any(), any(), any()) } just Runs
             every { zfsStorageProvider.inactivateVolume(any(), any(), any()) } just Runs
             every { zfsStorageProvider.createVolume(any(), any()) } returns mapOf("mountpoint" to "/mountpoint")
-            every { zfsStorageProvider.createVolume(any(), "_scratch") } returns mapOf("mountpoint" to "/mountpoint")
+            every { zfsStorageProvider.createVolume(any(), "_scratch") } returns mapOf("mountpoint" to "/scratch")
             every { zfsStorageProvider.deleteVolume(any(), any(), any()) } just Runs
 
             val data = createOperation(Operation.Type.PULL)
@@ -233,7 +233,7 @@ class OperationExecutorTest : StringSpec() {
             data.operation.state shouldBe Operation.State.COMPLETE
 
             verify {
-                nopRemoteProvider.pullVolume(executor, null, Volume("volume"), "/mountpoint", "/scratch")
+                nopRemoteProvider.pullVolume(executor, null, Volume("volume", config = mapOf("mountpoint" to "/mountpoint")), "/mountpoint", "/scratch")
                 zfsStorageProvider.createCommit(data.operation.id, "id", listOf("volume"))
             }
         }
@@ -242,7 +242,7 @@ class OperationExecutorTest : StringSpec() {
             every { zfsStorageProvider.activateVolume(any(), any(), any()) } just Runs
             every { zfsStorageProvider.inactivateVolume(any(), any(), any()) } just Runs
             every { zfsStorageProvider.createVolume(any(), any()) } returns mapOf("mountpoint" to "/mountpoint")
-            every { zfsStorageProvider.createVolume(any(), "_scratch") } returns mapOf("mountpoint" to "/mountpoint")
+            every { zfsStorageProvider.createVolume(any(), "_scratch") } returns mapOf("mountpoint" to "/scratch")
             every { zfsStorageProvider.deleteVolume(any(), any(), any()) } just Runs
 
             transaction {
@@ -256,7 +256,7 @@ class OperationExecutorTest : StringSpec() {
             data.operation.state shouldBe Operation.State.COMPLETE
 
             verify {
-                nopRemoteProvider.pushVolume(executor, null, Volume("volume"), "/mountpoint", "/scratch")
+                nopRemoteProvider.pushVolume(executor, null, Volume("volume", config = mapOf("mountpoint" to "/mountpoint")), "/mountpoint", "/scratch")
             }
         }
 
@@ -264,7 +264,7 @@ class OperationExecutorTest : StringSpec() {
             every { zfsStorageProvider.activateVolume(any(), any(), any()) } just Runs
             every { zfsStorageProvider.inactivateVolume(any(), any(), any()) } just Runs
             every { zfsStorageProvider.createVolume(any(), any()) } returns mapOf("mountpoint" to "/mountpoint")
-            every { zfsStorageProvider.createVolume(any(), "_scratch") } returns mapOf("mountpoint" to "/mountpoint")
+            every { zfsStorageProvider.createVolume(any(), "_scratch") } returns mapOf("mountpoint" to "/scratch")
             every { zfsStorageProvider.deleteVolume(any(), any(), any()) } just Runs
             every { nopRemoteProvider.pullVolume(any(), any(), any(), any(), any()) } throws InterruptedException()
 
@@ -278,7 +278,7 @@ class OperationExecutorTest : StringSpec() {
                 zfsStorageProvider.inactivateVolume(data.operation.id, "_scratch", mapOf("mountpoint" to "/scratch"))
                 zfsStorageProvider.inactivateVolume(data.operation.id, "volume", mapOf("mountpoint" to "/mountpoint"))
                 zfsStorageProvider.deleteVolume(data.operation.id, "_scratch", mapOf("mountpoint" to "/scratch"))
-                nopRemoteProvider.pullVolume(executor, null, Volume(name = "volume"), "/mountpoint", "/scratch")
+                nopRemoteProvider.pullVolume(executor, null, Volume(name = "volume", config = mapOf("mountpoint" to "/mountpoint")), "/mountpoint", "/scratch")
             }
 
             shouldThrow<NoSuchObjectException> {
@@ -290,7 +290,7 @@ class OperationExecutorTest : StringSpec() {
             every { zfsStorageProvider.activateVolume(any(), any(), any()) } just Runs
             every { zfsStorageProvider.inactivateVolume(any(), any(), any()) } just Runs
             every { zfsStorageProvider.createVolume(any(), any()) } returns mapOf("mountpoint" to "/mountpoint")
-            every { zfsStorageProvider.createVolume(any(), "_scratch") } returns mapOf("mountpoint" to "/mountpoint")
+            every { zfsStorageProvider.createVolume(any(), "_scratch") } returns mapOf("mountpoint" to "/scratch")
             every { zfsStorageProvider.deleteVolume(any(), any(), any()) } just Runs
             every { nopRemoteProvider.pullVolume(any(), any(), any(), any(), any()) } throws Exception()
 
@@ -304,7 +304,7 @@ class OperationExecutorTest : StringSpec() {
                 zfsStorageProvider.inactivateVolume(data.operation.id, "_scratch", mapOf("mountpoint" to "/scratch"))
                 zfsStorageProvider.inactivateVolume(data.operation.id, "volume", mapOf("mountpoint" to "/mountpoint"))
                 zfsStorageProvider.deleteVolume(data.operation.id, "_scratch", mapOf("mountpoint" to "/scratch"))
-                nopRemoteProvider.pullVolume(executor, null, Volume(name = "volume"), "/mountpoint", "/scratch")
+                nopRemoteProvider.pullVolume(executor, null, Volume(name = "volume", config = mapOf("mountpoint" to "/mountpoint")), "/mountpoint", "/scratch")
             }
 
             shouldThrow<NoSuchObjectException> {
@@ -316,9 +316,10 @@ class OperationExecutorTest : StringSpec() {
             every { zfsStorageProvider.activateVolume(any(), any(), any()) } just Runs
             every { zfsStorageProvider.inactivateVolume(any(), any(), any()) } just Runs
             every { zfsStorageProvider.createVolume(any(), any()) } returns mapOf("mountpoint" to "/mountpoint")
-            every { zfsStorageProvider.createVolume(any(), "_scratch") } returns mapOf("mountpoint" to "/mountpoint")
+            every { zfsStorageProvider.createVolume(any(), "_scratch") } returns mapOf("mountpoint" to "/scratch")
             every { zfsStorageProvider.deleteVolume(any(), any(), any()) } just Runs
             every { nopRemoteProvider.pullVolume(any(), any(), any(), any(), any()) } throws Exception()
+            every { nopRemoteProvider.startOperation(any()) } returns 1
 
             val data = createOperation(Operation.Type.PULL)
             val executor = getExecutor(data)

@@ -214,8 +214,8 @@ class OperationExecutorTest : StringSpec() {
                 zfsStorageProvider.deactivateVolume(data.operation.id, "_scratch", mapOf("mountpoint" to "/scratch"))
                 zfsStorageProvider.deactivateVolume(data.operation.id, "volume", mapOf("mountpoint" to "/mountpoint"))
                 zfsStorageProvider.createVolume(data.operation.id, "_scratch")
-                zfsStorageProvider.deleteVolume(data.operation.id, "_scratch", mapOf("mountpoint" to "/mountpoint"))
-                nopRemoteProvider.pushVolume(executor, null, Volume(name = "volume"), "/mountpoint", "/scratch")
+                zfsStorageProvider.deleteVolume(data.operation.id, "_scratch", mapOf("mountpoint" to "/scratch"))
+                nopRemoteProvider.pushVolume(executor, null, Volume(name = "volume", config = mapOf("mountpoint" to "/mountpoint")), "/mountpoint", "/scratch")
             }
         }
 

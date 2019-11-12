@@ -93,7 +93,7 @@ class SshWorkflowTest : EndToEndTest() {
             remote.properties["password"] shouldBe "root"
             remote.properties["username"] shouldBe "root"
             remote.properties["port"] shouldBe null
-            remote.properties["name"] shouldBe "origin"
+            remote.name shouldBe "origin"
 
             remoteApi.createRemote("foo", remote)
         }
@@ -219,7 +219,7 @@ class SshWorkflowTest : EndToEndTest() {
             remote.properties["password"] shouldBe null
             remote.properties["username"] shouldBe "root"
             remote.properties["port"] shouldBe null
-            remote.name shouldBe "orgin"
+            remote.name shouldBe "origin"
 
             remoteApi.createRemote("foo", remote)
         }

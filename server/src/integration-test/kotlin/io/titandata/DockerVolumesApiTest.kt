@@ -29,7 +29,7 @@ import io.mockk.impl.annotations.OverrideMockKs
 import io.mockk.just
 import io.mockk.verify
 import io.titandata.models.Repository
-import io.titandata.models.docker.DockerVolume
+import io.titandata.models.Volume
 import io.titandata.storage.zfs.ZfsStorageProvider
 import java.util.concurrent.TimeUnit
 import org.apache.commons.text.StringEscapeUtils
@@ -82,8 +82,7 @@ class DockerVolumesApiTest : StringSpec() {
      */
     init {
         "create volume succeeds" {
-            every { zfsStorageProvider.createVolume(any(), any()) } just Runs
-            every { zfsStorageProvider.getVolumeMountpoint(any(), any()) } returns ""
+            every { zfsStorageProvider.createVolume(any(), any()) } returns emptyMap()
             with(engine.handleRequest(HttpMethod.Post, "/VolumeDriver.Create") {
                 setBody("{\"Name\":\"foo/vol\",\"Opts\":{\"a\":\"b\"}}")
             }) {
@@ -133,7 +132,7 @@ class DockerVolumesApiTest : StringSpec() {
 
         "remove volume succeeds" {
             transaction {
-                providers.metadata.createVolume(vs, DockerVolume(name = "vol"))
+                providers.metadata.createVolume(vs, Volume("vol"))
             }
             with(engine.handleRequest(HttpMethod.Post, "/VolumeDriver.Remove") {
                 setBody("{\"Name\":\"foo/vol\"}")
@@ -146,10 +145,9 @@ class DockerVolumesApiTest : StringSpec() {
 
         "mount volume succeeds" {
             transaction {
-                providers.metadata.createVolume(vs, DockerVolume(name = "vol"))
+                providers.metadata.createVolume(vs, Volume(name = "vol", config = mapOf("mountpoint" to "/mountpoint")))
             }
-            every { zfsStorageProvider.activateVolume(any(), any()) } returns "/mountpoint"
-            every { zfsStorageProvider.getVolumeMountpoint(any(), any()) } returns "/mountpoint"
+            every { zfsStorageProvider.activateVolume(any(), any(), any()) } just Runs
             with(engine.handleRequest(HttpMethod.Post, "/VolumeDriver.Mount") {
                 setBody("{\"Name\":\"foo/vol\"}")
             }) {
@@ -158,16 +156,16 @@ class DockerVolumesApiTest : StringSpec() {
                 response.content shouldBe "{\"Err\":\"\",\"Mountpoint\":\"/mountpoint\"}"
 
                 verify {
-                    zfsStorageProvider.activateVolume(vs, "vol")
+                    zfsStorageProvider.activateVolume(vs, "vol", emptyMap())
                 }
             }
         }
 
         "unmount volume succeeds" {
             transaction {
-                providers.metadata.createVolume(vs, DockerVolume(name = "vol"))
+                providers.metadata.createVolume(vs, Volume("vol"))
             }
-            every { zfsStorageProvider.inactivateVolume(any(), any()) } just Runs
+            every { zfsStorageProvider.inactivateVolume(any(), any(), any()) } just Runs
             with(engine.handleRequest(HttpMethod.Post, "/VolumeDriver.Unmount") {
                 setBody("{\"Name\":\"foo/vol\"}")
             }) {
@@ -176,16 +174,15 @@ class DockerVolumesApiTest : StringSpec() {
                 response.content shouldBe "{\"Err\":\"\"}"
 
                 verify {
-                    zfsStorageProvider.inactivateVolume(vs, "vol")
+                    zfsStorageProvider.inactivateVolume(vs, "vol", emptyMap())
                 }
             }
         }
 
         "get path succeeds" {
             transaction {
-                providers.metadata.createVolume(vs, DockerVolume(name = "vol"))
+                providers.metadata.createVolume(vs, Volume(name = "vol", config = mapOf("mountpoint" to "/mountpoint")))
             }
-            every { zfsStorageProvider.getVolumeMountpoint(any(), any()) } returns "/mountpoint"
             with(engine.handleRequest(HttpMethod.Post, "/VolumeDriver.Path") {
                 setBody("{\"Name\":\"foo/vol\"}")
             }) {
@@ -197,9 +194,8 @@ class DockerVolumesApiTest : StringSpec() {
 
         "get volume succeeds" {
             transaction {
-                providers.metadata.createVolume(vs, DockerVolume(name = "vol", properties = mapOf("a" to "b")))
+                providers.metadata.createVolume(vs, Volume(name = "vol", properties = mapOf("a" to "b"), config = mapOf("mountpoint" to "/mountpoint")))
             }
-            every { zfsStorageProvider.getVolumeMountpoint(any(), any()) } returns "/mountpoint"
             with(engine.handleRequest(HttpMethod.Post, "/VolumeDriver.Get") {
                 setBody("{\"Name\":\"foo/vol\"}")
             }) {
@@ -217,10 +213,9 @@ class DockerVolumesApiTest : StringSpec() {
 
         "list volumes succeeds" {
             transaction {
-                providers.metadata.createVolume(vs, DockerVolume(name = "one", properties = mapOf("a" to "b")))
-                providers.metadata.createVolume(vs, DockerVolume(name = "two", properties = mapOf("c" to "d")))
+                providers.metadata.createVolume(vs, Volume(name = "one", properties = mapOf("a" to "b"), config = mapOf("mountpoint" to "/mountpoint")))
+                providers.metadata.createVolume(vs, Volume(name = "two", properties = mapOf("c" to "d"), config = mapOf("mountpoint" to "/mountpoint")))
             }
-            every { zfsStorageProvider.getVolumeMountpoint(any(), any()) } returns "/mountpoint"
 
             with(engine.handleRequest(HttpMethod.Post, "/VolumeDriver.List")) {
                 response.status() shouldBe HttpStatusCode.OK

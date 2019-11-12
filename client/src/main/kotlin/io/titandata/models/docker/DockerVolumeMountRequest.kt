@@ -2,13 +2,13 @@
  * Copyright The Titan Project Contributors.
  */
 
-package io.titandata.models
+package io.titandata.models.docker
 
 import com.google.gson.annotations.SerializedName
 
-data class VolumeCreateRequest(
+data class DockerVolumeMountRequest(
     @SerializedName("Name")
     var name: String? = null,
-    @SerializedName("Opts")
-    var opts: Map<String, Any>? = null
+    @SerializedName("ID")
+    var ID: String? = null
 )

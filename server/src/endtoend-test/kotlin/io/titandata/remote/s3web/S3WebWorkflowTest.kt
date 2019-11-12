@@ -22,9 +22,9 @@ import io.titandata.ProviderModule
 import io.titandata.client.infrastructure.ClientException
 import io.titandata.models.Commit
 import io.titandata.models.Repository
-import io.titandata.models.VolumeCreateRequest
-import io.titandata.models.VolumeMountRequest
-import io.titandata.models.VolumeRequest
+import io.titandata.models.docker.DockerVolumeCreateRequest
+import io.titandata.models.docker.DockerVolumeMountRequest
+import io.titandata.models.docker.DockerVolumeRequest
 import io.titandata.remote.s3.S3Parameters
 import io.titandata.remote.s3.S3Remote
 import io.titandata.remote.s3.S3RemoteProvider
@@ -138,7 +138,7 @@ class S3WebWorkflowTest : EndToEndTest() {
         }
 
         "create volume succeeds" {
-            val repo = VolumeCreateRequest(
+            val repo = DockerVolumeCreateRequest(
                     name = "foo/vol",
                     opts = mapOf()
             )
@@ -147,7 +147,7 @@ class S3WebWorkflowTest : EndToEndTest() {
         }
 
         "mount volume succeeds" {
-            val response = volumeApi.mountVolume(VolumeMountRequest(name = "foo/vol", ID = "id"))
+            val response = volumeApi.mountVolume(DockerVolumeMountRequest(name = "foo/vol", ID = "id"))
             response.mountpoint shouldStartWith "/var/lib/test/mnt/"
         }
 
@@ -255,9 +255,9 @@ class S3WebWorkflowTest : EndToEndTest() {
         }
 
         "checkout commit succeeds" {
-            volumeApi.unmountVolume(VolumeMountRequest(name = "foo/vol"))
+            volumeApi.unmountVolume(DockerVolumeMountRequest(name = "foo/vol"))
             commitApi.checkoutCommit("foo", "id")
-            volumeApi.mountVolume(VolumeMountRequest(name = "foo/vol"))
+            volumeApi.mountVolume(DockerVolumeMountRequest(name = "foo/vol"))
         }
 
         "original file contents are present" {
@@ -271,8 +271,8 @@ class S3WebWorkflowTest : EndToEndTest() {
         }
 
         "delete volume succeeds" {
-            volumeApi.unmountVolume(VolumeMountRequest(name = "foo/vol"))
-            volumeApi.removeVolume(VolumeRequest(name = "foo/vol"))
+            volumeApi.unmountVolume(DockerVolumeMountRequest(name = "foo/vol"))
+            volumeApi.removeVolume(DockerVolumeRequest(name = "foo/vol"))
         }
 
         "delete repository succeeds" {

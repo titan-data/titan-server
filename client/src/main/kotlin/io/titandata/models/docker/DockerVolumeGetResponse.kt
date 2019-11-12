@@ -2,13 +2,13 @@
  * Copyright The Titan Project Contributors.
  */
 
-package io.titandata.models
+package io.titandata.models.docker
 
 import com.google.gson.annotations.SerializedName
 
-data class VolumeListResponse(
+data class DockerVolumeGetResponse(
     @SerializedName("Err")
     var err: String = "",
-    @SerializedName("Volumes")
-    var volumes: Array<Volume>
+    @SerializedName("Volume")
+    var volume: DockerVolume
 )

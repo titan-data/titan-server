@@ -26,7 +26,7 @@ import io.titandata.models.Operation
 import io.titandata.models.ProgressEntry
 import io.titandata.models.Remote
 import io.titandata.models.RemoteParameters
-import io.titandata.models.Volume
+import io.titandata.models.docker.DockerVolume
 import io.titandata.operation.OperationExecutor
 import io.titandata.remote.BaseRemoteProvider
 import io.titandata.sync.RsyncExecutor
@@ -329,7 +329,7 @@ class EngineRemoteProvider(val providers: ProviderModule) : BaseRemoteProvider()
         operation.addProgress(ProgressEntry(type = ProgressEntry.Type.END))
     }
 
-    override fun syncVolume(operation: OperationExecutor, data: Any?, volume: Volume, path: String, scratchPath: String) {
+    override fun syncVolume(operation: OperationExecutor, data: Any?, volume: DockerVolume, path: String, scratchPath: String) {
         data as EngineOperation
         val desc = getVolumeDesc(volume)
         val localPath = path

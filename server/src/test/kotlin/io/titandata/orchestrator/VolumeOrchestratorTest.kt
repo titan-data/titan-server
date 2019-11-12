@@ -24,7 +24,7 @@ import io.mockk.verifyAll
 import io.titandata.ProviderModule
 import io.titandata.exception.NoSuchObjectException
 import io.titandata.models.Repository
-import io.titandata.models.Volume
+import io.titandata.models.docker.DockerVolume
 import io.titandata.storage.zfs.ZfsStorageProvider
 import org.jetbrains.exposed.sql.transactions.transaction
 
@@ -61,7 +61,7 @@ class VolumeOrchestratorTest : StringSpec() {
 
     override fun testCaseOrder() = TestCaseOrder.Random
 
-    fun createVolume(): Volume {
+    fun createVolume(): DockerVolume {
         every { zfsStorageProvider.createVolume(any(), any()) } just Runs
         every { zfsStorageProvider.getVolumeMountpoint(any(), any()) } returns "/mountpoint"
         return providers.volumes.createVolume("foo", "vol", mapOf("a" to "b"))

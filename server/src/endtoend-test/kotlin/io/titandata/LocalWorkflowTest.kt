@@ -15,9 +15,9 @@ import io.titandata.models.Commit
 import io.titandata.models.Operation
 import io.titandata.models.ProgressEntry
 import io.titandata.models.Repository
-import io.titandata.models.VolumeCreateRequest
-import io.titandata.models.VolumeMountRequest
-import io.titandata.models.VolumeRequest
+import io.titandata.models.docker.DockerVolumeCreateRequest
+import io.titandata.models.docker.DockerVolumeMountRequest
+import io.titandata.models.docker.DockerVolumeRequest
 import io.titandata.remote.nop.NopParameters
 import io.titandata.remote.nop.NopRemote
 import java.time.Duration
@@ -82,7 +82,7 @@ class LocalWorkflowTest : EndToEndTest() {
         }
 
         "create volume succeeds" {
-            val repo = VolumeCreateRequest(
+            val repo = DockerVolumeCreateRequest(
                     name = "foo/vol",
                     opts = mapOf("a" to "b")
             )
@@ -92,14 +92,14 @@ class LocalWorkflowTest : EndToEndTest() {
 
         "create volume for unknown repository fails" {
             val exception = shouldThrow<ClientException> {
-                volumeApi.createVolume(VolumeCreateRequest(name = "bar/vol", opts = mapOf()))
+                volumeApi.createVolume(DockerVolumeCreateRequest(name = "bar/vol", opts = mapOf()))
             }
             exception.message shouldNotBe ""
         }
 
         "create duplicate volume fails" {
             val exception = shouldThrow<ClientException> {
-                volumeApi.createVolume(VolumeCreateRequest(name = "foo/vol", opts = mapOf()))
+                volumeApi.createVolume(DockerVolumeCreateRequest(name = "foo/vol", opts = mapOf()))
             }
             exception.message shouldNotBe ""
         }
@@ -116,7 +116,7 @@ class LocalWorkflowTest : EndToEndTest() {
         }
 
         "get volume succeeds" {
-            val response = volumeApi.getVolume(VolumeRequest(name = "foo/vol"))
+            val response = volumeApi.getVolume(DockerVolumeRequest(name = "foo/vol"))
             response.volume shouldNotBe null
             response.volume.mountpoint shouldStartWith "/var/lib/test/mnt/"
             response.volume.name shouldBe "foo/vol"
@@ -126,7 +126,7 @@ class LocalWorkflowTest : EndToEndTest() {
 
         "get non-existent volume fails" {
             shouldThrow<ClientException> {
-                volumeApi.getVolume(VolumeRequest(name = "bar/vol"))
+                volumeApi.getVolume(DockerVolumeRequest(name = "bar/vol"))
             }
         }
 
@@ -137,7 +137,7 @@ class LocalWorkflowTest : EndToEndTest() {
         }
 
         "mount volume succeeds" {
-            val response = volumeApi.mountVolume(VolumeMountRequest(name = "foo/vol", ID = "id"))
+            val response = volumeApi.mountVolume(DockerVolumeMountRequest(name = "foo/vol", ID = "id"))
             response.mountpoint shouldStartWith "/var/lib/test/mnt/"
             volumeMountpoint = response.mountpoint
         }
@@ -236,16 +236,16 @@ class LocalWorkflowTest : EndToEndTest() {
         }
 
         "unmount volume succeeds" {
-            volumeApi.unmountVolume(VolumeMountRequest(name = "foo/vol"))
+            volumeApi.unmountVolume(DockerVolumeMountRequest(name = "foo/vol"))
         }
 
         "unmount volume is idempotent" {
-            volumeApi.unmountVolume(VolumeMountRequest(name = "foo/vol"))
+            volumeApi.unmountVolume(DockerVolumeMountRequest(name = "foo/vol"))
         }
 
         "checkout commit and old contents are present" {
             commitApi.checkoutCommit("foo", "id")
-            volumeApi.mountVolume(VolumeMountRequest(name = "foo/vol"))
+            volumeApi.mountVolume(DockerVolumeMountRequest(name = "foo/vol"))
             val result = dockerUtil.readFile("foo/vol", "testfile")
             result shouldBe "Hello\n"
         }
@@ -455,8 +455,8 @@ class LocalWorkflowTest : EndToEndTest() {
         }
 
         "delete volume succeeds" {
-            volumeApi.unmountVolume(VolumeMountRequest(name = "foo/vol"))
-            volumeApi.removeVolume(VolumeRequest(name = "foo/vol"))
+            volumeApi.unmountVolume(DockerVolumeMountRequest(name = "foo/vol"))
+            volumeApi.removeVolume(DockerVolumeRequest(name = "foo/vol"))
         }
 
         "delete repository succeeds" {

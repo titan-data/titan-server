@@ -10,7 +10,7 @@ import io.titandata.models.Commit
 import io.titandata.models.Operation
 import io.titandata.models.Remote
 import io.titandata.models.RemoteParameters
-import io.titandata.models.Volume
+import io.titandata.models.docker.DockerVolume
 import io.titandata.operation.OperationExecutor
 
 abstract class BaseRemoteProvider : RemoteProvider {
@@ -37,7 +37,7 @@ abstract class BaseRemoteProvider : RemoteProvider {
         }
     }
 
-    fun getVolumeDesc(vol: Volume): String {
+    fun getVolumeDesc(vol: DockerVolume): String {
         return vol.properties.get("path")?.toString() ?: vol.name
     }
 
@@ -53,15 +53,15 @@ abstract class BaseRemoteProvider : RemoteProvider {
         // Do nothing
     }
 
-    open fun syncVolume(operation: OperationExecutor, data: Any?, volume: Volume, path: String, scratchPath: String) {
+    open fun syncVolume(operation: OperationExecutor, data: Any?, volume: DockerVolume, path: String, scratchPath: String) {
         // Do nothing
     }
 
-    override fun pushVolume(operation: OperationExecutor, data: Any?, volume: Volume, path: String, scratchPath: String) {
+    override fun pushVolume(operation: OperationExecutor, data: Any?, volume: DockerVolume, path: String, scratchPath: String) {
         syncVolume(operation, data, volume, path, scratchPath)
     }
 
-    override fun pullVolume(operation: OperationExecutor, data: Any?, volume: Volume, path: String, scratchPath: String) {
+    override fun pullVolume(operation: OperationExecutor, data: Any?, volume: DockerVolume, path: String, scratchPath: String) {
         syncVolume(operation, data, volume, path, scratchPath)
     }
 

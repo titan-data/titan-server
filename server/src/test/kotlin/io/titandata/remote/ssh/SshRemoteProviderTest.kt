@@ -31,7 +31,7 @@ import io.titandata.models.Commit
 import io.titandata.models.Operation
 import io.titandata.models.ProgressEntry
 import io.titandata.models.Repository
-import io.titandata.models.Volume
+import io.titandata.models.docker.DockerVolume
 import io.titandata.operation.OperationExecutor
 import io.titandata.storage.OperationData
 import io.titandata.storage.zfs.ZfsStorageProvider
@@ -221,8 +221,8 @@ class SshRemoteProviderTest : StringSpec() {
             val vs = transaction {
                 providers.metadata.createRepository(Repository(name = "repo"))
                 val vs = providers.metadata.createVolumeSet("repo", null, true)
-                providers.metadata.createVolume(vs, Volume(name = "v0", properties = emptyMap()))
-                providers.metadata.createVolume(vs, Volume(name = "v1", properties = mapOf("path" to "/volume")))
+                providers.metadata.createVolume(vs, DockerVolume(name = "v0", properties = emptyMap()))
+                providers.metadata.createVolume(vs, DockerVolume(name = "v1", properties = mapOf("path" to "/volume")))
                 providers.metadata.createCommit("repo", vs, Commit("id"))
                 vs
             }
@@ -265,8 +265,8 @@ class SshRemoteProviderTest : StringSpec() {
             val vs = transaction {
                 providers.metadata.createRepository(Repository(name = "repo"))
                 val vs = providers.metadata.createVolumeSet("repo", null, true)
-                providers.metadata.createVolume(vs, Volume(name = "v0", properties = emptyMap()))
-                providers.metadata.createVolume(vs, Volume(name = "v1", properties = mapOf("path" to "/volume")))
+                providers.metadata.createVolume(vs, DockerVolume(name = "v0", properties = emptyMap()))
+                providers.metadata.createVolume(vs, DockerVolume(name = "v1", properties = mapOf("path" to "/volume")))
                 providers.metadata.createCommit("repo", vs, Commit("id"))
                 vs
             }

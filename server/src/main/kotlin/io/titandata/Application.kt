@@ -29,15 +29,15 @@ import io.ktor.server.cio.CIO
 import io.ktor.server.engine.embeddedServer
 import io.ktor.util.KtorExperimentalAPI
 import io.titandata.apis.CommitsApi
+import io.titandata.apis.DockerVolumeApi
 import io.titandata.apis.OperationsApi
 import io.titandata.apis.RemotesApi
 import io.titandata.apis.RepositoriesApi
-import io.titandata.apis.VolumeApi
 import io.titandata.exception.NoSuchObjectException
 import io.titandata.exception.ObjectExistsException
 import io.titandata.metadata.MetadataProvider
 import io.titandata.models.Error
-import io.titandata.models.VolumeResponse
+import io.titandata.models.docker.DockerVolumeResponse
 import io.titandata.orchestrator.CommitOrchestrator
 import io.titandata.orchestrator.OperationOrchestrator
 import io.titandata.orchestrator.Reaper
@@ -60,7 +60,7 @@ import org.slf4j.event.Level
 
 fun exceptionToError(request: ApplicationRequest, t: Throwable): Any {
     if (request.path().startsWith("/VolumeDriver.")) {
-        return VolumeResponse(err = t.message ?: "unknown error")
+        return DockerVolumeResponse(err = t.message ?: "unknown error")
     } else {
         val sw = StringWriter()
         t.printStackTrace(PrintWriter(sw))
@@ -153,7 +153,7 @@ fun Application.mainProvider(providers: ProviderModule) {
     install(Compression, ApplicationCompressionConfiguration())
     install(Routing) {
         CommitsApi(providers)
-        VolumeApi(providers)
+        DockerVolumeApi(providers)
         OperationsApi(providers)
         RemotesApi(providers)
         RepositoriesApi(providers)

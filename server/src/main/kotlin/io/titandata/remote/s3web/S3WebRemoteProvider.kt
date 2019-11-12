@@ -11,7 +11,7 @@ import io.titandata.models.Commit
 import io.titandata.models.ProgressEntry
 import io.titandata.models.Remote
 import io.titandata.models.RemoteParameters
-import io.titandata.models.Volume
+import io.titandata.models.docker.DockerVolume
 import io.titandata.operation.OperationExecutor
 import io.titandata.remote.BaseRemoteProvider
 import io.titandata.serialization.ModelTypeAdapters
@@ -77,11 +77,11 @@ class S3WebRemoteProvider(val providers: ProviderModule) : BaseRemoteProvider() 
                 ?: throw NoSuchObjectException("no such commit $commitId in remote '${remote.name}'")
     }
 
-    override fun pushVolume(operation: OperationExecutor, data: Any?, volume: Volume, path: String, scratchPath: String) {
+    override fun pushVolume(operation: OperationExecutor, data: Any?, volume: DockerVolume, path: String, scratchPath: String) {
         throw IllegalStateException("push operations are not supported for s3web provider")
     }
 
-    override fun pullVolume(operation: OperationExecutor, data: Any?, volume: Volume, path: String, scratchPath: String) {
+    override fun pullVolume(operation: OperationExecutor, data: Any?, volume: DockerVolume, path: String, scratchPath: String) {
         val remote = operation.remote as S3WebRemote
         val desc = getVolumeDesc(volume)
         val commitId = operation.operation.commitId

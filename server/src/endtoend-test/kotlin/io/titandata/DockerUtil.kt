@@ -5,9 +5,9 @@
 package io.titandata
 
 import com.jcraft.jsch.JSch
-import io.titandata.client.apis.VolumeApi
+import io.titandata.client.apis.DockerVolumeApi
 import io.titandata.exception.CommandException
-import io.titandata.models.VolumeRequest
+import io.titandata.models.docker.DockerVolumeRequest
 import io.titandata.util.CommandExecutor
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -32,7 +32,7 @@ class DockerUtil(
     private val sshUser = "root"
     private val sshPassword = "root"
     private val url = "http://localhost:$port"
-    private val volumeApi = VolumeApi(url)
+    private val volumeApi = DockerVolumeApi(url)
 
     fun url(path: String): String {
         return "http://localhost:$port/v1/$path"
@@ -132,7 +132,7 @@ class DockerUtil(
     }
 
     fun getVolumePath(volume: String): String {
-        return volumeApi.getVolumePath(VolumeRequest(name = volume)).mountpoint!!
+        return volumeApi.getVolumePath(DockerVolumeRequest(name = volume)).mountpoint!!
     }
 
     fun writeFile(volume: String, filename: String, content: String) {

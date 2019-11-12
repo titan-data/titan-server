@@ -20,6 +20,10 @@ java {
 
 repositories {
     mavenCentral()
+    maven {
+        name = "titan"
+        url = uri("https://maven.titan-data.io")
+    }
 }
 
 val jar by tasks.getting(Jar::class) {
@@ -52,4 +56,5 @@ dependencies {
     compile("com.squareup.okhttp3:okhttp:3.14.2")
     compile("com.google.code.gson:gson:2.8.6")
     compile("software.amazon.awssdk:auth:2.7.33")
+    compile("io.titandata:remote-sdk:0.0.1")
 }

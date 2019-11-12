@@ -189,10 +189,10 @@ class SshRemoteTest : StringSpec() {
 
         "prompt for SSH password succeeds" {
             every { console.readPassword(any()) } returns "pass".toCharArray()
-            val params = sshUtil.getParameters(Remote("ssh", "name", mapOf("username" to "username", "address" to "host",
-                    "path" to "/path")))
-            params.properties["password"] shouldBe "pass"
-            params.properties["key"] shouldBe null
+            val params = sshUtil.getParameters(mapOf("username" to "username", "address" to "host",
+                    "path" to "/path"))
+            params["password"] shouldBe "pass"
+            params["key"] shouldBe null
         }
     }
 }

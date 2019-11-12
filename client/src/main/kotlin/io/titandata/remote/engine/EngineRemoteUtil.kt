@@ -6,6 +6,7 @@ package io.titandata.remote.engine
 
 import io.titandata.models.Remote
 import io.titandata.models.RemoteParameters
+import io.titandata.remote.RemoteClient
 import io.titandata.serialization.RemoteUtilProvider
 import java.net.URI
 
@@ -18,12 +19,16 @@ import java.net.URI
  * connect over HTTP. If the password is not specified, then it will be up to the CLI to
  * provide the password as part of the properties.
  */
-class EngineRemoteUtil : RemoteUtilProvider() {
-
+class EngineRemoteUtil : RemoteClient {
     private val console = System.console()
+    private val util = RemoteUtilProvider()
 
-    override fun parseUri(uri: URI, name: String, properties: Map<String, String>): Remote {
-        val (username, password, host, port, path) = getConnectionInfo(uri)
+    override fun getProvider(): String {
+        return "engine"
+    }
+
+    override fun parseUri(uri: URI, additionalProperties: Map<String, String>): Map<String, Any> {
+        val (username, password, host, port, path) = util.getConnectionInfo(uri)
 
         if (port != null) {
             throw IllegalArgumentException("Port cannot be specified for engine remotes")
@@ -47,33 +52,35 @@ class EngineRemoteUtil : RemoteUtilProvider() {
             throw IllegalArgumentException("Missing repository name in engine remote")
         }
 
-        for (p in properties.keys) {
+        for (p in additionalProperties.keys) {
             throw IllegalArgumentException("Invalid engine remote property '$p'")
         }
 
-        return Remote("engine", name, mapOf("username" to username, "password" to password, "address" to host,
-                "repository" to repo))
+        val result = mutableMapOf("username" to username, "address" to host, "repository" to repo)
+        if (password != null) {
+            result["password"] = password
+        }
+        return result
     }
 
-    override fun toUri(remote: Remote): Pair<String, Map<String, String>> {
-        val props = remote.properties
-        var uri = "engine://${props["username"]}"
-        if (props["password"] != null) {
-            uri += ":${props["password"]}"
+    override fun toUri(properties: Map<String, Any>): Pair<String, Map<String, String>> {
+        var uri = "engine://${properties["username"]}"
+        if (properties["password"] != null) {
+            uri += ":${properties["password"]}"
         }
-        uri += "@${props["address"]}/${props["repository"]}"
+        uri += "@${properties["address"]}/${properties["repository"]}"
 
         return Pair(uri, mapOf())
     }
 
-    override fun getParameters(remote: Remote): RemoteParameters {
-        var password : String? = null
-        if (remote.properties["password"] == null) {
+    override fun getParameters(remoteProperties: Map<String, Any>): Map<String, Any> {
+        val result = mutableMapOf<String, String>()
+        if (remoteProperties["password"] == null) {
             val input = console?.readPassword("password: ")
                     ?: throw IllegalArgumentException("password required but no console available")
-            password = String(input)
+            result["password"] = String(input)
         }
 
-        return RemoteParameters("engine", mapOf("password" to password))
+        return result
     }
 }

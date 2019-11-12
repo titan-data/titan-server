@@ -227,9 +227,9 @@ class EngineWorkflowTest : EndToEndTest() {
 
         "add remote without password succeeds" {
             val defaultRemote = getRemote()
-            val remote = Remote("engine", "origin", mapOf("address" to defaultRemote.properties["address"],
-                    "username" to defaultRemote.properties["username"],
-                    "repository" to defaultRemote.properties["repository"]))
+            val remote = Remote("engine", "origin", mapOf("address" to defaultRemote.properties["address"]!!,
+                    "username" to defaultRemote.properties["username"]!!,
+                    "repository" to defaultRemote.properties["repository"]!!))
             remoteApi.createRemote("foo", remote)
         }
 

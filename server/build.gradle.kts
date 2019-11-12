@@ -17,6 +17,10 @@ repositories {
     maven("https://dl.bintray.com/kotlin/ktor")
     maven("https://dl.bintray.com/kotlin/kotlinx")
     maven("https://dl.bintray.com/kotlin/exposed")
+    maven {
+        name = "titan"
+        url = uri("https://maven.titan-data.io")
+    }
 }
 
 val ktorVersion = "1.2.5"

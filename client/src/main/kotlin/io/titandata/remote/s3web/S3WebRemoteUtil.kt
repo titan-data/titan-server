@@ -6,6 +6,7 @@ package io.titandata.remote.s3web
 
 import io.titandata.models.Remote
 import io.titandata.models.RemoteParameters
+import io.titandata.remote.RemoteClient
 import io.titandata.serialization.RemoteUtilProvider
 import software.amazon.awssdk.auth.credentials.AwsSessionCredentials
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider
@@ -20,10 +21,15 @@ import java.net.URI
  * Currently, we always use HTTP to access the resources, though a parameter could be provided to use HTTPS instead
  * if needed.
  */
-class S3WebRemoteUtil : RemoteUtilProvider() {
+class S3WebRemoteUtil : RemoteClient {
+    private val util = RemoteUtilProvider()
 
-    override fun parseUri(uri: URI, name: String, properties: Map<String, String>): Remote {
-        val (username, password, host, port, path) = getConnectionInfo(uri)
+    override fun getProvider(): String {
+        return "s3web"
+    }
+
+    override fun parseUri(uri: URI, additionalProperties: Map<String, String>): Map<String, Any> {
+        val (username, password, host, port, path) = util.getConnectionInfo(uri)
 
         if (username != null) {
             throw IllegalArgumentException("Username cannot be specified for S3 remote")
@@ -36,10 +42,8 @@ class S3WebRemoteUtil : RemoteUtilProvider() {
         if (host == null) {
             throw IllegalArgumentException("Missing bucket in S3 remote")
         }
-        for (p in properties.keys) {
-            when {
-                else -> throw IllegalArgumentException("Invalid remote property '$p'")
-            }
+        for (p in additionalProperties.keys) {
+            throw IllegalArgumentException("Invalid remote property '$p'")
         }
 
         var url = "http://$host"
@@ -50,15 +54,15 @@ class S3WebRemoteUtil : RemoteUtilProvider() {
             url += "$path"
         }
 
-        return Remote("s3web", name, mapOf("url" to url))
+        return mapOf("url" to url)
     }
 
-    override fun toUri(remote: Remote): Pair<String, Map<String, String>> {
-        val url = remote.properties["url"] as String
-        return Pair(url.replace("http", "s3web"), mapOf())
+    override fun getParameters(remoteProperties: Map<String, Any>): Map<String, Any> {
+        return emptyMap()
     }
 
-    override fun getParameters(remote: Remote): RemoteParameters {
-        return RemoteParameters("s3web")
+    override fun toUri(properties: Map<String, Any>): Pair<String, Map<String, String>> {
+        val url = properties["url"] as String
+        return Pair(url.replace("http", "s3web"), emptyMap())
     }
 }

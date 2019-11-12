@@ -133,9 +133,9 @@ class EngineRemoteTest : StringSpec() {
 
         "get engine parameters prompts for password" {
             every { console.readPassword(any()) } returns "pass".toCharArray()
-            val result = engineUtil.getParameters(Remote("engine", "name", mapOf("address" to "host", "username" to "user",
-                    "repository" to "foo")))
-            result.properties["password"] shouldBe "pass"
+            val result = engineUtil.getParameters(mapOf("address" to "host", "username" to "user",
+                    "repository" to "foo"))
+            result["password"] shouldBe "pass"
         }
     }
 }

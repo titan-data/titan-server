@@ -34,8 +34,14 @@ class RemoteUtil {
                 throw IllegalArgumentException("Malformed remote identifier, query and fragments are not allowed")
             }
 
-            return remoteUtil[provider]?.parseUri(uri, name, properties) ?:
-                throw IllegalArgumentException("Unknown remote provider or malformed remote identifier '$provider'")
+            val remoteClient = remoteUtil[provider]
+                    ?: throw IllegalArgumentException("Unknown remote provider or malformed remote identifier '$provider'")
+
+            return Remote(
+                    name = name,
+                    provider = provider,
+                    properties = remoteClient.parseUri(uri, properties)
+            )
 
         } catch (e: URISyntaxException) {
             throw IllegalArgumentException("Invalid URI syntax", e)
@@ -43,12 +49,16 @@ class RemoteUtil {
     }
 
     fun toUri(remote: Remote) : Pair<String, Map<String, String>> {
-        return remoteUtil[remote.provider]?.toUri(remote) ?:
-                throw IllegalArgumentException("Unknown remote provider '${remote.provider}")
+        val remoteClient = remoteUtil[remote.provider]
+                ?: throw IllegalArgumentException("Unknown remote provider '${remote.provider}'")
+
+        return remoteClient.toUri(remote.properties)
     }
 
     fun getParameters(remote: Remote) : RemoteParameters {
-        return remoteUtil[remote.provider]?.getParameters(remote) ?:
-            throw IllegalArgumentException("Unknown remote provider '${remote.provider}")
+        val remoteClient = remoteUtil[remote.provider]
+                ?: throw IllegalArgumentException("Unknown remote provider '${remote.provider}'")
+
+        return RemoteParameters(remoteClient.getProvider(), remoteClient.getParameters(remote.properties))
     }
 }

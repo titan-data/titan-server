@@ -6,6 +6,7 @@ package io.titandata.remote.ssh
 
 import io.titandata.models.Remote
 import io.titandata.models.RemoteParameters
+import io.titandata.remote.RemoteClient
 import io.titandata.serialization.RemoteUtilProvider
 import java.io.File
 import java.net.URI
@@ -27,12 +28,16 @@ import java.net.URI
  * for the URI form, the accepted form is typically "/~/relative/path". We handle that here
  * and convert it to a relative path.
  */
-class SshRemoteUtil : RemoteUtilProvider() {
-
+class SshRemoteUtil : RemoteClient {
     private val console = System.console()
+    private val util = RemoteUtilProvider()
 
-    override fun parseUri(uri: URI, name: String, properties: Map<String, String>): Remote {
-        val (username, password, host, port, rawPath) = getConnectionInfo(uri)
+    override fun getProvider(): String {
+        return "ssh"
+    }
+
+    override fun parseUri(uri: URI, additionalProperties: Map<String, String>): Map<String, Any> {
+        val (username, password, host, port, rawPath) = util.getConnectionInfo(uri)
 
         if (username == null) {
             throw IllegalArgumentException("Missing username in SSH remote")
@@ -51,59 +56,73 @@ class SshRemoteUtil : RemoteUtilProvider() {
             else -> rawPath
         }
 
-        val keyFile = properties["keyFile"]
+        val keyFile = additionalProperties["keyFile"]
 
         if (keyFile != null && password != null) {
             throw IllegalArgumentException("Both password and key file cannot be specified for SSH remote")
         }
 
-        for (p in properties.keys) {
+        for (p in additionalProperties.keys) {
             if (p != "keyFile") {
                 throw IllegalArgumentException("Invalid SSH remote property '$p'")
             }
         }
 
-        return Remote("ssh", name, mapOf("username" to username, "password" to password, "address" to host,
-                "port" to port, "path" to path, "keyFile" to keyFile))
+        val result = mutableMapOf<String, Any>("username" to username, "address" to host, "path" to path)
+        if (password != null) {
+            result["password"] = password
+        }
+        if (port != null) {
+            result["port"] = port
+        }
+        if (keyFile != null) {
+            result["keyFile"] = keyFile
+        }
+        return result
     }
 
-    override fun toUri(remote: Remote): Pair<String, Map<String, String>> {
-        val props = remote.properties
-        var uri = "ssh://${props["username"]}"
-        if (props["password"] != null) {
+    override fun toUri(properties: Map<String, Any>): Pair<String, Map<String, String>> {
+        var uri = "ssh://${properties["username"]}"
+        if (properties["password"] != null) {
             uri += ":*****"
         }
-        uri += "@${props["address"]}"
-        if (props["port"] != null) {
-            uri += ":${props["port"]}"
+        uri += "@${properties["address"]}"
+        if (properties["port"] != null) {
+            uri += ":${properties["port"]}"
         }
-        if (!(props["path"] as String).startsWith("/")) {
+        if (!(properties["path"] as String).startsWith("/")) {
             uri += "/~/"
         }
-        uri += "${props["path"]}"
+        uri += "${properties["path"]}"
 
-        val properties = mutableMapOf<String, String>()
-        if (props["keyFile"] != null) {
-            properties["keyFile"] = props["keyFile"] as String
+        val props = mutableMapOf<String, String>()
+        if (properties["keyFile"] != null) {
+            props["keyFile"] = properties["keyFile"] as String
         }
 
-        return Pair(uri, properties)
+        return Pair(uri, props)
     }
 
-    override fun getParameters(remote: Remote): RemoteParameters {
-        val props = remote.properties
+    override fun getParameters(remoteProperties: Map<String, Any>): Map<String, Any> {
         var key : String? = null
-        if (props["keyFile"] != null) {
-            key = File(props["keyFile"] as String).readText()
+        if (remoteProperties["keyFile"] != null) {
+            key = File(remoteProperties["keyFile"] as String).readText()
         }
 
         var password : String? = null
-        if (props["password"] == null && props["keyFile"] == null) {
+        if (remoteProperties["password"] == null && remoteProperties["keyFile"] == null) {
             val input = console?.readPassword("password: ")
                     ?: throw IllegalArgumentException("password required but no console available")
             password = String(input)
         }
 
-        return RemoteParameters("ssh", mapOf("key" to key, "password" to password))
+        val result = mutableMapOf<String, String>()
+        if (key != null) {
+            result["key"] = key
+        }
+        if (password != null) {
+            result["password"] = password
+        }
+        return result
     }
 }

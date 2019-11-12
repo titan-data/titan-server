@@ -8,11 +8,7 @@ import io.titandata.models.Remote
 import io.titandata.models.RemoteParameters
 import java.net.URI
 
-abstract class RemoteUtilProvider {
-
-    abstract fun parseUri(uri: URI, name: String, properties: Map<String, String>): Remote
-    abstract fun toUri(remote: Remote) : Pair<String, Map<String, String>>
-    abstract fun getParameters(remote: Remote) : RemoteParameters
+class RemoteUtilProvider {
 
     data class ConnectionInfo(val username: String?, val password: String?,
                                       val host: String?, val port: Int?,

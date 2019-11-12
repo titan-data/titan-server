@@ -43,3 +43,22 @@ tasks.named("rebuild").configure {
     dependsOn(rebuildDockerServer)
     dependsOn(tagLocalDockerServer)
 }
+
+var publishDockerVersion = tasks.register<Exec>("publishDockerVersion") {
+    group = "Publishing"
+    description = "Publish versioned docker server image to docker hub"
+    commandLine("docker", "push", "$imageName:${project.version}")
+    mustRunAfter(tasks.named("tagDockerServer"))
+}
+
+var publishDockerLatest = tasks.register<Exec>("publishDockerLatest") {
+    group = "Publishing"
+    description = "Publish latest docker server image to docker hub"
+    commandLine("docker", "push", "$imageName:latest")
+    mustRunAfter(tasks.named("publishDockerVersion"))
+}
+
+tasks.named("publish").configure {
+    dependsOn(publishDockerVersion)
+    dependsOn(publishDockerLatest)
+}

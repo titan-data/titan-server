@@ -63,44 +63,42 @@ class SshRemoteUtil : RemoteUtilProvider() {
             }
         }
 
-        return SshRemote(name = name, username = username, password = password, address = host,
-                port = port, path = path, keyFile = keyFile)
+        return Remote("ssh", name, mapOf("username" to username, "password" to password, "address" to host,
+                "port" to port, "path" to path, "keyFile" to keyFile))
     }
 
     override fun toUri(remote: Remote): Pair<String, Map<String, String>> {
-        remote as SshRemote
-
-        var uri = "ssh://${remote.username}"
-        if (remote.password != null) {
+        val props = remote.properties
+        var uri = "ssh://${props["username"]}"
+        if (props["password"] != null) {
             uri += ":*****"
         }
-        uri += "@${remote.address}"
-        if (remote.port != null) {
-            uri += ":${remote.port}"
+        uri += "@${props["address"]}"
+        if (props["port"] != null) {
+            uri += ":${props["port"]}"
         }
-        if (!remote.path.startsWith("/")) {
+        if (!(props["path"] as String).startsWith("/")) {
             uri += "/~/"
         }
-        uri += "${remote.path}"
+        uri += "${props["path"]}"
 
         val properties = mutableMapOf<String, String>()
-        if (remote.keyFile != null) {
-            properties["keyFile"] = remote.keyFile as String
+        if (props["keyFile"] != null) {
+            properties["keyFile"] = props["keyFile"] as String
         }
 
         return Pair(uri, properties)
     }
 
     override fun getParameters(remote: Remote): RemoteParameters {
-        remote as SshRemote
-
+        val props = remote.properties
         var key : String? = null
-        if (remote.keyFile != null) {
-            key = File(remote.keyFile).readText()
+        if (props["keyFile"] != null) {
+            key = File(props["keyFile"] as String).readText()
         }
 
         var password : String? = null
-        if (remote.password == null && remote.keyFile == null) {
+        if (props["password"] == null && props["keyFile"] == null) {
             val input = console?.readPassword("password: ")
                     ?: throw IllegalArgumentException("password required but no console available")
             password = String(input)

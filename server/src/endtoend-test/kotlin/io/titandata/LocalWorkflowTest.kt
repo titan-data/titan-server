@@ -14,12 +14,12 @@ import io.titandata.client.infrastructure.ClientException
 import io.titandata.models.Commit
 import io.titandata.models.Operation
 import io.titandata.models.ProgressEntry
+import io.titandata.models.Remote
 import io.titandata.models.RemoteParameters
 import io.titandata.models.Repository
 import io.titandata.models.VolumeCreateRequest
 import io.titandata.models.VolumeMountRequest
 import io.titandata.models.VolumeRequest
-import io.titandata.remote.nop.NopRemote
 import java.time.Duration
 import kotlinx.coroutines.time.delay
 
@@ -29,7 +29,7 @@ class LocalWorkflowTest : EndToEndTest() {
             state = Operation.State.COMPLETE, type = Operation.Type.PUSH)
 
     var volumeMountpoint: String? = null
-    val remote = NopRemote(name = "a")
+    val remote = Remote("nop", "a")
     val params = remoteUtil.getParameters(remote)
 
     override fun beforeSpec(spec: Spec) {
@@ -265,7 +265,7 @@ class LocalWorkflowTest : EndToEndTest() {
 
         "get remote succeeds" {
             val result = remoteApi.getRemote("foo", "a")
-            result.shouldBeInstanceOf<NopRemote>()
+            result.providers shouldBe "nop"
             result.name shouldBe "a"
         }
 
@@ -293,7 +293,7 @@ class LocalWorkflowTest : EndToEndTest() {
         }
 
         "update remote name succeeds" {
-            remoteApi.updateRemote("foo", "a", NopRemote(name = "b"))
+            remoteApi.updateRemote("foo", "a", Remote("nop", "b"))
             val result = remoteApi.getRemote("foo", "b")
             result.name shouldBe "b"
             result.provider shouldBe "nop"

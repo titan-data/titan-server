@@ -50,13 +50,12 @@ class S3WebRemoteUtil : RemoteUtilProvider() {
             url += "$path"
         }
 
-        return S3WebRemote(name = name, url = url)
+        return Remote("s3web", name, mapOf("url" to url))
     }
 
     override fun toUri(remote: Remote): Pair<String, Map<String, String>> {
-        remote as S3WebRemote
-
-        return Pair(remote.url.replace("http", "s3web"), mapOf())
+        val url = remote.properties["url"] as String
+        return Pair(url.replace("http", "s3web"), mapOf())
     }
 
     override fun getParameters(remote: Remote): RemoteParameters {

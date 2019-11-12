@@ -21,7 +21,7 @@ class NopRemoteUtil : RemoteUtilProvider() {
         for (p in properties) {
             throw IllegalArgumentException("Invalid property '${p.key}'")
         }
-        return NopRemote(name = name)
+        return Remote("nop", name)
     }
 
     override fun toUri(remote: Remote): Pair<String, Map<String, String>> {

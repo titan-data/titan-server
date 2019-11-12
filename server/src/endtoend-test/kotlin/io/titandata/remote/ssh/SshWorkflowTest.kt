@@ -13,6 +13,7 @@ import io.titandata.EndToEndTest
 import io.titandata.client.infrastructure.ClientException
 import io.titandata.client.infrastructure.ServerException
 import io.titandata.models.Commit
+import io.titandata.models.Remote
 import io.titandata.models.RemoteParameters
 import io.titandata.models.Repository
 import io.titandata.models.VolumeCreateRequest
@@ -88,12 +89,11 @@ class SshWorkflowTest : EndToEndTest() {
             dockerUtil.mkdirSsh("/bar")
 
             val remote = RemoteUtil().parseUri("${dockerUtil.getSshUri()}/bar", "origin", mapOf())
-            val sshRemote = remote as SshRemote
-            sshRemote.address shouldBe dockerUtil.getSshHost()
-            sshRemote.password shouldBe "root"
-            sshRemote.username shouldBe "root"
-            sshRemote.port shouldBe null
-            sshRemote.name shouldBe "origin"
+            remote.properties["address"] shouldBe dockerUtil.getSshHost()
+            remote.properties["password"] shouldBe "root"
+            remote.properties["username"] shouldBe "root"
+            remote.properties["port"] shouldBe null
+            remote.properties["name"] shouldBe "origin"
 
             remoteApi.createRemote("foo", remote)
         }
@@ -213,13 +213,13 @@ class SshWorkflowTest : EndToEndTest() {
         }
 
         "add remote without password succeeds" {
-            val remote = SshRemote(address = dockerUtil.getSshHost(), username = "root",
-                    name = "origin", path = "/bar")
-            remote.address shouldBe dockerUtil.getSshHost()
-            remote.password shouldBe null
-            remote.username shouldBe "root"
-            remote.port shouldBe null
-            remote.name shouldBe "origin"
+            val remote = Remote("ssh", "origin", mapOf("address" to dockerUtil.getSshHost(), "username" to "root",
+                    "path" to "/bar"))
+            remote.properties["address"] shouldBe dockerUtil.getSshHost()
+            remote.properties["password"] shouldBe null
+            remote.properties["username"] shouldBe "root"
+            remote.properties["port"] shouldBe null
+            remote.name shouldBe "orgin"
 
             remoteApi.createRemote("foo", remote)
         }

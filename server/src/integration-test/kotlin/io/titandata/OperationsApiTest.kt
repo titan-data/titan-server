@@ -37,8 +37,6 @@ import io.titandata.models.Operation
 import io.titandata.models.ProgressEntry
 import io.titandata.models.RemoteParameters
 import io.titandata.models.Repository
-import io.titandata.remote.nop.NopRemote
-import io.titandata.serialization.ModelTypeAdapters
 import io.titandata.storage.OperationData
 import io.titandata.storage.zfs.ZfsStorageProvider
 import java.time.Duration
@@ -62,7 +60,7 @@ class OperationsApiTest : StringSpec() {
 
     var engine = TestApplicationEngine(createTestEnvironment())
 
-    val gson = ModelTypeAdapters.configure(GsonBuilder()).create()
+    val gson = GsonBuilder().create()
 
     override fun beforeSpec(spec: Spec) {
         with(engine) {
@@ -81,7 +79,7 @@ class OperationsApiTest : StringSpec() {
         providers.metadata.clear()
         transaction {
             providers.metadata.createRepository(Repository(name = "foo", properties = mapOf()))
-            providers.metadata.addRemote("foo", NopRemote(name = "remote"))
+            providers.metadata.addRemote("foo", Remote("nop", "remote"))
             vs1 = providers.metadata.createVolumeSet("foo", null, true)
             vs2 = providers.metadata.createVolumeSet("foo")
         }

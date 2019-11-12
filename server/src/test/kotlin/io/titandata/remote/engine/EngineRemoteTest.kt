@@ -18,13 +18,12 @@ import io.mockk.impl.annotations.InjectMockKs
 import io.mockk.impl.annotations.MockK
 import io.mockk.impl.annotations.OverrideMockKs
 import io.titandata.models.Remote
-import io.titandata.serialization.ModelTypeAdapters
 import io.titandata.serialization.RemoteUtil
 import java.io.Console
 
 class EngineRemoteTest : StringSpec() {
 
-    val gson = ModelTypeAdapters.configure(GsonBuilder()).create()
+    val gson = GsonBuilder().create()
     val remoteUtil = RemoteUtil()
 
     fun parse(uri: String, map: Map<String, String>? = null): Remote {

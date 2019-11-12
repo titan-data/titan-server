@@ -14,7 +14,6 @@ import io.titandata.models.RemoteParameters
 import io.titandata.models.Volume
 import io.titandata.operation.OperationExecutor
 import io.titandata.remote.BaseRemoteProvider
-import io.titandata.serialization.ModelTypeAdapters
 import io.titandata.util.TagFilter
 import java.io.File
 import java.io.IOException
@@ -34,23 +33,23 @@ import okhttp3.Response
  */
 class S3WebRemoteProvider(val providers: ProviderModule) : BaseRemoteProvider() {
 
-    private val gson = ModelTypeAdapters.configure(GsonBuilder()).create()
+    private val gson = GsonBuilder().create()
     private val client = OkHttpClient()
 
     fun getFile(remote: Remote, path: String): Response {
-        remote as S3WebRemote
-        val request = Request.Builder().url("${remote.url}/$path").build()
+        val url = remote.properties["url"] as String
+        val request = Request.Builder().url("$url/$path").build()
         return client.newCall(request).execute()
     }
 
     private fun getAllCommits(remote: Remote): List<Commit> {
-        remote as S3WebRemote
         val response = getFile(remote, "titan")
+        val url = remote.properties["url"] as String
         val body = when (response.isSuccessful) {
             true -> response.body!!.string()
             false -> when (response.code) {
                 404 -> ""
-                else -> throw IOException("failed to get ${remote.url}/titan, error code ${response.code}")
+                else -> throw IOException("failed to get $url/titan, error code ${response.code}")
             }
         }
 
@@ -82,17 +81,17 @@ class S3WebRemoteProvider(val providers: ProviderModule) : BaseRemoteProvider() 
     }
 
     override fun pullVolume(operation: OperationExecutor, data: Any?, volume: Volume, path: String, scratchPath: String) {
-        val remote = operation.remote as S3WebRemote
         val desc = getVolumeDesc(volume)
         val commitId = operation.operation.commitId
+        val url = operation.remote.properties["url"] as String
 
         operation.addProgress(ProgressEntry(type = ProgressEntry.Type.START,
                 message = "Downloading archive for $desc"))
 
         val archivePath = "$commitId/${volume.name}.tar.gz"
-        val response = getFile(remote, archivePath)
+        val response = getFile(operation.remote, archivePath)
         if (!response.isSuccessful) {
-            throw IOException("failed to get ${remote.url}/$archivePath, error code ${response.code}")
+            throw IOException("failed to get $url/$archivePath, error code ${response.code}")
         }
         val archive = "$scratchPath/${volume.name}.tar.gz"
         val archiveFile = File(archive)

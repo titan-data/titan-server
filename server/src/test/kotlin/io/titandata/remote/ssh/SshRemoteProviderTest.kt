@@ -29,6 +29,7 @@ import io.titandata.exception.NoSuchObjectException
 import io.titandata.models.Commit
 import io.titandata.models.Operation
 import io.titandata.models.ProgressEntry
+import io.titandata.models.Remote
 import io.titandata.models.RemoteParameters
 import io.titandata.models.Repository
 import io.titandata.models.Volume
@@ -80,13 +81,16 @@ class SshRemoteProviderTest : StringSpec() {
 
     override fun testCaseOrder() = TestCaseOrder.Random
 
-    fun getRemote(): SshRemote {
-        return SshRemote(
+    fun getRemote(): Remote {
+        return Remote(
+                provider = "ssh",
                 name = "remote",
-                address = "localhost",
-                username = "root",
-                password = "root",
-                path = "/var/tmp"
+                properties = mapOf(
+                        "address" to "localhost",
+                        "username" to "root",
+                        "password" to "root",
+                        "path" to "/var/tmp"
+                )
         )
     }
 

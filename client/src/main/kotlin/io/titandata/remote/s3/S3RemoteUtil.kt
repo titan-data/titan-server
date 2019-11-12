@@ -70,37 +70,33 @@ class S3RemoteUtil : RemoteUtilProvider() {
             else -> path
         }
 
-        return S3Remote(name = name, bucket = bucket, path = objectPath, accessKey = accessKey,
-                secretKey = secretKey, region = region)
+        return Remote("s3", name, mapOf("bucket" to bucket, "path" to objectPath, "accessKey" to accessKey,
+                "secretKey" to secretKey, "region" to region))
     }
 
     override fun toUri(remote: Remote): Pair<String, Map<String, String>> {
-        remote as S3Remote
-
-        var uri = "s3://${remote.bucket}"
-        if (remote.path != null) {
-            uri += "/${remote.path}"
+        var uri = "s3://${remote.properties["bucket"]}"
+        if (remote.properties["path"] != null) {
+            uri += "/${remote.properties["path"]}"
         }
 
         var properties = mutableMapOf<String, String>()
-        if (remote.accessKey != null) {
-            properties["accessKey"] = remote.accessKey as String
+        if (remote.properties["accessKey"] != null) {
+            properties["accessKey"] = remote.properties["accessKey"] as String
         }
-        if (remote.secretKey != null) {
+        if (remote.properties["secretKey"] != null) {
             properties["secretKey"] = "*****"
         }
-        if (remote.region != null) {
-            properties["region"] = remote.region as String
+        if (remote.properties["region"] != null) {
+            properties["region"] = remote.properties["region"] as String
         }
 
         return Pair(uri, properties)
     }
 
     override fun getParameters(remote: Remote): RemoteParameters {
-        remote as S3Remote
-
-        var accessKey = remote.accessKey
-        var secretKey = remote.secretKey
+        var accessKey = remote.properties["accessKey"] as String?
+        var secretKey = remote.properties["secretKey"] as String?
         var sessionToken:String? = null
         if (accessKey == null || secretKey == null) {
             val creds = DefaultCredentialsProvider.create().resolveCredentials()
@@ -118,7 +114,7 @@ class S3RemoteUtil : RemoteUtilProvider() {
             }
         }
 
-        var region = remote.region
+        var region = remote.properties["region"] as String?
         if (region == null) {
             region = DefaultAwsRegionProviderChain().region?.id()
         }

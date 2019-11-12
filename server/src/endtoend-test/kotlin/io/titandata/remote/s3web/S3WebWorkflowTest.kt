@@ -21,12 +21,12 @@ import io.titandata.EndToEndTest
 import io.titandata.ProviderModule
 import io.titandata.client.infrastructure.ClientException
 import io.titandata.models.Commit
+import io.titandata.models.Remote
 import io.titandata.models.RemoteParameters
 import io.titandata.models.Repository
 import io.titandata.models.VolumeCreateRequest
 import io.titandata.models.VolumeMountRequest
 import io.titandata.models.VolumeRequest
-import io.titandata.remote.s3.S3Remote
 import io.titandata.remote.s3.S3RemoteProvider
 import java.io.ByteArrayInputStream
 import java.util.UUID
@@ -45,8 +45,8 @@ class S3WebWorkflowTest : EndToEndTest() {
             val s3 = AmazonS3ClientBuilder.standard().build()
 
             val request = ListObjectsRequest()
-                    .withBucketName(remote.bucket)
-                    .withPrefix(remote.path)
+                    .withBucketName(remote.properties["bucket"])
+                    .withPrefix(remote.properties["path"])
             var objects = s3.listObjects(request)
             while (true) {
                 val keys = objects.objectSummaries.map { it.key }
@@ -89,20 +89,20 @@ class S3WebWorkflowTest : EndToEndTest() {
         return Pair(bucket, "$path/$guid")
     }
 
-    private fun getS3Remote(): S3Remote {
+    private fun getS3Remote(): Remote {
         val (bucket, path) = getLocation()
         val creds = DefaultCredentialsProvider.create().resolveCredentials()
                 ?: throw SkipTestException("Unable to determine AWS credentials")
         val region = DefaultAwsRegionProviderChain().region
 
-        return S3Remote(name = "origin", bucket = bucket, path = path, accessKey = creds.accessKeyId(),
-                secretKey = creds.secretAccessKey(), region = region)
+        return Remote("s3", "origin", mapOf("bucket" to bucket, "path" to path, "accessKey" to creds.accessKeyId(),
+                "secretKey" to creds.secretAccessKey(), "region" to region)
     }
 
-    private fun getS3WebRemote(): S3WebRemote {
+    private fun getS3WebRemote(): Remote {
         val (bucket, path) = getLocation()
 
-        return S3WebRemote(name = "web", url = "http://$bucket.s3.amazonaws.com/$path")
+        return Remote("s3web", "web", mapOf("url" to "http://$bucket.s3.amazonaws.com/$path"))
     }
 
     init {

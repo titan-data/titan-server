@@ -18,14 +18,13 @@ import io.mockk.impl.annotations.InjectMockKs
 import io.mockk.impl.annotations.MockK
 import io.mockk.impl.annotations.OverrideMockKs
 import io.titandata.models.Remote
-import io.titandata.serialization.ModelTypeAdapters
 import io.titandata.serialization.RemoteUtil
 import java.io.Console
 import org.junit.rules.TemporaryFolder
 
 class SshRemoteTest : StringSpec() {
 
-    val gson = ModelTypeAdapters.configure(GsonBuilder()).create()
+    val gson = GsonBuilder().create()
     val remoteUtil = RemoteUtil()
 
     fun parse(uri: String, map: Map<String, String>? = null): Remote {
@@ -50,42 +49,36 @@ class SshRemoteTest : StringSpec() {
     init {
         "parsing full SSH URI succeeds" {
             val result = parse("ssh://user:pass@host:8022/path")
-            result.shouldBeInstanceOf<SshRemote>()
-            val remote = result as SshRemote
-            remote.name shouldBe "name"
-            remote.username shouldBe "user"
-            remote.password shouldBe "pass"
-            remote.address shouldBe "host"
-            remote.port shouldBe 8022
-            remote.path shouldBe "/path"
-            remote.keyFile shouldBe null
+            result.provider shouldBe "ssh"
+            result.name shouldBe "name"
+            result.properties["username"] shouldBe "user"
+            result.properties["password"] shouldBe "pass"
+            result.properties["address"] shouldBe "host"
+            result.properties["port"] shouldBe 8022
+            result.properties["path"] shouldBe "/path"
+            result.properties["keyFile"] shouldBe null
         }
 
         "parsing simple SSH URI succeeds" {
             val result = parse("ssh://user@host/path")
-            result.shouldBeInstanceOf<SshRemote>()
-            val remote = result as SshRemote
-            remote.name shouldBe "name"
-            remote.username shouldBe "user"
-            remote.password shouldBe null
-            remote.address shouldBe "host"
-            remote.port shouldBe null
-            remote.path shouldBe "/path"
-            remote.keyFile shouldBe null
+            result.provider shouldBe "ssh"
+            result.name shouldBe "name"
+            result.properties["username"] shouldBe "user"
+            result.properties["password"] shouldBe null
+            result.properties["address"] shouldBe "host"
+            result.properties["port"] shouldBe null
+            result.properties["path"] shouldBe "/path"
+            result.properties["keyFile"] shouldBe null
         }
 
         "specifying key file in properties succeeds" {
             val result = parse("ssh://user@host/path", mapOf("keyFile" to "~/.ssh/id_dsa"))
-            result.shouldBeInstanceOf<SshRemote>()
-            val remote = result as SshRemote
-            remote.keyFile shouldBe "~/.ssh/id_dsa"
+            result.properties["keyFile"] shouldBe "~/.ssh/id_dsa"
         }
 
         "parsing relative path succeeds" {
             val result = parse("ssh://user@host/~/relative/path")
-            result.shouldBeInstanceOf<SshRemote>()
-            val remote = result as SshRemote
-            remote.path shouldBe "relative/path"
+            result.properties["path"] shouldBe "relative/path"
         }
 
         "specifying password and key file fails" {
@@ -136,71 +129,45 @@ class SshRemoteTest : StringSpec() {
             }
         }
 
-        "serializing a ssh remote succeeds" {
-            val result = gson.toJson(SshRemote(name = "foo",
-                    address = "a", username = "u", password = "p", path = "/p"))
-            result.shouldBe("{\"provider\":\"ssh\",\"name\":\"foo\",\"address\":\"a\"," +
-                    "\"username\":\"u\",\"password\":\"p\",\"path\":\"/p\"}")
-        }
-
-        "serializing a ssh remote with key file succeeds" {
-            val result = gson.toJson(SshRemote(name = "foo",
-                    address = "a", username = "u", keyFile = "p", path = "/p"))
-            result.shouldBe("{\"provider\":\"ssh\",\"name\":\"foo\",\"address\":\"a\"," +
-                    "\"username\":\"u\",\"keyFile\":\"p\",\"path\":\"/p\"}")
-        }
-
-        "deserializing a ssh remote succeeds" {
-            val result = gson.fromJson("{\"provider\":\"ssh\",\"name\":\"foo\",\"address\":\"a\"," +
-                    "\"username\":\"u\",\"password\":\"p\",\"path\":\"/p\"}", Remote::class.java)
-            result.shouldBeInstanceOf<SshRemote>()
-            val remote = result as SshRemote
-            remote.provider shouldBe "ssh"
-            remote.name shouldBe "foo"
-            remote.username shouldBe "u"
-            remote.password shouldBe "p"
-            remote.path shouldBe "/p"
-        }
-
         "basic SSH remote to URI succeeds" {
-            val (uri, parameters) = remoteUtil.toUri(SshRemote(name = "name", username = "username", address = "host",
-                    path = "/path"))
+            val (uri, parameters) = remoteUtil.toUri(Remote("ssh", "name", mapOf("username" to "username", "address" to "host",
+                    "path" to "/path")))
             uri shouldBe "ssh://username@host/path"
             parameters.size shouldBe 0
         }
 
         "SSH remote with password to URI succeeds" {
-            val (uri, parameters) = remoteUtil.toUri(SshRemote(name = "name", username = "username", address = "host",
-                    path = "/path", password = "pass"))
+            val (uri, parameters) = remoteUtil.toUri(Remote("ssh", "name", mapOf("username" to "username", "address" to "host",
+                    "path" to "/path", "password" to "pass")))
             uri shouldBe "ssh://username:*****@host/path"
             parameters.size shouldBe 0
         }
 
         "SSH remote with port to URI succeeds" {
-            val (uri, parameters) = remoteUtil.toUri(SshRemote(name = "name", username = "username", address = "host",
-                    path = "/path", port = 812))
+            val (uri, parameters) = remoteUtil.toUri(Remote("ssh", "name", mapOf("username" to "username", "address" to "host",
+                    "path" to "/path", "port" to 812)))
             uri shouldBe "ssh://username@host:812/path"
             parameters.size shouldBe 0
         }
 
         "SSH remote with relative path to URI succeeds" {
-            val (uri, parameters) = remoteUtil.toUri(SshRemote(name = "name", username = "username", address = "host",
-                    path = "path"))
+            val (uri, parameters) = remoteUtil.toUri(Remote("ssh", "name", mapOf("username" to "username", "address" to "host",
+                    "path" to "path")))
             uri shouldBe "ssh://username@host/~/path"
             parameters.size shouldBe 0
         }
 
         "SSH remote with keyfile to URI succeeds" {
-            val (uri, parameters) = remoteUtil.toUri(SshRemote(name = "name", username = "username", address = "host",
-                    path = "/path", keyFile = "keyfile"))
+            val (uri, parameters) = remoteUtil.toUri(Remote("ssh", "name", mapOf("username" to "username", "address" to "host",
+                    "path" to "/path", "keyFile" to "keyfile")))
             uri shouldBe "ssh://username@host/path"
             parameters.size shouldBe 1
             parameters["keyFile"] shouldBe "keyfile"
         }
 
         "get basic SSH get parameters succeeds" {
-            val params = remoteUtil.getParameters(SshRemote(name = "name", username = "username", address = "host",
-                    path = "/path", password = "pass"))
+            val params = remoteUtil.getParameters(Remote("ssh", "name", mapOf("username" to "username", "address" to "host",
+                    "path" to "/path", "password" to "pass")))
             params.provider shouldBe "ssh"
             params.properties["password"] shouldBe null
             params.properties["key"] shouldBe null
@@ -212,8 +179,8 @@ class SshRemoteTest : StringSpec() {
             try {
                 val keyFile = temporaryFolder.newFile()
                 keyFile.writeText("KEY")
-                val params = remoteUtil.getParameters(SshRemote(name = "name", username = "username", address = "host",
-                        path = "/path", keyFile = keyFile.absolutePath))
+                val params = remoteUtil.getParameters(Remote("ssh", "name", mapOf("username" to "username", "address" to "host",
+                        "path" to "/path", "keyFile" to keyFile.absolutePath)))
                 params.properties["password"] shouldBe null
                 params.properties["key"] shouldBe "KEY"
             } finally {
@@ -223,8 +190,8 @@ class SshRemoteTest : StringSpec() {
 
         "prompt for SSH password succeeds" {
             every { console.readPassword(any()) } returns "pass".toCharArray()
-            val params = sshUtil.getParameters(SshRemote(name = "name", username = "username", address = "host",
-                    path = "/path"))
+            val params = sshUtil.getParameters(Remote("ssh", "name", mapOf("username" to "username", "address" to "host",
+                    "path" to "/path")))
             params.properties["password"] shouldBe "pass"
             params.properties["key"] shouldBe null
         }

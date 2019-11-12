@@ -22,6 +22,7 @@ import io.titandata.ProviderModule
 import io.titandata.client.infrastructure.ClientException
 import io.titandata.client.infrastructure.ServerException
 import io.titandata.models.Commit
+import io.titandata.models.Remote
 import io.titandata.models.RemoteParameters
 import io.titandata.models.Repository
 import io.titandata.models.VolumeCreateRequest
@@ -87,14 +88,14 @@ class S3WorkflowTest : EndToEndTest() {
         return Pair(bucket, "$path/$guid")
     }
 
-    private fun getRemote(): S3Remote {
+    private fun getRemote(): Remote {
         val (bucket, path) = getLocation()
         val creds = DefaultCredentialsProvider.create().resolveCredentials()
                 ?: throw SkipTestException("Unable to determine AWS credentials")
         val region = DefaultAwsRegionProviderChain().region
 
-        return S3Remote(name = "origin", bucket = bucket, path = path, accessKey = creds.accessKeyId(),
-                secretKey = creds.secretAccessKey(), region = region)
+        return Remote("s3", "origin", mapOf("bucket" to bucket, "path" to path, "accessKey" to creds.accessKeyId(),
+                "secretKey" to creds.secretAccessKey(), "region" to region))
     }
 
     init {
@@ -287,7 +288,7 @@ class S3WorkflowTest : EndToEndTest() {
 
         "add remote without keys succeeds" {
             val defaultRemote = getRemote()
-            val remote = S3Remote(name = "origin", bucket = defaultRemote.bucket, path = defaultRemote.path)
+            val remote = Remote("s3", "origin", mapOf("bucket" to defaultRemote.bucket, "path" to defaultRemote.path))
             remoteApi.createRemote("foo", remote)
         }
 

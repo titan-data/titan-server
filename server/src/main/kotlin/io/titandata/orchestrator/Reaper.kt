@@ -118,7 +118,7 @@ class Reaper(val providers: ProviderModule) : Runnable {
                 providers.metadata.listVolumes(vs)
             }
             for (vol in volumes) {
-                providers.storage.deleteVolume(vs, vol.name)
+                providers.storage.deleteVolume(vs, vol.name, vol.config)
                 transaction {
                     providers.metadata.deleteVolume(vs, vol.name)
                 }
@@ -140,9 +140,9 @@ class Reaper(val providers: ProviderModule) : Runnable {
         }
         var ret = false
         for ((vs, vol) in volumes) {
-            providers.storage.deleteVolume(vs, vol)
+            providers.storage.deleteVolume(vs, vol.name, vol.config)
             transaction {
-                providers.metadata.deleteVolume(vs, vol)
+                providers.metadata.deleteVolume(vs, vol.name)
             }
             ret = true
         }

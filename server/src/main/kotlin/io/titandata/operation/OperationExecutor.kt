@@ -10,7 +10,7 @@ import io.titandata.models.Operation
 import io.titandata.models.ProgressEntry
 import io.titandata.models.Remote
 import io.titandata.models.RemoteParameters
-import io.titandata.models.docker.DockerVolume
+import io.titandata.models.Volume
 import io.titandata.remote.RemoteProvider
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.slf4j.LoggerFactory
@@ -92,14 +92,19 @@ class OperationExecutor(
         val operationId = operation.id
             val volumes = transaction {
                 val vols = providers.metadata.listVolumes(operationId)
-                providers.metadata.createVolume(operation.id, DockerVolume(name = "_scratch"))
+                providers.metadata.createVolume(operation.id, Volume("_scratch"))
                 vols
             }
-        providers.storage.createVolume(operation.id, "_scratch")
+        val scratchConfig = providers.storage.createVolume(operation.id, "_scratch")
+        transaction {
+            providers.metadata.updateVolumeConfig(operationId, "_scratch", scratchConfig)
+        }
         try {
-            val scratch = providers.storage.mountVolume(operationId, "_scratch")
+            providers.storage.activateVolume(operationId, "_scratch", scratchConfig)
+            val scratch = scratchConfig["mountpoint"] as String
             for (volume in volumes) {
-                val mountpoint = providers.storage.mountVolume(operationId, volume.name)
+                providers.storage.activateVolume(operationId, volume.name, volume.config)
+                val mountpoint = volume.config["mountpoint"] as String
                 try {
                     if (operation.type == Operation.Type.PULL) {
                         provider.pullVolume(this, data, volume, mountpoint, scratch)
@@ -107,12 +112,12 @@ class OperationExecutor(
                         provider.pushVolume(this, data, volume, mountpoint, scratch)
                     }
                 } finally {
-                    providers.storage.unmountVolume(operationId, volume.name)
+                    providers.storage.deactivateVolume(operationId, volume.name, volume.config)
                 }
             }
         } finally {
-            providers.storage.unmountVolume(operationId, "_scratch")
-            providers.storage.deleteVolume(operationId, "_scratch")
+            providers.storage.deactivateVolume(operationId, "_scratch", scratchConfig)
+            providers.storage.deleteVolume(operationId, "_scratch", scratchConfig)
             transaction {
                 providers.metadata.deleteVolume(operationId, "_scratch")
             }

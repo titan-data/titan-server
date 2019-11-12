@@ -31,14 +31,14 @@ class ZfsStorageProvider(
 
     internal val executor = CommandExecutor()
 
-    /*
+    /**
      * Create a new volume set. This is simply an empty placeholder volumeset.
      */
     override fun createVolumeSet(volumeSet: String) {
         executor.exec("zfs", "create", "-o", "mountpoint=legacy", "$poolName/data/$volumeSet")
     }
 
-    /*
+    /**
      * Clone a volumeset from an existing commit. We create the plain volume set, and then go about cloning each
      * volume from the old volumeset into the new space.
      */
@@ -55,7 +55,7 @@ class ZfsStorageProvider(
         }
     }
 
-    /*
+    /**
      * Delete a volume set. This should only be invoked from the reaper after all volumes have been deleted.
      */
     override fun deleteVolumeSet(volumeSet: String) {
@@ -85,7 +85,7 @@ class ZfsStorageProvider(
         )
     }
 
-    /*
+    /**
      * Create a new commit. Since we keep all volumes underneath the volume set, we can just do a recursive snapshot
      * of the set.
      */
@@ -93,6 +93,9 @@ class ZfsStorageProvider(
         executor.exec("zfs", "snapshot", "-r", "$poolName/data/$volumeSet@$commitId")
     }
 
+    /**
+     * Fetch size information about a commit.
+     */
     override fun getCommitStatus(volumeSet: String, commitId: String, volumeNames: List<String>): CommitStatus {
         var logicalSize = 0L
         var actualSize = 0L
@@ -111,7 +114,7 @@ class ZfsStorageProvider(
         return CommitStatus(logicalSize = logicalSize, actualSize = actualSize, uniqueSize = uniqueSize)
     }
 
-    /*
+    /**
      * Delete a commit. The reaper will have ensured that any clones have been deleted prior to invoking this. We
      * can just recursively delete the snapshot at the level of the volume set.
      */
@@ -122,8 +125,9 @@ class ZfsStorageProvider(
     /**
      * Create a new volume. Not much to do here, simply create a new dataset within the volume set.
      */
-    override fun createVolume(volumeSet: String, volumeName: String) {
+    override fun createVolume(volumeSet: String, volumeName: String): Map<String, Any> {
         executor.exec("zfs", "create", "$poolName/data/$volumeSet/$volumeName")
+        return mapOf("mountpoint" to "/var/lib/$poolName/mnt/$volumeSet/$volumeName")
     }
 
     /**
@@ -131,30 +135,28 @@ class ZfsStorageProvider(
      * repository is about to be destroyed. It is invalid to continue to use a repository
      * that has had volumes removed in the middle of its lifecycle.
      */
-    override fun deleteVolume(volumeSet: String, volumeName: String) {
+    override fun deleteVolume(volumeSet: String, volumeName: String, config: Map<String, Any>) {
         executor.exec("zfs", "destroy", "$poolName/data/$volumeSet/$volumeName")
-        executor.exec("rmdir", getVolumeMountpoint(volumeSet, volumeName))
+        executor.exec("rmdir", config["mountpoint"] as String)
     }
 
-    override fun getVolumeMountpoint(volumeSet: String, volumeName: String): String {
-        return "/var/lib/$poolName/mnt/$volumeSet/$volumeName"
-    }
-
-    override fun mountVolume(volumeSet: String, volumeName: String): String {
-        executor.exec("mkdir", "-p", getVolumeMountpoint(volumeSet, volumeName))
+    /**
+     * For the local storage provider, activating a volume is equivalent to mountint it.
+     */
+    override fun activateVolume(volumeSet: String, volumeName: String, config: Map<String, Any>) {
+        executor.exec("mkdir", "-p", config["mountpoint"] as String)
         executor.exec("mount", "-t", "zfs", "$poolName/data/$volumeSet/$volumeName",
-                getVolumeMountpoint(volumeSet, volumeName))
-        return getVolumeMountpoint(volumeSet, volumeName)
+                config["mountpoint"] as String)
     }
 
-    /*
+    /**
      * When unmounting volumes, we make sure that it is idempotent (ignoring cases where it's already
      * unmounted), and also take the opportunity to dump file usage (via lsof) if we get an EBUSY
      * error.
      */
-    override fun unmountVolume(volumeSet: String, volumeName: String) {
+    override fun deactivateVolume(volumeSet: String, volumeName: String, config: Map<String, Any>) {
         try {
-            executor.exec("umount", getVolumeMountpoint(volumeSet, volumeName))
+            executor.exec("umount", config["mountpoint"] as String)
         } catch (e: CommandException) {
             if ("not mounted" in e.output) {
                 return // Ignore

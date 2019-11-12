@@ -27,7 +27,7 @@ import io.titandata.exception.NoSuchObjectException
 import io.titandata.exception.ObjectExistsException
 import io.titandata.models.Commit
 import io.titandata.models.Repository
-import io.titandata.models.docker.DockerVolume
+import io.titandata.models.Volume
 import io.titandata.storage.zfs.ZfsStorageProvider
 import org.jetbrains.exposed.sql.transactions.transaction
 
@@ -52,10 +52,10 @@ class CommitOrchestratorTest : StringSpec() {
     override fun beforeTest(testCase: TestCase) {
         providers.metadata.clear()
         transaction {
-            providers.metadata.createRepository(Repository(name = "foo"))
+            providers.metadata.createRepository(Repository("foo"))
             vs = providers.metadata.createVolumeSet("foo", null, true)
-            providers.metadata.createVolume(vs, DockerVolume(name = "vol1"))
-            providers.metadata.createVolume(vs, DockerVolume(name = "vol2"))
+            providers.metadata.createVolume(vs, Volume("vol1"))
+            providers.metadata.createVolume(vs, Volume("vol2"))
         }
         val ret = MockKAnnotations.init(this)
         every { zfsStorageProvider.createCommit(any(), any(), any()) } just Runs
@@ -236,8 +236,7 @@ class CommitOrchestratorTest : StringSpec() {
 
         "checkout commit succeeds" {
             every { zfsStorageProvider.cloneVolumeSet(any(), any(), any(), any()) } just Runs
-            every { zfsStorageProvider.createVolume(any(), any()) } just Runs
-            every { zfsStorageProvider.getVolumeMountpoint(any(), any()) } returns ""
+            every { zfsStorageProvider.createVolume(any(), any()) } returns emptyMap()
             every { reaper.signal() } just Runs
             providers.commits.createCommit("foo", Commit("id"))
             providers.commits.checkoutCommit("foo", "id")

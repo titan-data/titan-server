@@ -16,9 +16,7 @@ import io.titandata.models.ProgressEntry
 import io.titandata.models.Remote
 import io.titandata.models.RemoteParameters
 import io.titandata.models.Repository
-import io.titandata.models.docker.DockerVolumeCreateRequest
-import io.titandata.models.docker.DockerVolumeMountRequest
-import io.titandata.models.docker.DockerVolumeRequest
+import io.titandata.models.Volume
 import java.time.Duration
 import kotlinx.coroutines.time.delay
 
@@ -83,69 +81,52 @@ class LocalWorkflowTest : EndToEndTest() {
         }
 
         "create volume succeeds" {
-            val repo = DockerVolumeCreateRequest(
-                    name = "foo/vol",
-                    opts = mapOf("a" to "b")
-            )
-            val response = volumeApi.createVolume(repo)
-            response.err shouldBe ""
+            val response = volumeApi.createVolume("foo", Volume("vol", mapOf("a" to "b")))
+            response.name shouldBe "vol"
         }
 
         "create volume for unknown repository fails" {
             val exception = shouldThrow<ClientException> {
-                volumeApi.createVolume(DockerVolumeCreateRequest(name = "bar/vol", opts = mapOf()))
+                volumeApi.createVolume("bar", Volume("vol"))
             }
-            exception.message shouldNotBe ""
+            exception.code shouldBe "NoSuchObjectException"
         }
 
         "create duplicate volume fails" {
             val exception = shouldThrow<ClientException> {
-                volumeApi.createVolume(DockerVolumeCreateRequest(name = "foo/vol", opts = mapOf()))
+                volumeApi.createVolume("foo", Volume("vol"))
             }
-            exception.message shouldNotBe ""
-        }
-
-        "get volume capabilities returns local scope" {
-            val response = volumeApi.getCapabilities()
-            response.capabilities!!.scope shouldBe "local"
-        }
-
-        "plugin activate returns VolumeDriver" {
-            val response = volumeApi.pluginActivate()
-            response.implements.size shouldBe 1
-            response.implements[0] shouldBe "VolumeDriver"
+            exception.code shouldBe "ObjectExistsException"
         }
 
         "get volume succeeds" {
-            val response = volumeApi.getVolume(DockerVolumeRequest(name = "foo/vol"))
-            response.volume shouldNotBe null
-            response.volume.mountpoint shouldStartWith "/var/lib/test/mnt/"
-            response.volume.name shouldBe "foo/vol"
-            response.volume.properties shouldNotBe null
-            response.volume.properties["a"] shouldBe "b"
+            val vol = volumeApi.getVolume("foo", "vol")
+            volumeMountpoint = vol.config["mountpoint"] as String
+            volumeMountpoint shouldStartWith "/var/lib/test/mnt/"
+            vol.name shouldBe "vol"
+            vol.properties["a"] shouldBe "b"
         }
 
         "get non-existent volume fails" {
-            shouldThrow<ClientException> {
-                volumeApi.getVolume(DockerVolumeRequest(name = "bar/vol"))
+            val exception = shouldThrow<ClientException> {
+                volumeApi.getVolume("bar", "vol")
             }
+            exception.code shouldBe "NoSuchObjectException"
         }
 
         "volume appears in volume list" {
-            val response = volumeApi.listVolumes()
-            response.volumes.size shouldBe 1
-            response.volumes[0].name shouldBe "foo/vol"
+            val volumes = volumeApi.listVolumes("foo")
+            volumes.size shouldBe 1
+            volumes[0].name shouldBe "vol"
         }
 
         "mount volume succeeds" {
-            val response = volumeApi.mountVolume(DockerVolumeMountRequest(name = "foo/vol", ID = "id"))
-            response.mountpoint shouldStartWith "/var/lib/test/mnt/"
-            volumeMountpoint = response.mountpoint
+            volumeApi.activateVolume("foo", "vol")
         }
 
         "create and write volume file succeeds" {
-            dockerUtil.writeFile("foo/vol", "testfile", "Hello")
-            val result = dockerUtil.readFile("foo/vol", "testfile")
+            dockerUtil.writeFile("foo", "vol", "testfile", "Hello")
+            val result = dockerUtil.readFile("foo", "vol", "testfile")
             result shouldBe "Hello\n"
         }
 
@@ -231,23 +212,23 @@ class LocalWorkflowTest : EndToEndTest() {
         }
 
         "write new local value succeeds" {
-            dockerUtil.writeFile("foo/vol", "testfile", "Goodbye")
-            val result = dockerUtil.readFile("foo/vol", "testfile")
+            dockerUtil.writeFile("foo", "vol", "testfile", "Goodbye")
+            val result = dockerUtil.readFile("foo", "vol", "testfile")
             result shouldBe "Goodbye\n"
         }
 
         "unmount volume succeeds" {
-            volumeApi.unmountVolume(DockerVolumeMountRequest(name = "foo/vol"))
+            volumeApi.deactivateVolume("foo", "vol")
         }
 
         "unmount volume is idempotent" {
-            volumeApi.unmountVolume(DockerVolumeMountRequest(name = "foo/vol"))
+            volumeApi.deactivateVolume("foo", "vol")
         }
 
         "checkout commit and old contents are present" {
             commitApi.checkoutCommit("foo", "id")
-            volumeApi.mountVolume(DockerVolumeMountRequest(name = "foo/vol"))
-            val result = dockerUtil.readFile("foo/vol", "testfile")
+            volumeApi.activateVolume("foo", "vol")
+            val result = dockerUtil.readFile("foo", "vol", "testfile")
             result shouldBe "Hello\n"
         }
 
@@ -458,8 +439,8 @@ class LocalWorkflowTest : EndToEndTest() {
         }
 
         "delete volume succeeds" {
-            volumeApi.unmountVolume(DockerVolumeMountRequest(name = "foo/vol"))
-            volumeApi.removeVolume(DockerVolumeRequest(name = "foo/vol"))
+            volumeApi.deactivateVolume("foo", "vol")
+            volumeApi.deleteVolume("foo", "vol")
         }
 
         "delete repository succeeds" {

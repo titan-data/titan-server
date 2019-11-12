@@ -9,7 +9,6 @@ import com.delphix.sdk.Http
 import com.delphix.sdk.objects.DeleteParameters
 import io.kotlintest.SkipTestException
 import io.kotlintest.Spec
-import io.kotlintest.matchers.string.shouldStartWith
 import io.kotlintest.shouldBe
 import io.kotlintest.shouldThrow
 import io.titandata.EndToEndTest
@@ -19,9 +18,7 @@ import io.titandata.models.ProgressEntry
 import io.titandata.models.Remote
 import io.titandata.models.RemoteParameters
 import io.titandata.models.Repository
-import io.titandata.models.docker.DockerVolumeCreateRequest
-import io.titandata.models.docker.DockerVolumeMountRequest
-import io.titandata.models.docker.DockerVolumeRequest
+import io.titandata.models.Volume
 import java.time.OffsetDateTime
 import java.time.format.DateTimeFormatter
 import org.json.JSONObject
@@ -92,31 +89,17 @@ class EngineWorkflowTest : EndToEndTest() {
         }
 
         "create new repository succeeds" {
-            val repo = Repository(
-                    name = "foo",
-                    properties = mapOf()
-            )
-            val newRepo = repoApi.createRepository(repo)
-            newRepo.name shouldBe "foo"
+            repoApi.createRepository(Repository("foo"))
         }
 
-        "create volume succeeds" {
-            val repo = DockerVolumeCreateRequest(
-                    name = "foo/vol",
-                    opts = mapOf()
-            )
-            val response = volumeApi.createVolume(repo)
-            response.err shouldBe ""
-        }
-
-        "mount volume succeeds" {
-            val response = volumeApi.mountVolume(DockerVolumeMountRequest(name = "foo/vol", ID = "id"))
-            response.mountpoint shouldStartWith "/var/lib/test/mnt/"
+        "create and mount volume succeeds" {
+            volumeApi.createVolume("foo", Volume("vol"))
+            volumeApi.activateVolume("foo", "vol")
         }
 
         "create and write volume file succeeds" {
-            dockerUtil.writeFile("foo/vol", "testfile", "Hello")
-            val result = dockerUtil.readFile("foo/vol", "testfile")
+            dockerUtil.writeFile("foo", "vol", "testfile", "Hello")
+            val result = dockerUtil.readFile("foo", "vol", "testfile")
             result shouldBe "Hello\n"
         }
 
@@ -185,8 +168,8 @@ class EngineWorkflowTest : EndToEndTest() {
         }
 
         "write new local value succeeds" {
-            dockerUtil.writeFile("foo/vol", "testfile", "Goodbye")
-            val result = dockerUtil.readFile("foo/vol", "testfile")
+            dockerUtil.writeFile("foo", "vol", "testfile", "Goodbye")
+            val result = dockerUtil.readFile("foo", "vol", "testfile")
             result shouldBe "Goodbye\n"
         }
 
@@ -211,13 +194,13 @@ class EngineWorkflowTest : EndToEndTest() {
         }
 
         "checkout commit succeeds" {
-            volumeApi.unmountVolume(DockerVolumeMountRequest(name = "foo/vol"))
+            volumeApi.deactivateVolume("foo", "vol")
             commitApi.checkoutCommit("foo", "id")
-            volumeApi.mountVolume(DockerVolumeMountRequest(name = "foo/vol"))
+            volumeApi.activateVolume("foo", "vol")
         }
 
         "original file contents are present" {
-            val result = dockerUtil.readFile("foo/vol", "testfile")
+            val result = dockerUtil.readFile("foo", "vol", "testfile")
             result shouldBe "Hello\n"
         }
 
@@ -249,8 +232,8 @@ class EngineWorkflowTest : EndToEndTest() {
         }
 
         "delete volume succeeds" {
-            volumeApi.unmountVolume(DockerVolumeMountRequest(name = "foo/vol"))
-            volumeApi.removeVolume(DockerVolumeRequest(name = "foo/vol"))
+            volumeApi.deactivateVolume("foo", "vol")
+            volumeApi.deleteVolume("foo", "vol")
         }
 
         "delete repository succeeds" {

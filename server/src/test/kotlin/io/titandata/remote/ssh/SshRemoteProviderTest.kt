@@ -32,7 +32,7 @@ import io.titandata.models.ProgressEntry
 import io.titandata.models.Remote
 import io.titandata.models.RemoteParameters
 import io.titandata.models.Repository
-import io.titandata.models.docker.DockerVolume
+import io.titandata.models.Volume
 import io.titandata.operation.OperationExecutor
 import io.titandata.storage.OperationData
 import io.titandata.storage.zfs.ZfsStorageProvider
@@ -181,19 +181,18 @@ class SshRemoteProviderTest : StringSpec() {
             val vs = transaction {
                 providers.metadata.createRepository(Repository(name = "repo"))
                 val vs = providers.metadata.createVolumeSet("repo", null, true)
-                providers.metadata.createVolume(vs, DockerVolume(name = "v0", properties = emptyMap()))
-                providers.metadata.createVolume(vs, DockerVolume(name = "v1", properties = mapOf("path" to "/volume")))
+                providers.metadata.createVolume(vs, Volume("v0", config = mapOf("mountpoint" to "/mountpoint")))
+                providers.metadata.createVolume(vs, Volume(name = "v1", properties = mapOf("path" to "/volume"), config = mapOf("mountpoint" to "/mountpoint")))
                 providers.metadata.createCommit("repo", vs, Commit("id"))
                 vs
             }
             val data = createOperation(vs, Operation.Type.PUSH)
             val operationExecutor = OperationExecutor(providers, data.operation, "repo", getRemote(), data.params)
 
-            every { zfsStorageProvider.mountVolume(any(), any()) } returns "/mountpoint"
-            every { zfsStorageProvider.mountVolume(any(), "_scratch") } returns "/scratch"
-            every { zfsStorageProvider.unmountVolume(any(), any()) } just Runs
-            every { zfsStorageProvider.createVolume(any(), any()) } just Runs
-            every { zfsStorageProvider.deleteVolume(any(), any()) } just Runs
+            every { zfsStorageProvider.activateVolume(any(), any(), any()) } just Runs
+            every { zfsStorageProvider.deactivateVolume(any(), any(), any()) } just Runs
+            every { zfsStorageProvider.createVolume(any(), any()) } returns mapOf("mountpoint" to "/mountpoint")
+            every { zfsStorageProvider.deleteVolume(any(), any(), any()) } just Runs
 
             val process = mockk<Process>()
             every { process.inputStream } answers { getResource("/rsync2.out") }
@@ -223,21 +222,20 @@ class SshRemoteProviderTest : StringSpec() {
 
         "run operation fails if rsync fails" {
             val vs = transaction {
-                providers.metadata.createRepository(Repository(name = "repo"))
+                providers.metadata.createRepository(Repository("repo"))
                 val vs = providers.metadata.createVolumeSet("repo", null, true)
-                providers.metadata.createVolume(vs, DockerVolume(name = "v0", properties = emptyMap()))
-                providers.metadata.createVolume(vs, DockerVolume(name = "v1", properties = mapOf("path" to "/volume")))
+                providers.metadata.createVolume(vs, Volume("v0", config = mapOf("mountpoint" to "/mountpoint")))
+                providers.metadata.createVolume(vs, Volume("v1", properties = mapOf("path" to "/volume"), config = mapOf("mountpoint" to "/mountpoint")))
                 providers.metadata.createCommit("repo", vs, Commit("id"))
                 vs
             }
             val data = createOperation(vs, Operation.Type.PUSH)
             val operationExecutor = OperationExecutor(providers, data.operation, "repo", getRemote(), data.params)
 
-            every { zfsStorageProvider.mountVolume(any(), any()) } returns "/mountpoint"
-            every { zfsStorageProvider.mountVolume(any(), "_scratch") } returns "/scratch"
-            every { zfsStorageProvider.unmountVolume(any(), any()) } just Runs
-            every { zfsStorageProvider.createVolume(any(), any()) } just Runs
-            every { zfsStorageProvider.deleteVolume(any(), any()) } just Runs
+            every { zfsStorageProvider.activateVolume(any(), any(), any()) } just Runs
+            every { zfsStorageProvider.deactivateVolume(any(), any(), any()) } just Runs
+            every { zfsStorageProvider.createVolume(any(), any()) } returns mapOf("mountpoint" to "/mountpoint")
+            every { zfsStorageProvider.deleteVolume(any(), any(), any()) } just Runs
 
             val process = mockk<Process>()
             every { process.inputStream } returns ByteArrayInputStream("".toByteArray())

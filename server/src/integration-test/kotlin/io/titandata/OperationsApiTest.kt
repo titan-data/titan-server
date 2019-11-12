@@ -35,6 +35,7 @@ import io.titandata.models.Commit
 import io.titandata.models.Error
 import io.titandata.models.Operation
 import io.titandata.models.ProgressEntry
+import io.titandata.models.Remote
 import io.titandata.models.RemoteParameters
 import io.titandata.models.Repository
 import io.titandata.storage.OperationData

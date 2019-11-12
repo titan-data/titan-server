@@ -7,7 +7,6 @@ package io.titandata.remote.ssh
 import com.google.gson.GsonBuilder
 import io.kotlintest.TestCase
 import io.kotlintest.TestResult
-import io.kotlintest.matchers.types.shouldBeInstanceOf
 import io.kotlintest.shouldBe
 import io.kotlintest.shouldThrow
 import io.kotlintest.specs.StringSpec

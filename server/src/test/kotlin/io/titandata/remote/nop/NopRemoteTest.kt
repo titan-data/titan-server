@@ -5,7 +5,6 @@
 package io.titandata.remote.nop
 
 import com.google.gson.GsonBuilder
-import com.google.gson.JsonParseException
 import io.kotlintest.shouldBe
 import io.kotlintest.shouldThrow
 import io.kotlintest.specs.StringSpec
@@ -37,24 +36,6 @@ class NopRemoteTest : StringSpec() {
         "parsing nop URI authority fails" {
             shouldThrow<IllegalArgumentException> {
                 parse("nop://foo")
-            }
-        }
-
-        "serializing a nop remote succeeds" {
-            val result = gson.toJson(Remote("nop", "foo"))
-            result.shouldBe("{\"provider\":\"nop\",\"name\":\"foo\"}")
-        }
-
-        "deserializing a nop remote succeeds" {
-            val result = gson.fromJson("{\"provider\":\"nop\",\"name\":\"foo\"}", Remote::class.java)
-            result.provider shouldBe "nop"
-            result.name shouldBe "foo"
-        }
-
-        "deserializing an unknown provider type fails" {
-            shouldThrow<JsonParseException> {
-                gson.fromJson("{\"provider\":\"blah\",\"name\":\"foo\"}",
-                        Remote::class.java)
             }
         }
 

@@ -45,13 +45,13 @@ class S3WebWorkflowTest : EndToEndTest() {
             val s3 = AmazonS3ClientBuilder.standard().build()
 
             val request = ListObjectsRequest()
-                    .withBucketName(remote.properties["bucket"])
-                    .withPrefix(remote.properties["path"])
+                    .withBucketName(remote.properties["bucket"] as String)
+                    .withPrefix(remote.properties["path"] as String)
             var objects = s3.listObjects(request)
             while (true) {
                 val keys = objects.objectSummaries.map { it.key }
                 if (keys.size != 0) {
-                    s3.deleteObjects(DeleteObjectsRequest(remote.bucket).withKeys(*keys.toTypedArray()))
+                    s3.deleteObjects(DeleteObjectsRequest(remote.properties["bucket"] as String).withKeys(*keys.toTypedArray()))
                 }
                 if (objects.isTruncated()) {
                     objects = s3.listNextBatchOfObjects(objects)
@@ -96,7 +96,7 @@ class S3WebWorkflowTest : EndToEndTest() {
         val region = DefaultAwsRegionProviderChain().region
 
         return Remote("s3", "origin", mapOf("bucket" to bucket, "path" to path, "accessKey" to creds.accessKeyId(),
-                "secretKey" to creds.secretAccessKey(), "region" to region)
+                "secretKey" to creds.secretAccessKey(), "region" to region))
     }
 
     private fun getS3WebRemote(): Remote {

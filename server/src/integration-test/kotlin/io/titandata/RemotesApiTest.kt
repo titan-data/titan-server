@@ -26,7 +26,6 @@ import io.mockk.impl.annotations.InjectMockKs
 import io.mockk.impl.annotations.OverrideMockKs
 import io.titandata.models.Remote
 import io.titandata.models.Repository
-import io.titandata.remote.engine.EngineRemote
 import java.util.concurrent.TimeUnit
 import org.jetbrains.exposed.sql.transactions.transaction
 
@@ -82,14 +81,14 @@ class RemotesApiTest : StringSpec() {
             transaction {
                 providers.metadata.createRepository(Repository(name = "repo", properties = mapOf()))
                 providers.metadata.addRemote("repo", Remote("nop", "foo"))
-                providers.metadata.addRemote("repo", EngineRemote(name = "bar", address = "a", username = "u", password = "p", repository = "r"))
+                providers.metadata.addRemote("repo", Remote("engine", "bar", mapOf("address" to "a", "username" to "u", "password" to "p", "repository" to "r")))
             }
             with(engine.handleRequest(HttpMethod.Get, "/v1/repositories/repo/remotes")) {
                 response.status() shouldBe HttpStatusCode.OK
                 response.contentType().toString() shouldBe "application/json; charset=UTF-8"
-                response.content shouldBe "[{\"provider\":\"nop\",\"name\":\"foo\"}," +
-                        "{\"provider\":\"engine\",\"name\":\"bar\",\"address\":\"a\"," +
-                        "\"username\":\"u\",\"password\":\"p\",\"repository\":\"r\"}]"
+                response.content shouldBe "[{\"provider\":\"nop\",\"name\":\"foo\",\"properties\":{}}," +
+                        "{\"provider\":\"engine\",\"name\":\"bar\",\"properties\":{\"address\":\"a\"," +
+                        "\"username\":\"u\",\"password\":\"p\",\"repository\":\"r\"}}]"
             }
         }
 
@@ -148,16 +147,16 @@ class RemotesApiTest : StringSpec() {
             transaction {
                 providers.metadata.createRepository(Repository(name = "repo", properties = mapOf()))
                 providers.metadata.addRemote("repo", Remote("nop", "foo"))
-                providers.metadata.addRemote("repo", EngineRemote(name = "bar", address = "a", username = "u", password = "p", repository = "r"))
+                providers.metadata.addRemote("repo", Remote("engine", "bar", mapOf("address" to "a", "username" to "u", "password" to "p", "repository" to "r")))
             }
             with(engine.handleRequest(HttpMethod.Post, "/v1/repositories/repo/remotes/bar") {
                 addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
-                setBody("{\"provider\":\"engine\",\"name\":\"bar\",\"address\":\"b\"," +
-                        "\"username\":\"u\",\"password\":\"p\"}")
+                setBody("{\"provider\":\"engine\",\"name\":\"bar\",\"properties\":{\"address\":\"b\"," +
+                        "\"username\":\"u\",\"password\":\"p\"}}")
             }) {
                 response.status() shouldBe HttpStatusCode.OK
-                response.content shouldBe "{\"provider\":\"engine\",\"name\":\"bar\",\"address\":\"b\"," +
-                        "\"username\":\"u\",\"password\":\"p\"}"
+                response.content shouldBe "{\"provider\":\"engine\",\"name\":\"bar\",\"properties\":{\"address\":\"b\"," +
+                        "\"username\":\"u\",\"password\":\"p\"}}"
             }
         }
 
@@ -165,7 +164,7 @@ class RemotesApiTest : StringSpec() {
             transaction {
                 providers.metadata.createRepository(Repository(name = "repo", properties = mapOf()))
                 providers.metadata.addRemote("repo", Remote("nop", "foo"))
-                providers.metadata.addRemote("repo", EngineRemote(name = "bar", address = "a", username = "u", password = "p", repository = "r"))
+                providers.metadata.addRemote("repo", Remote("engine", "bar", mapOf("address" to "a", "username" to "u", "password" to "p", "repository" to "r")))
             }
             with(engine.handleRequest(HttpMethod.Post, "/v1/repositories/repo/remotes/bar") {
                 addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
@@ -180,7 +179,7 @@ class RemotesApiTest : StringSpec() {
             transaction {
                 providers.metadata.createRepository(Repository(name = "repo", properties = mapOf()))
                 providers.metadata.addRemote("repo", Remote("nop", "foo"))
-                providers.metadata.addRemote("repo", EngineRemote(name = "bar", address = "a", username = "u", password = "p", repository = "r"))
+                providers.metadata.addRemote("repo", Remote("engine", "bar", mapOf("address" to "a", "username" to "u", "password" to "p", "repository" to "r")))
             }
             with(engine.handleRequest(HttpMethod.Post, "/v1/repositories/repo/remotes/bar") {
                 addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
@@ -195,7 +194,7 @@ class RemotesApiTest : StringSpec() {
             transaction {
                 providers.metadata.createRepository(Repository(name = "repo", properties = mapOf()))
                 providers.metadata.addRemote("repo", Remote("nop", "foo"))
-                providers.metadata.addRemote("repo", EngineRemote(name = "bar", address = "a", username = "u", password = "p", repository = "r"))
+                providers.metadata.addRemote("repo", Remote("engine", "bar", mapOf("address" to "a", "username" to "u", "password" to "p", "repository" to "r")))
             }
             with(engine.handleRequest(HttpMethod.Delete, "/v1/repositories/repo/remotes/bar")) {
                 response.status() shouldBe HttpStatusCode.NoContent

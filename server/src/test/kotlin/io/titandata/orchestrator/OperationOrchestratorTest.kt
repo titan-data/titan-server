@@ -557,7 +557,7 @@ class OperationOrchestratorTest : StringSpec() {
 
         "error during push is reported correctly" {
             transaction {
-                providers.metadata.addRemote("foo", Remote("id", "remote"))
+                providers.metadata.addRemote("foo", Remote("nop", "remote"))
                 providers.metadata.createCommit("foo", vs, Commit("id"))
             }
             every { zfsStorageProvider.cloneVolumeSet(any(), any(), any(), any()) } just Runs

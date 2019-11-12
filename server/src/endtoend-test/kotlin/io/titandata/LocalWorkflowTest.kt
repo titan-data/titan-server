@@ -6,7 +6,6 @@ package io.titandata
 
 import io.kotlintest.Spec
 import io.kotlintest.matchers.string.shouldStartWith
-import io.kotlintest.matchers.types.shouldBeInstanceOf
 import io.kotlintest.shouldBe
 import io.kotlintest.shouldNotBe
 import io.kotlintest.shouldThrow
@@ -265,7 +264,7 @@ class LocalWorkflowTest : EndToEndTest() {
 
         "get remote succeeds" {
             val result = remoteApi.getRemote("foo", "a")
-            result.providers shouldBe "nop"
+            result.provider shouldBe "nop"
             result.name shouldBe "a"
         }
 

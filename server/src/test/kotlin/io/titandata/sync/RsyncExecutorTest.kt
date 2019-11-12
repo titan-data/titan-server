@@ -29,7 +29,6 @@ import io.titandata.models.Remote
 import io.titandata.models.RemoteParameters
 import io.titandata.models.Repository
 import io.titandata.operation.OperationExecutor
-import io.titandata.remote.ssh.SshRemote
 import io.titandata.storage.OperationData
 import io.titandata.util.CommandExecutor
 import java.io.ByteArrayInputStream

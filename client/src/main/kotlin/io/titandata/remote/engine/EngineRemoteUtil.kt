@@ -51,27 +51,24 @@ class EngineRemoteUtil : RemoteUtilProvider() {
             throw IllegalArgumentException("Invalid engine remote property '$p'")
         }
 
-        return EngineRemote(name = name, username = username, password = password, address = host,
-                repository = repo)
+        return Remote("engine", name, mapOf("username" to username, "password" to password, "address" to host,
+                "repository" to repo))
     }
 
     override fun toUri(remote: Remote): Pair<String, Map<String, String>> {
-        remote as EngineRemote
-
-        var uri = "engine://${remote.username}"
-        if (remote.password != null) {
-            uri += ":${remote.password}"
+        val props = remote.properties
+        var uri = "engine://${props["username"]}"
+        if (props["password"] != null) {
+            uri += ":${props["password"]}"
         }
-        uri += "@${remote.address}/${remote.repository}"
+        uri += "@${props["address"]}/${props["repository"]}"
 
         return Pair(uri, mapOf())
     }
 
     override fun getParameters(remote: Remote): RemoteParameters {
-        remote as EngineRemote
-
         var password : String? = null
-        if (remote.password == null) {
+        if (remote.properties["password"] == null) {
             val input = console?.readPassword("password: ")
                     ?: throw IllegalArgumentException("password required but no console available")
             password = String(input)

@@ -5,7 +5,6 @@
 package io.titandata.remote.s3web
 
 import com.google.gson.GsonBuilder
-import io.kotlintest.matchers.types.shouldBeInstanceOf
 import io.kotlintest.shouldBe
 import io.kotlintest.shouldThrow
 import io.kotlintest.specs.StringSpec

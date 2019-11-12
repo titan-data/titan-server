@@ -203,9 +203,8 @@ class SshRemoteProvider(val providers: ProviderModule) : BaseRemoteProvider() {
     }
 
     override fun pushMetadata(operation: OperationExecutor, data: Any?, commit: Commit, isUpdate: Boolean) {
-        val remote = operation.remote as SshRemote
         val json = gson.toJson(commit)
-        writeFileSsh(remote, operation.params,
-                "${remote.path}/${operation.operation.commitId}/metadata.json", json)
+        writeFileSsh(operation.remote, operation.params,
+                "${operation.remote.properties["path"]}/${operation.operation.commitId}/metadata.json", json)
     }
 }

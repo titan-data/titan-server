@@ -14,7 +14,6 @@ import com.amazonaws.services.s3.model.PutObjectRequest
 import io.kotlintest.SkipTestException
 import io.kotlintest.Spec
 import io.kotlintest.TestCaseOrder
-import io.kotlintest.matchers.string.shouldStartWith
 import io.kotlintest.shouldBe
 import io.kotlintest.shouldThrow
 import io.titandata.EndToEndTest
@@ -23,9 +22,7 @@ import io.titandata.client.infrastructure.ClientException
 import io.titandata.client.infrastructure.ServerException
 import io.titandata.models.Commit
 import io.titandata.models.Repository
-import io.titandata.models.docker.DockerVolumeCreateRequest
-import io.titandata.models.docker.DockerVolumeMountRequest
-import io.titandata.models.docker.DockerVolumeRequest
+import io.titandata.models.Volume
 import java.io.ByteArrayInputStream
 import java.util.UUID
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider
@@ -115,31 +112,17 @@ class S3WorkflowTest : EndToEndTest() {
         }
 
         "create new repository succeeds" {
-            val repo = Repository(
-                    name = "foo",
-                    properties = mapOf()
-            )
-            val newRepo = repoApi.createRepository(repo)
-            newRepo.name shouldBe "foo"
+            repoApi.createRepository(Repository("foo"))
         }
 
-        "create volume succeeds" {
-            val repo = DockerVolumeCreateRequest(
-                    name = "foo/vol",
-                    opts = mapOf()
-            )
-            val response = volumeApi.createVolume(repo)
-            response.err shouldBe ""
-        }
-
-        "mount volume succeeds" {
-            val response = volumeApi.mountVolume(DockerVolumeMountRequest(name = "foo/vol", ID = "id"))
-            response.mountpoint shouldStartWith "/var/lib/test/mnt/"
+        "create and mount volume succeeds" {
+            volumeApi.createVolume("foo", Volume("vol"))
+            volumeApi.activateVolume("foo", "vol")
         }
 
         "create and write volume file succeeds" {
-            dockerUtil.writeFile("foo/vol", "testfile", "Hello")
-            val result = dockerUtil.readFile("foo/vol", "testfile")
+            dockerUtil.writeFile("foo", "vol", "testfile", "Hello")
+            val result = dockerUtil.readFile("foo", "vol", "testfile")
             result shouldBe "Hello\n"
         }
 
@@ -257,8 +240,8 @@ class S3WorkflowTest : EndToEndTest() {
         }
 
         "write new local value succeeds" {
-            dockerUtil.writeFile("foo/vol", "testfile", "Goodbye")
-            val result = dockerUtil.readFile("foo/vol", "testfile")
+            dockerUtil.writeFile("foo", "vol", "testfile", "Goodbye")
+            val result = dockerUtil.readFile("foo", "vol", "testfile")
             result shouldBe "Goodbye\n"
         }
 
@@ -268,13 +251,13 @@ class S3WorkflowTest : EndToEndTest() {
         }
 
         "checkout commit succeeds" {
-            volumeApi.unmountVolume(DockerVolumeMountRequest(name = "foo/vol"))
+            volumeApi.deactivateVolume("foo", "vol")
             commitApi.checkoutCommit("foo", "id")
-            volumeApi.mountVolume(DockerVolumeMountRequest(name = "foo/vol"))
+            volumeApi.activateVolume("foo", "vol")
         }
 
         "original file contents are present" {
-            val result = dockerUtil.readFile("foo/vol", "testfile")
+            val result = dockerUtil.readFile("foo", "vol", "testfile")
             result shouldBe "Hello\n"
         }
 
@@ -314,8 +297,8 @@ class S3WorkflowTest : EndToEndTest() {
         }
 
         "delete volume succeeds" {
-            volumeApi.unmountVolume(DockerVolumeMountRequest(name = "foo/vol"))
-            volumeApi.removeVolume(DockerVolumeRequest(name = "foo/vol"))
+            volumeApi.deactivateVolume("foo", "vol")
+            volumeApi.deleteVolume("foo", "vol")
         }
 
         "delete repository succeeds" {

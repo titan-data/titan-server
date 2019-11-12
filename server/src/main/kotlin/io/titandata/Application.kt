@@ -33,6 +33,7 @@ import io.titandata.apis.DockerVolumeApi
 import io.titandata.apis.OperationsApi
 import io.titandata.apis.RemotesApi
 import io.titandata.apis.RepositoriesApi
+import io.titandata.apis.VolumesApi
 import io.titandata.exception.NoSuchObjectException
 import io.titandata.exception.ObjectExistsException
 import io.titandata.metadata.MetadataProvider
@@ -157,6 +158,7 @@ fun Application.mainProvider(providers: ProviderModule) {
         OperationsApi(providers)
         RemotesApi(providers)
         RepositoriesApi(providers)
+        VolumesApi(providers)
     }
     install(StatusPages) {
         exception<NoSuchObjectException> { cause ->

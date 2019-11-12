@@ -1,5 +1,8 @@
 # Titan Docker Server
 
+![](https://github.com/titan-data/titan-server/workflows/Nightly%20Tests/badge.svg)
+![GitHub release (latest by date)](https://img.shields.io/github/v/release/titan-data/titan-server)
+
 This repository contains the docker container that is used by the
 [Titan](https://github.com/titan-data/titan) data management tool. This docker container
 provides all the repository operations necessary to support titan-powered containers, along with 

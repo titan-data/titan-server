@@ -22,7 +22,6 @@ import io.titandata.models.RemoteParameters
 import io.titandata.models.Volume
 import io.titandata.operation.OperationExecutor
 import io.titandata.remote.BaseRemoteProvider
-import io.titandata.serialization.ModelTypeAdapters
 import io.titandata.util.TagFilter
 import java.io.ByteArrayInputStream
 import java.io.File
@@ -52,22 +51,19 @@ import kotlin.IllegalArgumentException
 class S3RemoteProvider(val providers: ProviderModule) : BaseRemoteProvider() {
 
     private val METADATA_PROP = "io.titan-data"
-    private val gson = ModelTypeAdapters.configure(GsonBuilder()).create()
+    private val gson = GsonBuilder().create()
 
     fun getClient(remote: Remote, params: RemoteParameters): AmazonS3 {
-        remote as S3Remote
-        params as S3Parameters
+        val accessKey = (params.properties.get("accessKey") ?: remote.properties["accessKey"]
+            ?: throw IllegalArgumentException("missing access key")) as String
+        val secretKey = (params.properties.get("secretKey") ?: remote.properties["secretKey"]
+            ?: throw IllegalArgumentException("missing secret key")) as String
+        val region = (params.properties.get("region") ?: remote.properties["region"]
+            ?: throw IllegalArgumentException("missing region")) as String
 
-        val accessKey = params.accessKey ?: remote.accessKey
-            ?: throw IllegalArgumentException("missing access key")
-        val secretKey = params.secretKey ?: remote.secretKey
-            ?: throw IllegalArgumentException("missing secret key")
-        val region = params.region ?: remote.region
-            ?: throw IllegalArgumentException("missing region")
-
-        val creds = when (params.sessionToken) {
+        val creds = when (params.properties.get("sessionToken")) {
             null -> BasicAWSCredentials(accessKey, secretKey)
-            else -> BasicSessionCredentials(accessKey, secretKey, params.sessionToken)
+            else -> BasicSessionCredentials(accessKey, secretKey, params.properties.get("sessionToken").toString())
         }
         val provider = AWSStaticCredentialsProvider(creds)
 
@@ -75,16 +71,15 @@ class S3RemoteProvider(val providers: ProviderModule) : BaseRemoteProvider() {
     }
 
     fun getPath(remote: Remote, commitId: String? = null): Pair<String, String?> {
-        remote as S3Remote
-        val key = when (remote.path) {
+        val key = when (remote.properties["path"]) {
             null -> commitId
             else -> when (commitId) {
-                null -> remote.path
-                else -> "${remote.path}/$commitId"
+                null -> remote.properties["path"] as String
+                else -> "${remote.properties["path"]}/$commitId"
             }
         }
 
-        return Pair(remote.bucket, key)
+        return Pair(remote.properties["bucket"] as String, key)
     }
 
     private fun objectToCommit(obj: ObjectMetadata): Commit? {

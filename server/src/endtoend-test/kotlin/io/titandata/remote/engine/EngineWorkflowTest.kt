@@ -16,16 +16,19 @@ import io.titandata.EndToEndTest
 import io.titandata.client.infrastructure.ClientException
 import io.titandata.models.Commit
 import io.titandata.models.ProgressEntry
+import io.titandata.models.Remote
+import io.titandata.models.RemoteParameters
 import io.titandata.models.Repository
 import io.titandata.models.VolumeCreateRequest
 import io.titandata.models.VolumeMountRequest
 import io.titandata.models.VolumeRequest
-import io.titandata.serialization.RemoteUtil
 import java.time.OffsetDateTime
 import java.time.format.DateTimeFormatter
 import org.json.JSONObject
 
 class EngineWorkflowTest : EndToEndTest() {
+
+    val params = RemoteParameters("engine")
 
     fun waitForJob(engine: Delphix, result: JSONObject) {
         val actionResult: JSONObject = engine.action().read(result.getString("action")).getJSONObject("result")
@@ -47,8 +50,8 @@ class EngineWorkflowTest : EndToEndTest() {
         val formatter = DateTimeFormatter.ISO_DATE_TIME
         try {
             val remote = getRemote()
-            val engine = Delphix(Http("http://${remote.address}"))
-            engine.login(remote.username, remote.password!!)
+            val engine = Delphix(Http("http://${remote.properties["address"]}"))
+            engine.login(remote.properties["username"] as String, remote.properties["password"] as String)
 
             val raw = engine.container().list().getJSONArray("result").map { it -> it as JSONObject }
             val databases = raw.sortedByDescending { OffsetDateTime.parse(it.getString("creationTime"), formatter) }
@@ -75,19 +78,17 @@ class EngineWorkflowTest : EndToEndTest() {
         clearEngine()
     }
 
-    private val remoteUtil = RemoteUtil()
-
-    private fun getRemote(repo: String = "foo", name: String = "origin"): EngineRemote {
+    private fun getRemote(repo: String = "foo", name: String = "origin"): Remote {
         val connection = System.getProperty("engine.connection")
                 ?: throw SkipTestException("'engine.connection' must be specified with -P")
-        return remoteUtil.parseUri("engine://$connection/$repo", name, mapOf()) as EngineRemote
+        return remoteUtil.parseUri("engine://$connection/$repo", name, mapOf())
     }
 
     init {
         "can connect to engine" {
             val remote = getRemote()
-            val engine = Delphix(Http("http://${remote.address}"))
-            engine.login(remote.username, remote.password!!)
+            val engine = Delphix(Http("http://${remote.properties["address"]}"))
+            engine.login(remote.properties["username"] as String, remote.properties["password"] as String)
         }
 
         "create new repository succeeds" {
@@ -132,13 +133,13 @@ class EngineWorkflowTest : EndToEndTest() {
 
         "list remote commits returns an error" {
             val e = shouldThrow<ClientException> {
-                remoteApi.listRemoteCommits("foo", "origin", EngineParameters())
+                remoteApi.listRemoteCommits("foo", "origin", params)
             }
             e.code shouldBe "NoSuchObjectException"
         }
 
         "push commit succeeds" {
-            val op = operationApi.push("foo", "origin", "id", EngineParameters())
+            val op = operationApi.push("foo", "origin", "id", params)
             val progress = waitForOperation(op.id)
             progress[0].type shouldBe ProgressEntry.Type.MESSAGE
             progress[0].message shouldBe "Pushing id to 'origin'"
@@ -161,7 +162,7 @@ class EngineWorkflowTest : EndToEndTest() {
         }
 
         "list remote commits returns pushed commit" {
-            val commits = remoteApi.listRemoteCommits("foo", "origin", EngineParameters())
+            val commits = remoteApi.listRemoteCommits("foo", "origin", params)
             commits.size shouldBe 1
             commits[0].id shouldBe "id"
             commits[0].properties["a"] shouldBe "b"
@@ -169,7 +170,7 @@ class EngineWorkflowTest : EndToEndTest() {
 
         "push of same commit fails" {
             val exception = shouldThrow<ClientException> {
-                operationApi.push("foo", "origin", "id", EngineParameters())
+                operationApi.push("foo", "origin", "id", params)
             }
             exception.code shouldBe "ObjectExistsException"
         }
@@ -190,7 +191,7 @@ class EngineWorkflowTest : EndToEndTest() {
         }
 
         "pull original commit succeeds" {
-            val op = operationApi.pull("foo", "origin", "id", EngineParameters())
+            val op = operationApi.pull("foo", "origin", "id", params)
             val progress = waitForOperation(op.id)
             progress[0].type shouldBe ProgressEntry.Type.MESSAGE
             progress[0].message shouldBe "Pulling id from 'origin'"
@@ -226,13 +227,15 @@ class EngineWorkflowTest : EndToEndTest() {
 
         "add remote without password succeeds" {
             val defaultRemote = getRemote()
-            val remote = EngineRemote(address = defaultRemote.address, username = defaultRemote.username,
-                    name = "origin", repository = defaultRemote.repository)
+            val remote = Remote("engine", "origin", mapOf("address" to defaultRemote.properties["address"],
+                    "username" to defaultRemote.properties["username"],
+                    "repository" to defaultRemote.properties["repository"]))
             remoteApi.createRemote("foo", remote)
         }
 
         "list commits with password succeeds" {
-            val commits = remoteApi.listRemoteCommits("foo", "origin", EngineParameters(password = getRemote().password))
+            val commits = remoteApi.listRemoteCommits("foo", "origin", RemoteParameters("engine",
+                    mapOf("password" to getRemote().properties["password"])))
             commits.size shouldBe 1
             commits[0].id shouldBe "id"
             commits[0].properties["a"] shouldBe "b"
@@ -240,7 +243,7 @@ class EngineWorkflowTest : EndToEndTest() {
 
         "list commits without password fails" {
             val exception = shouldThrow<ClientException> {
-                remoteApi.listRemoteCommits("foo", "origin", EngineParameters())
+                remoteApi.listRemoteCommits("foo", "origin", params)
             }
             exception.code shouldBe "IllegalArgumentException"
         }

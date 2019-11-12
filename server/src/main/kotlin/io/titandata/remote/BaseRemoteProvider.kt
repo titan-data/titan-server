@@ -4,38 +4,11 @@
 
 package io.titandata.remote
 
-import io.titandata.exception.NoSuchObjectException
-import io.titandata.exception.ObjectExistsException
 import io.titandata.models.Commit
-import io.titandata.models.Operation
-import io.titandata.models.Remote
-import io.titandata.models.RemoteParameters
 import io.titandata.models.Volume
 import io.titandata.operation.OperationExecutor
 
 abstract class BaseRemoteProvider : RemoteProvider {
-    override fun validateOperation(
-        remote: Remote,
-        commitId: String,
-        opType: Operation.Type,
-        params: RemoteParameters,
-        metadataOnly: Boolean
-    ) {
-        if (opType == Operation.Type.PULL) {
-            getCommit(remote, commitId, params)
-        } else {
-            try {
-                getCommit(remote, commitId, params)
-                if (!metadataOnly) {
-                    throw ObjectExistsException("commit $commitId exists in remote '${remote.name}'")
-                }
-            } catch (e: NoSuchObjectException) {
-                if (metadataOnly) {
-                    throw e
-                }
-            }
-        }
-    }
 
     fun getVolumeDesc(vol: Volume): String {
         return vol.properties.get("path")?.toString() ?: vol.name

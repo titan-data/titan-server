@@ -22,6 +22,8 @@ import io.titandata.ProviderModule
 import io.titandata.client.infrastructure.ClientException
 import io.titandata.client.infrastructure.ServerException
 import io.titandata.models.Commit
+import io.titandata.models.Remote
+import io.titandata.models.RemoteParameters
 import io.titandata.models.Repository
 import io.titandata.models.VolumeCreateRequest
 import io.titandata.models.VolumeMountRequest
@@ -34,19 +36,21 @@ class S3WorkflowTest : EndToEndTest() {
 
     private val guid = UUID.randomUUID().toString()
 
+    val params = RemoteParameters("s3")
+
     fun clearBucket() {
         val remote = getRemote()
         try {
             val s3 = AmazonS3ClientBuilder.standard().build()
 
             val request = ListObjectsRequest()
-                    .withBucketName(remote.bucket)
-                    .withPrefix(remote.path)
+                    .withBucketName(remote.properties["bucket"] as String)
+                    .withPrefix(remote.properties["path"] as String)
             var objects = s3.listObjects(request)
             while (true) {
                 val keys = objects.objectSummaries.map { it.key }
                 if (keys.size != 0) {
-                    s3.deleteObjects(DeleteObjectsRequest(remote.bucket).withKeys(*keys.toTypedArray()))
+                    s3.deleteObjects(DeleteObjectsRequest(remote.properties["bucket"] as String).withKeys(*keys.toTypedArray()))
                 }
                 if (objects.isTruncated()) {
                     objects = s3.listNextBatchOfObjects(objects)
@@ -84,14 +88,14 @@ class S3WorkflowTest : EndToEndTest() {
         return Pair(bucket, "$path/$guid")
     }
 
-    private fun getRemote(): S3Remote {
+    private fun getRemote(): Remote {
         val (bucket, path) = getLocation()
         val creds = DefaultCredentialsProvider.create().resolveCredentials()
                 ?: throw SkipTestException("Unable to determine AWS credentials")
         val region = DefaultAwsRegionProviderChain().region
 
-        return S3Remote(name = "origin", bucket = bucket, path = path, accessKey = creds.accessKeyId(),
-                secretKey = creds.secretAccessKey(), region = region)
+        return Remote("s3", "origin", mapOf("bucket" to bucket, "path" to path, "accessKey" to creds.accessKeyId(),
+                "secretKey" to creds.secretAccessKey(), "region" to region))
     }
 
     init {
@@ -100,7 +104,7 @@ class S3WorkflowTest : EndToEndTest() {
             val remote = getRemote()
             val provider = S3RemoteProvider(ProviderModule("test"))
 
-            val s3 = provider.getClient(remote, S3Parameters())
+            val s3 = provider.getClient(remote, params)
             try {
                 val (bucket, key) = provider.getPath(remote, "id")
                 val metadata = ObjectMetadata()
@@ -157,42 +161,42 @@ class S3WorkflowTest : EndToEndTest() {
         }
 
         "list remote commits returns an empty list" {
-            val result = remoteApi.listRemoteCommits("foo", "origin", S3Parameters())
+            val result = remoteApi.listRemoteCommits("foo", "origin", params)
             result.size shouldBe 0
         }
 
         "push commit succeeds" {
-            val op = operationApi.push("foo", "origin", "id", S3Parameters())
+            val op = operationApi.push("foo", "origin", "id", params)
             waitForOperation(op.id)
         }
 
         "list remote commits returns pushed commit" {
-            val commits = remoteApi.listRemoteCommits("foo", "origin", S3Parameters())
+            val commits = remoteApi.listRemoteCommits("foo", "origin", params)
             commits.size shouldBe 1
             commits[0].id shouldBe "id"
             getTag(commits[0], "a") shouldBe "b"
         }
 
         "list remote commits filters out commit" {
-            val commits = remoteApi.listRemoteCommits("foo", "origin", S3Parameters(), listOf("e"))
+            val commits = remoteApi.listRemoteCommits("foo", "origin", params, listOf("e"))
             commits.size shouldBe 0
         }
 
         "list remote commits filters include commit" {
-            val commits = remoteApi.listRemoteCommits("foo", "origin", S3Parameters(), listOf("a=b", "c=d"))
+            val commits = remoteApi.listRemoteCommits("foo", "origin", params, listOf("a=b", "c=d"))
             commits.size shouldBe 1
             commits[0].id shouldBe "id"
         }
 
         "push of same commit fails" {
             val exception = shouldThrow<ClientException> {
-                operationApi.push("foo", "origin", "id", S3Parameters())
+                operationApi.push("foo", "origin", "id", params)
             }
             exception.code shouldBe "ObjectExistsException"
         }
 
         "push same commit metadata succeeds" {
-            val op = operationApi.push("foo", "origin", "id", S3Parameters(), true)
+            val op = operationApi.push("foo", "origin", "id", params, true)
             waitForOperation(op.id)
         }
 
@@ -201,19 +205,19 @@ class S3WorkflowTest : EndToEndTest() {
         }
 
         "push second commit succeeds" {
-            val op = operationApi.push("foo", "origin", "id2", S3Parameters())
+            val op = operationApi.push("foo", "origin", "id2", params)
             waitForOperation(op.id)
         }
 
         "list remote commits records two commits" {
-            val commits = remoteApi.listRemoteCommits("foo", "origin", S3Parameters())
+            val commits = remoteApi.listRemoteCommits("foo", "origin", params)
             commits.size shouldBe 2
             commits[0].id shouldBe "id2"
             commits[1].id shouldBe "id"
         }
 
         "list remote commits filters commits" {
-            val commits = remoteApi.listRemoteCommits("foo", "origin", S3Parameters(), listOf("a"))
+            val commits = remoteApi.listRemoteCommits("foo", "origin", params, listOf("a"))
             commits.size shouldBe 1
             commits[0].id shouldBe "id"
         }
@@ -227,7 +231,7 @@ class S3WorkflowTest : EndToEndTest() {
         }
 
         "push commit metadata succeeds" {
-            val op = operationApi.push("foo", "origin", "id", S3Parameters(), true)
+            val op = operationApi.push("foo", "origin", "id", params, true)
             waitForOperation(op.id)
         }
 
@@ -239,7 +243,7 @@ class S3WorkflowTest : EndToEndTest() {
         }
 
         "list remote commits returns updated commits" {
-            val commits = remoteApi.listRemoteCommits("foo", "origin", S3Parameters())
+            val commits = remoteApi.listRemoteCommits("foo", "origin", params)
             commits.size shouldBe 2
             commits[0].id shouldBe "id2"
             commits[1].id shouldBe "id"
@@ -263,7 +267,7 @@ class S3WorkflowTest : EndToEndTest() {
         }
 
         "pull original commit succeeds" {
-            val op = operationApi.pull("foo", "origin", "id", S3Parameters())
+            val op = operationApi.pull("foo", "origin", "id", params)
             waitForOperation(op.id)
         }
 
@@ -284,14 +288,16 @@ class S3WorkflowTest : EndToEndTest() {
 
         "add remote without keys succeeds" {
             val defaultRemote = getRemote()
-            val remote = S3Remote(name = "origin", bucket = defaultRemote.bucket, path = defaultRemote.path)
+            val remote = Remote("s3", "origin", mapOf("bucket" to defaultRemote.properties["bucket"],
+                    "path" to defaultRemote.properties["path"]))
             remoteApi.createRemote("foo", remote)
         }
 
         "list commits with keys succeeds" {
             val remote = getRemote()
-            val commits = remoteApi.listRemoteCommits("foo", "origin", S3Parameters(accessKey = remote.accessKey,
-                    secretKey = remote.secretKey, region = remote.region))
+            val commits = remoteApi.listRemoteCommits("foo", "origin", RemoteParameters("s3",
+                    mapOf("accessKey" to remote.properties["accessKey"], "secretKey" to remote.properties["secretKey"],
+                            "region" to remote.properties["region"])))
             commits.size shouldBe 2
             commits[0].id shouldBe "id2"
             commits[1].id shouldBe "id"
@@ -299,7 +305,7 @@ class S3WorkflowTest : EndToEndTest() {
 
         "list commits without keys fails" {
             val exception = shouldThrow<ClientException> {
-                remoteApi.listRemoteCommits("foo", "origin", S3Parameters())
+                remoteApi.listRemoteCommits("foo", "origin", params)
             }
             exception.code shouldBe "IllegalArgumentException"
         }
@@ -307,8 +313,8 @@ class S3WorkflowTest : EndToEndTest() {
         "list commits with incorrect key fails" {
             val remote = getRemote()
             val exception = shouldThrow<ServerException> {
-                remoteApi.listRemoteCommits("foo", "origin", S3Parameters(accessKey = "foo", secretKey = "bar",
-                        region = remote.region))
+                remoteApi.listRemoteCommits("foo", "origin", RemoteParameters("s3", mapOf(
+                        "accessKey" to "foo", "secretKey" to "bar", "region" to remote.properties["region"])))
             }
             exception.code shouldBe "AmazonS3Exception"
         }

@@ -21,7 +21,6 @@ import io.titandata.models.Remote
 import io.titandata.models.RemoteParameters
 import io.titandata.models.Repository
 import io.titandata.models.docker.DockerVolume
-import io.titandata.serialization.ModelTypeAdapters
 import io.titandata.storage.OperationData
 import java.util.UUID
 import org.jetbrains.exposed.exceptions.ExposedSQLException
@@ -54,7 +53,7 @@ class MetadataProvider(val inMemory: Boolean = true, val databaseName: String = 
         DELETING
     }
 
-    private val gson = ModelTypeAdapters.configure(GsonBuilder()).create()
+    private val gson = GsonBuilder().create()
 
     private fun memoryConfig(): HikariDataSource {
         val config = HikariConfig()

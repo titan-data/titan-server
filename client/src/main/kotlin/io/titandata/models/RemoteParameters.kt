@@ -4,6 +4,7 @@
 
 package io.titandata.models
 
-abstract class RemoteParameters {
-    abstract var provider: String
-}
+data class RemoteParameters(
+    var provider: String,
+    var properties: Map<String, Any?> = emptyMap()
+)

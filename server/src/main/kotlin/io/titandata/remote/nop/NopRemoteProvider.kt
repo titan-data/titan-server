@@ -5,7 +5,6 @@
 package io.titandata.remote.nop
 
 import io.titandata.models.Commit
-import io.titandata.models.Operation
 import io.titandata.models.ProgressEntry
 import io.titandata.models.Remote
 import io.titandata.models.RemoteParameters
@@ -27,21 +26,14 @@ class NopRemoteProvider : BaseRemoteProvider() {
         return Commit(id = commitId, properties = emptyMap())
     }
 
-    override fun validateOperation(
-        remote: Remote,
-        commitId: String,
-        opType: Operation.Type,
-        params: RemoteParameters,
-        metadataOnly: Boolean
-    ) {
-        // All operations always succeed
-    }
-
     override fun startOperation(operation: OperationExecutor): Any? {
         operation.addProgress(ProgressEntry(ProgressEntry.Type.START, "Running operation"))
-        val request = operation.params as NopParameters
-        if (request.delay != 0) {
-            Thread.sleep(request.delay * 1000L)
+        val props = operation.params.properties
+        if (props.containsKey("delay")) {
+            val delay = props.get("delay").toString().toDouble().toInt()
+            if (delay != 0) {
+                Thread.sleep(delay * 1000L)
+            }
         }
         return null
     }

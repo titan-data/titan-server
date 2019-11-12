@@ -25,10 +25,10 @@ import io.titandata.exception.CommandException
 import io.titandata.models.Commit
 import io.titandata.models.Operation
 import io.titandata.models.ProgressEntry
+import io.titandata.models.Remote
+import io.titandata.models.RemoteParameters
 import io.titandata.models.Repository
 import io.titandata.operation.OperationExecutor
-import io.titandata.remote.ssh.SshParameters
-import io.titandata.remote.ssh.SshRemote
 import io.titandata.storage.OperationData
 import io.titandata.util.CommandExecutor
 import java.io.ByteArrayInputStream
@@ -54,8 +54,8 @@ class RsyncExecutorTest : StringSpec() {
         providers.metadata.clear()
         operationExecutor = transaction {
             providers.metadata.createRepository(Repository("foo"))
-            val remote = SshRemote(name = "remote", address = "host", username = "root",
-                    password = "root", path = "/path")
+            val remote = Remote("ssh", "remote", mapOf("address" to "host", "username" to "root",
+                    "password" to "root", "path" to "/path"))
             providers.metadata.addRemote("foo", remote)
             val vs = providers.metadata.createVolumeSet("foo")
             providers.metadata.createCommit("foo", vs, Commit(id = "id"))
@@ -65,7 +65,7 @@ class RsyncExecutorTest : StringSpec() {
                     state = Operation.State.RUNNING,
                     remote = "remote",
                     commitId = "id"
-            ), params = SshParameters(), metadataOnly = false)
+            ), params = RemoteParameters("ssh"), metadataOnly = false)
             providers.metadata.createOperation("foo", vs, data)
             OperationExecutor(providers, data.operation, "foo", remote, data.params)
         }

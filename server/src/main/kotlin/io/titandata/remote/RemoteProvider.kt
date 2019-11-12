@@ -5,7 +5,6 @@
 package io.titandata.remote
 
 import io.titandata.models.Commit
-import io.titandata.models.Operation
 import io.titandata.models.Remote
 import io.titandata.models.RemoteParameters
 import io.titandata.models.docker.DockerVolume
@@ -14,14 +13,6 @@ import io.titandata.operation.OperationExecutor
 interface RemoteProvider {
     fun listCommits(remote: Remote, params: RemoteParameters, tags: List<String>?): List<Commit>
     fun getCommit(remote: Remote, commitId: String, params: RemoteParameters): Commit
-
-    fun validateOperation(
-        remote: Remote,
-        commitId: String,
-        opType: Operation.Type,
-        params: RemoteParameters,
-        metadataOnly: Boolean
-    )
 
     fun startOperation(operation: OperationExecutor): Any?
     fun endOperation(operation: OperationExecutor, data: Any?)

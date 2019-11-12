@@ -16,7 +16,6 @@ import io.titandata.models.RemoteParameters
 import io.titandata.models.docker.DockerVolume
 import io.titandata.operation.OperationExecutor
 import io.titandata.remote.BaseRemoteProvider
-import io.titandata.serialization.ModelTypeAdapters
 import io.titandata.sync.RsyncExecutor
 import io.titandata.util.TagFilter
 import java.io.File
@@ -56,18 +55,15 @@ import java.util.concurrent.TimeUnit
  */
 class SshRemoteProvider(val providers: ProviderModule) : BaseRemoteProvider() {
 
-    internal val gson = ModelTypeAdapters.configure(GsonBuilder()).create()
+    internal val gson = GsonBuilder().create()
 
     fun getSshAuth(remote: Remote, params: RemoteParameters): Pair<String?, String?> {
-        val sshRemote = remote as SshRemote
-        val sshParams = params as SshParameters
-
-        if (sshParams.password != null && sshParams.key != null) {
+        if (params.properties["password"] != null && params.properties["key"] != null) {
             throw IllegalArgumentException("only one of password or key can be specified")
-        } else if (sshRemote.password != null || sshParams.password != null) {
-            return Pair(sshParams.password ?: sshRemote.password, null)
-        } else if (sshParams.key != null) {
-            return Pair(null, sshParams.key)
+        } else if (remote.properties["password"] != null || params.properties["password"] != null) {
+            return Pair((params.properties["password"] ?: remote.properties["password"]).toString(), null)
+        } else if (params.properties["key"] != null) {
+            return Pair(null, params.properties["key"].toString())
         } else {
             throw IllegalArgumentException("one of password or key must be specified")
         }
@@ -80,7 +76,6 @@ class SshRemoteProvider(val providers: ProviderModule) : BaseRemoteProvider() {
         includeAddress: Boolean,
         vararg command: String
     ): List<String> {
-        remote as SshRemote
         val args = mutableListOf<String>()
 
         val (password, key) = getSshAuth(remote, params)
@@ -98,14 +93,15 @@ class SshRemoteProvider(val providers: ProviderModule) : BaseRemoteProvider() {
                 PosixFilePermission.OWNER_READ
         ))
 
-        if (remote.port != null) {
-            args.addAll(arrayOf("-p", remote.port.toString()))
+        val props = remote.properties
+        if (props["port"] != null) {
+            args.addAll(arrayOf("-p", props["port"].toString()))
         }
 
         args.addAll(arrayOf("-o", "StrictHostKeyChecking=no"))
         args.addAll(arrayOf("-o", "UserKnownHostsFile=/dev/null"))
         if (includeAddress) {
-            args.add("${remote.username}@${remote.address}")
+            args.add("${props["username"]}@${props["address"]}")
         }
         args.addAll(command)
 
@@ -146,9 +142,7 @@ class SshRemoteProvider(val providers: ProviderModule) : BaseRemoteProvider() {
     }
 
     override fun listCommits(remote: Remote, params: RemoteParameters, tags: List<String>?): List<Commit> {
-        val sshRemote = remote as SshRemote
-
-        val output = runSsh(remote, params, "ls", "-1", sshRemote.path)
+        val output = runSsh(remote, params, "ls", "-1", remote.properties["path"] as String)
         val commits = mutableListOf<Commit>()
         val filter = TagFilter(tags)
         for (line in output.lines()) {
@@ -169,10 +163,8 @@ class SshRemoteProvider(val providers: ProviderModule) : BaseRemoteProvider() {
     }
 
     override fun getCommit(remote: Remote, commitId: String, params: RemoteParameters): Commit {
-        val sshRemote = remote as SshRemote
-
         try {
-            val json = runSsh(remote, params, "cat", "${sshRemote.path}/$commitId/metadata.json")
+            val json = runSsh(remote, params, "cat", "${remote.properties["path"]}/$commitId/metadata.json")
             return gson.fromJson(json, Commit::class.java)
         } catch (e: CommandException) {
             if (e.output.contains("No such file or directory")) {
@@ -183,11 +175,10 @@ class SshRemoteProvider(val providers: ProviderModule) : BaseRemoteProvider() {
     }
 
     override fun syncVolume(operation: OperationExecutor, data: Any?, volume: DockerVolume, path: String, scratchPath: String) {
-        val remote = operation.remote as SshRemote
-
         val localPath = "$path/"
-        val remoteDir = "${remote.path}/${operation.operation.commitId}/data/${volume.name}"
-        val remotePath = "${remote.username}@${remote.address}:$remoteDir/"
+        val props = operation.remote.properties
+        val remoteDir = "${props["path"]}/${operation.operation.commitId}/data/${volume.name}"
+        val remotePath = "${props["username"]}@${props["address"]}:$remoteDir/"
         val src = when (operation.operation.type) {
             Operation.Type.PUSH -> localPath
             Operation.Type.PULL -> remotePath
@@ -202,19 +193,18 @@ class SshRemoteProvider(val providers: ProviderModule) : BaseRemoteProvider() {
                 message = "Syncing $desc", percent = 0))
 
         if (operation.operation.type == Operation.Type.PUSH) {
-            runSsh(remote, operation.params, "sudo", "mkdir", "-p", remoteDir)
+            runSsh(operation.remote, operation.params, "sudo", "mkdir", "-p", remoteDir)
         }
 
-        val (password, key) = getSshAuth(remote, operation.params)
-        val rsync = RsyncExecutor(operation, remote.port, password,
+        val (password, key) = getSshAuth(operation.remote, operation.params)
+        val rsync = RsyncExecutor(operation, operation.remote.properties["port"] as Int?, password,
                 key, "$src/", dst, providers.commandExecutor)
         rsync.run()
     }
 
     override fun pushMetadata(operation: OperationExecutor, data: Any?, commit: Commit, isUpdate: Boolean) {
-        val remote = operation.remote as SshRemote
         val json = gson.toJson(commit)
-        writeFileSsh(remote, operation.params,
-                "${remote.path}/${operation.operation.commitId}/metadata.json", json)
+        writeFileSsh(operation.remote, operation.params,
+                "${operation.remote.properties["path"]}/${operation.operation.commitId}/metadata.json", json)
     }
 }

@@ -6,8 +6,8 @@ import io.kotlintest.shouldBe
 import io.kotlintest.specs.StringSpec
 import io.titandata.models.Operation
 import io.titandata.models.ProgressEntry
+import io.titandata.models.RemoteParameters
 import io.titandata.models.Repository
-import io.titandata.remote.nop.NopParameters
 import io.titandata.storage.OperationData
 import org.jetbrains.exposed.sql.transactions.transaction
 
@@ -27,7 +27,7 @@ class ProgressEntryMetadataTest : StringSpec() {
             vs = md.createVolumeSet("foo", null, true)
             md.createOperation("foo", vs, OperationData(
                     metadataOnly = false,
-                    params = NopParameters(),
+                    params = RemoteParameters("nop"),
                     operation = Operation(
                             id = vs,
                             type = Operation.Type.PULL,

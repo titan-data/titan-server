@@ -27,12 +27,12 @@ import io.titandata.exception.ObjectExistsException
 import io.titandata.models.Commit
 import io.titandata.models.Operation
 import io.titandata.models.ProgressEntry
+import io.titandata.models.Remote
+import io.titandata.models.RemoteParameters
 import io.titandata.models.Repository
 import io.titandata.models.docker.DockerVolume
-import io.titandata.remote.engine.EngineParameters
-import io.titandata.remote.nop.NopParameters
-import io.titandata.remote.nop.NopRemote
 import io.titandata.remote.nop.NopRemoteProvider
+import io.titandata.remote.s3.S3RemoteProvider
 import io.titandata.storage.OperationData
 import io.titandata.storage.zfs.ZfsStorageProvider
 import java.util.UUID
@@ -42,6 +42,9 @@ class OperationOrchestratorTest : StringSpec() {
 
     @MockK
     lateinit var zfsStorageProvider: ZfsStorageProvider
+
+    @MockK
+    lateinit var s3Provider: S3RemoteProvider
 
     @SpyK
     var nopRemoteProvider = NopRemoteProvider()
@@ -64,9 +67,7 @@ class OperationOrchestratorTest : StringSpec() {
             providers.metadata.createVolume(vs, DockerVolume(name = "volume"))
             vs
         }
-        val ret = MockKAnnotations.init(this)
-
-        return ret
+        return MockKAnnotations.init(this)
     }
 
     override fun afterTest(testCase: TestCase, result: TestResult) {
@@ -75,6 +76,8 @@ class OperationOrchestratorTest : StringSpec() {
 
     override fun testCaseOrder() = TestCaseOrder.Random
 
+    val params = RemoteParameters("nop")
+
     fun buildOperation(type: Operation.Type = Operation.Type.PULL): OperationData {
         return OperationData(operation = Operation(
                 id = vs,
@@ -82,7 +85,7 @@ class OperationOrchestratorTest : StringSpec() {
                 state = Operation.State.RUNNING,
                 remote = "remote",
                 commitId = "id"
-        ), params = NopParameters(), metadataOnly = false)
+        ), params = params, metadataOnly = false)
     }
 
     init {
@@ -159,118 +162,118 @@ class OperationOrchestratorTest : StringSpec() {
 
         "pull fails for invalid repo name" {
             shouldThrow<IllegalArgumentException> {
-                providers.operations.startPull("bad/repo", "remote", "id", NopParameters())
+                providers.operations.startPull("bad/repo", "remote", "id", params)
             }
         }
 
         "pull fails for invalid remote name" {
             shouldThrow<IllegalArgumentException> {
-                providers.operations.startPull("foo", "bad/remote", "id", NopParameters())
+                providers.operations.startPull("foo", "bad/remote", "id", params)
             }
         }
 
         "pull fails for invalid commit id" {
             shouldThrow<IllegalArgumentException> {
-                providers.operations.startPull("foo", "remote", "bad/id", NopParameters())
+                providers.operations.startPull("foo", "remote", "bad/id", params)
             }
         }
 
         "pull fails for non-existent repo" {
             shouldThrow<NoSuchObjectException> {
-                providers.operations.startPull("bar", "remote", "id", NopParameters())
+                providers.operations.startPull("bar", "remote", "id", params)
             }
         }
 
         "pull for non-existent remote fails" {
             shouldThrow<NoSuchObjectException> {
-                providers.operations.startPull("foo", "remote", "id", NopParameters())
+                providers.operations.startPull("foo", "remote", "id", params)
             }
         }
 
         "pull fails for mismatched remote fails" {
-            providers.remotes.addRemote("foo", NopRemote(name = "remote"))
+            providers.remotes.addRemote("foo", Remote("nop", "remote"))
             shouldThrow<IllegalArgumentException> {
-                providers.operations.startPull("foo", "remote", "commit", EngineParameters())
+                providers.operations.startPull("foo", "remote", "commit", RemoteParameters("s3"))
             }
         }
 
         "pull fails for non-existent remote commit" {
-            providers.remotes.addRemote("foo", NopRemote(name = "remote"))
-            every { nopRemoteProvider.validateOperation(any(), any(), any(), any(), any()) } throws NoSuchObjectException("")
+            providers.remotes.addRemote("foo", Remote("s3", "remote"))
+            every { s3Provider.getCommit(any(), any(), any()) } throws NoSuchObjectException("")
             shouldThrow<NoSuchObjectException> {
-                providers.operations.startPull("foo", "remote", "id", NopParameters())
+                providers.operations.startPull("foo", "remote", "id", RemoteParameters("s3"))
             }
         }
 
         "pull fails if local commit exists" {
-            providers.remotes.addRemote("foo", NopRemote(name = "remote"))
+            providers.remotes.addRemote("foo", Remote("nop", "remote"))
             transaction {
                 providers.metadata.createCommit("foo", providers.metadata.getActiveVolumeSet("foo"), Commit(id = "id"))
             }
             shouldThrow<ObjectExistsException> {
-                providers.operations.startPull("foo", "remote", "id", NopParameters())
+                providers.operations.startPull("foo", "remote", "id", params)
             }
         }
 
         "pull fails if local commit does not exist and metadata only set" {
-            providers.remotes.addRemote("foo", NopRemote(name = "remote"))
+            providers.remotes.addRemote("foo", Remote("nop", "remote"))
             shouldThrow<NoSuchObjectException> {
-                providers.operations.startPull("foo", "remote", "id", NopParameters(), true)
+                providers.operations.startPull("foo", "remote", "id", params, true)
             }
         }
 
         "push fails for invalid repo name" {
             shouldThrow<IllegalArgumentException> {
-                providers.operations.startPush("bad/repo", "remote", "id", NopParameters())
+                providers.operations.startPush("bad/repo", "remote", "id", params)
             }
         }
 
         "push fails for invalid remote name" {
             shouldThrow<IllegalArgumentException> {
-                providers.operations.startPush("foo", "bad/remote", "id", NopParameters())
+                providers.operations.startPush("foo", "bad/remote", "id", params)
             }
         }
 
         "push fails for invalid commit id" {
             shouldThrow<IllegalArgumentException> {
-                providers.operations.startPush("foo", "remote", "bad/id", NopParameters())
+                providers.operations.startPush("foo", "remote", "bad/id", params)
             }
         }
 
         "push fails for non-existent repo" {
             shouldThrow<NoSuchObjectException> {
-                providers.operations.startPush("bar", "remote", "id", NopParameters())
+                providers.operations.startPush("bar", "remote", "id", params)
             }
         }
 
         "push for non-existent remote fails" {
             shouldThrow<NoSuchObjectException> {
-                providers.operations.startPush("foo", "remote", "id", NopParameters())
+                providers.operations.startPush("foo", "remote", "id", params)
             }
         }
 
         "push fails for mismatched remote fails" {
-            providers.remotes.addRemote("foo", NopRemote(name = "remote"))
+            providers.remotes.addRemote("foo", Remote("nop", "remote"))
             shouldThrow<IllegalArgumentException> {
-                providers.operations.startPush("foo", "remote", "id", EngineParameters())
+                providers.operations.startPush("foo", "remote", "id", RemoteParameters("s3"))
             }
         }
 
         "push fails if local commit cannot be found" {
-            providers.remotes.addRemote("foo", NopRemote(name = "remote"))
+            providers.remotes.addRemote("foo", Remote("nop", "remote"))
             shouldThrow<NoSuchObjectException> {
-                providers.operations.startPush("foo", "remote", "id", NopParameters())
+                providers.operations.startPush("foo", "remote", "id", params)
             }
         }
 
         "push fails if remote commit exists" {
-            providers.remotes.addRemote("foo", NopRemote(name = "remote"))
+            providers.remotes.addRemote("foo", Remote("s3", "remote"))
             transaction {
                 providers.metadata.createCommit("foo", providers.metadata.getActiveVolumeSet("foo"), Commit(id = "id"))
             }
-            every { nopRemoteProvider.validateOperation(any(), any(), any(), any(), any()) } throws ObjectExistsException("")
+            every { s3Provider.getCommit(any(), any(), any()) } returns Commit("id")
             shouldThrow<ObjectExistsException> {
-                providers.operations.startPush("foo", "remote", "id", NopParameters())
+                providers.operations.startPush("foo", "remote", "id", RemoteParameters("s3"))
             }
         }
 
@@ -340,7 +343,7 @@ class OperationOrchestratorTest : StringSpec() {
                 providers.metadata.createCommit("foo", vs, Commit("sourceCommit"))
             }
             val (opVs, op) = providers.operations.createMetadata("foo", Operation.Type.PULL,
-                    "origin", "id", true, NopParameters(), "sourceCommit")
+                    "origin", "id", true, params, "sourceCommit")
 
             transaction {
                 val volumes = providers.metadata.listVolumes(opVs)
@@ -356,15 +359,15 @@ class OperationOrchestratorTest : StringSpec() {
         }
 
         "find local commit returns commit id for push" {
-            val commit = providers.operations.findLocalCommit(Operation.Type.PUSH, "foo", NopRemote(name = "remote"),
-                    NopParameters(), "id")
+            val commit = providers.operations.findLocalCommit(Operation.Type.PUSH, "foo", Remote("nop", "remote"),
+                    params, "id")
             commit shouldBe "id"
         }
 
         "find local commit returns null if no remote commits exist" {
             every { nopRemoteProvider.getCommit(any(), any(), any()) } throws NoSuchObjectException("")
-            val commit = providers.operations.findLocalCommit(Operation.Type.PULL, "foo", NopRemote(name = "remote"),
-                    NopParameters(), "id")
+            val commit = providers.operations.findLocalCommit(Operation.Type.PULL, "foo", Remote("nop", "remote"),
+                    params, "id")
             commit shouldBe null
         }
 
@@ -380,8 +383,8 @@ class OperationOrchestratorTest : StringSpec() {
                     "source" to "one"
             )))
             every { nopRemoteProvider.getCommit(any(), "one", any()) } throws NoSuchObjectException("")
-            val commit = providers.operations.findLocalCommit(Operation.Type.PULL, "foo", NopRemote(name = "remote"),
-                    NopParameters(), "three")
+            val commit = providers.operations.findLocalCommit(Operation.Type.PULL, "foo", Remote("nop", "remote"),
+                    params, "three")
             commit shouldBe "two"
         }
 
@@ -396,21 +399,21 @@ class OperationOrchestratorTest : StringSpec() {
                     "source" to "one"
             )))
             every { nopRemoteProvider.getCommit(any(), "one", any()) } throws NoSuchObjectException("")
-            val commit = providers.operations.findLocalCommit(Operation.Type.PULL, "foo", NopRemote(name = "remote"),
-                    NopParameters(), "three")
+            val commit = providers.operations.findLocalCommit(Operation.Type.PULL, "foo", Remote("nop", "remote"),
+                    params, "three")
             commit shouldBe "one"
         }
 
         "find local commit returns null if remote commit doesn't have source tag" {
             every { nopRemoteProvider.getCommit(any(), "three", any()) } returns Commit(id = "three")
-            val commit = providers.operations.findLocalCommit(Operation.Type.PULL, "foo", NopRemote(name = "remote"),
-                    NopParameters(), "three")
+            val commit = providers.operations.findLocalCommit(Operation.Type.PULL, "foo", Remote("nop", "remote"),
+                    params, "three")
             commit shouldBe null
         }
 
         "pull succeeds" {
             transaction {
-                providers.metadata.addRemote("foo", NopRemote(name = "remote"))
+                providers.metadata.addRemote("foo", Remote("nop", "remote"))
             }
             every { zfsStorageProvider.mountVolume(any(), any()) } returns "/mountpoint"
             every { zfsStorageProvider.mountVolume(any(), "_scratch") } returns "/scratch"
@@ -421,7 +424,7 @@ class OperationOrchestratorTest : StringSpec() {
             every { zfsStorageProvider.createVolumeSet(any()) } just Runs
             every { nopRemoteProvider.pullVolume(any(), any(), any(), any(), any()) } just Runs
 
-            var op = providers.operations.startPull("foo", "remote", "commit", NopParameters())
+            var op = providers.operations.startPull("foo", "remote", "commit", params)
             op.commitId shouldBe "commit"
             op.type shouldBe Operation.Type.PULL
             op.remote shouldBe "remote"
@@ -445,13 +448,13 @@ class OperationOrchestratorTest : StringSpec() {
 
         "error during pull is reported correctly" {
             transaction {
-                providers.metadata.addRemote("foo", NopRemote(name = "remote"))
+                providers.metadata.addRemote("foo", Remote("nop", "remote"))
             }
             every { zfsStorageProvider.createVolumeSet(any()) } just Runs
             every { zfsStorageProvider.createVolume(any(), any()) } just Runs
             every { nopRemoteProvider.startOperation(any()) } throws Exception("error")
 
-            var op = providers.operations.startPull("foo", "remote", "commit", NopParameters())
+            var op = providers.operations.startPull("foo", "remote", "commit", params)
             providers.operations.getExecutor("foo", op.id).join()
 
             op = providers.operations.getOperation("foo", op.id)
@@ -467,14 +470,14 @@ class OperationOrchestratorTest : StringSpec() {
 
         "interrupt during pull is reported correctly" {
             transaction {
-                providers.metadata.addRemote("foo", NopRemote(name = "remote"))
+                providers.metadata.addRemote("foo", Remote("nop", "remote"))
             }
             every { zfsStorageProvider.createVolumeSet(any()) } just Runs
             every { zfsStorageProvider.createVolume(any(), any()) } just Runs
             every { nopRemoteProvider.startOperation(any()) } throws InterruptedException()
             every { nopRemoteProvider.pullVolume(any(), any(), any(), any(), any()) } just Runs
 
-            var op = providers.operations.startPull("foo", "remote", "commit", NopParameters())
+            var op = providers.operations.startPull("foo", "remote", "commit", params)
             providers.operations.getExecutor("foo", op.id).join()
 
             op = providers.operations.getOperation("foo", op.id)
@@ -487,17 +490,17 @@ class OperationOrchestratorTest : StringSpec() {
 
         "pull fails if conflicting operation is in progress" {
             transaction {
-                providers.metadata.addRemote("foo", NopRemote(name = "remote"))
+                providers.metadata.addRemote("foo", Remote("nop", "remote"))
                 providers.metadata.createOperation("foo", vs, buildOperation())
             }
             shouldThrow<ObjectExistsException> {
-                providers.operations.startPull("foo", "remote", "id", NopParameters())
+                providers.operations.startPull("foo", "remote", "id", params)
             }
         }
 
         "pull succeeds if non-conflicting operation is in progress" {
             transaction {
-                providers.metadata.addRemote("foo", NopRemote(name = "remote"))
+                providers.metadata.addRemote("foo", Remote("nop", "remote"))
                 providers.metadata.createOperation("foo", vs, buildOperation(Operation.Type.PUSH))
             }
             every { zfsStorageProvider.mountVolume(any(), any()) } returns "/mountpoint"
@@ -509,7 +512,7 @@ class OperationOrchestratorTest : StringSpec() {
             every { zfsStorageProvider.createVolumeSet(any()) } just Runs
             every { nopRemoteProvider.pullVolume(any(), any(), any(), any(), any()) } just Runs
 
-            var op = providers.operations.startPull("foo", "remote", "commit", NopParameters())
+            var op = providers.operations.startPull("foo", "remote", "commit", params)
             providers.operations.getExecutor("foo", op.id).join()
             op = providers.operations.getOperation("foo", op.id)
             op.state shouldBe Operation.State.COMPLETE
@@ -517,7 +520,7 @@ class OperationOrchestratorTest : StringSpec() {
 
         "push succeeds" {
             transaction {
-                providers.metadata.addRemote("foo", NopRemote(name = "remote"))
+                providers.metadata.addRemote("foo", Remote("nop", "remote"))
                 providers.metadata.createCommit("foo", vs, Commit("id"))
             }
 
@@ -529,7 +532,7 @@ class OperationOrchestratorTest : StringSpec() {
             every { zfsStorageProvider.cloneVolumeSet(any(), any(), any(), any()) } just Runs
             every { nopRemoteProvider.pullVolume(any(), any(), any(), any(), any()) } just Runs
 
-            var op = providers.operations.startPush("foo", "remote", "id", NopParameters())
+            var op = providers.operations.startPush("foo", "remote", "id", params)
             op.commitId shouldBe "id"
             op.type shouldBe Operation.Type.PUSH
             op.remote shouldBe "remote"
@@ -554,13 +557,13 @@ class OperationOrchestratorTest : StringSpec() {
 
         "error during push is reported correctly" {
             transaction {
-                providers.metadata.addRemote("foo", NopRemote(name = "remote"))
+                providers.metadata.addRemote("foo", Remote("nop", "remote"))
                 providers.metadata.createCommit("foo", vs, Commit("id"))
             }
             every { zfsStorageProvider.cloneVolumeSet(any(), any(), any(), any()) } just Runs
             every { nopRemoteProvider.startOperation(any()) } throws Exception("error")
 
-            var op = providers.operations.startPush("foo", "remote", "id", NopParameters())
+            var op = providers.operations.startPush("foo", "remote", "id", params)
             providers.operations.getExecutor("foo", op.id).join()
 
             op = providers.operations.getOperation("foo", op.id)
@@ -576,13 +579,13 @@ class OperationOrchestratorTest : StringSpec() {
 
         "interrupt during push is reported correctly" {
             transaction {
-                providers.metadata.addRemote("foo", NopRemote(name = "remote"))
+                providers.metadata.addRemote("foo", Remote("nop", "remote"))
                 providers.metadata.createCommit("foo", vs, Commit("id"))
             }
             every { zfsStorageProvider.cloneVolumeSet(any(), any(), any(), any()) } just Runs
             every { nopRemoteProvider.startOperation(any()) } throws InterruptedException()
 
-            var op = providers.operations.startPush("foo", "remote", "id", NopParameters())
+            var op = providers.operations.startPush("foo", "remote", "id", params)
             providers.operations.getExecutor("foo", op.id).join()
 
             op = providers.operations.getOperation("foo", op.id)
@@ -597,18 +600,18 @@ class OperationOrchestratorTest : StringSpec() {
 
         "push fails if conflicting operation is in progress" {
             transaction {
-                providers.metadata.addRemote("foo", NopRemote(name = "remote"))
+                providers.metadata.addRemote("foo", Remote("nop", "remote"))
                 providers.metadata.createOperation("foo", vs, buildOperation(Operation.Type.PUSH))
                 providers.metadata.createCommit("foo", vs, Commit("id"))
             }
             shouldThrow<ObjectExistsException> {
-                providers.operations.startPush("foo", "remote", "id", NopParameters())
+                providers.operations.startPush("foo", "remote", "id", params)
             }
         }
 
         "push succeeds if non-conflicting operation is in progress" {
             transaction {
-                providers.metadata.addRemote("foo", NopRemote(name = "remote"))
+                providers.metadata.addRemote("foo", Remote("nop", "remote"))
                 providers.metadata.createOperation("foo", vs, buildOperation())
                 providers.metadata.createCommit("foo", vs, Commit("id"))
             }
@@ -621,7 +624,7 @@ class OperationOrchestratorTest : StringSpec() {
             every { zfsStorageProvider.cloneVolumeSet(any(), any(), any(), any()) } just Runs
             every { nopRemoteProvider.pullVolume(any(), any(), any(), any(), any()) } just Runs
 
-            var op = providers.operations.startPush("foo", "remote", "id", NopParameters())
+            var op = providers.operations.startPush("foo", "remote", "id", params)
             providers.operations.getExecutor("foo", op.id).join()
             op = providers.operations.getOperation("foo", op.id)
             op.state shouldBe Operation.State.COMPLETE
@@ -629,7 +632,7 @@ class OperationOrchestratorTest : StringSpec() {
 
         "load state restarts operation" {
             transaction {
-                providers.metadata.addRemote("foo", NopRemote(name = "remote"))
+                providers.metadata.addRemote("foo", Remote("nop", "remote"))
                 providers.metadata.createOperation("foo", vs, buildOperation(Operation.Type.PUSH))
                 providers.metadata.createCommit("foo", vs, Commit("id"))
             }

@@ -25,8 +25,8 @@ class VolumeMetadataTest : StringSpec() {
 
     fun createVolumeSet(): String {
         return transaction {
-            md.createRepository(Repository(name = "foo", properties = emptyMap()))
-            md.createVolumeSet("foo", true)
+            md.createRepository(Repository(name = "foo"))
+            md.createVolumeSet("foo", null, true)
         }
     }
 
@@ -34,7 +34,7 @@ class VolumeMetadataTest : StringSpec() {
         "create volume succeeds" {
             val vs = createVolumeSet()
             transaction {
-                md.createVolume(vs, Volume(name = "vol", properties = emptyMap()))
+                md.createVolume(vs, Volume(name = "vol"))
             }
         }
 
@@ -42,8 +42,8 @@ class VolumeMetadataTest : StringSpec() {
             val vs = createVolumeSet()
             shouldThrow<ObjectExistsException> {
                 transaction {
-                    md.createVolume(vs, Volume(name = "vol", properties = emptyMap()))
-                    md.createVolume(vs, Volume(name = "vol", properties = emptyMap()))
+                    md.createVolume(vs, Volume(name = "vol"))
+                    md.createVolume(vs, Volume(name = "vol"))
                 }
             }
         }
@@ -54,7 +54,7 @@ class VolumeMetadataTest : StringSpec() {
                 md.createVolume(vs, Volume(name = "vol", properties = mapOf("a" to "b")))
                 val vol = md.getVolume(vs, "vol")
                 vol.name shouldBe "vol"
-                vol.properties!!["a"] shouldBe "b"
+                vol.properties["a"] shouldBe "b"
             }
         }
 
@@ -64,14 +64,6 @@ class VolumeMetadataTest : StringSpec() {
                 transaction {
                     md.getVolume(vs, "vol")
                 }
-            }
-        }
-
-        "mark volume deleting succeeds" {
-            val vs = createVolumeSet()
-            transaction {
-                md.createVolume(vs, Volume(name = "vol", properties = mapOf("a" to "b")))
-                md.markVolumeDeleting(vs, "vol")
             }
         }
 
@@ -92,9 +84,9 @@ class VolumeMetadataTest : StringSpec() {
                 val vols = md.listVolumes(vs).sortedBy { it.name }
                 vols.size shouldBe 2
                 vols[0].name shouldBe "vol1"
-                vols[0].properties!!["a"] shouldBe "b"
+                vols[0].properties["a"] shouldBe "b"
                 vols[1].name shouldBe "vol2"
-                vols[1].properties!!["c"] shouldBe "d"
+                vols[1].properties["c"] shouldBe "d"
             }
         }
 
@@ -106,16 +98,27 @@ class VolumeMetadataTest : StringSpec() {
                 val vols = md.listAllVolumes().sortedBy { it.name }
                 vols.size shouldBe 2
                 vols[0].name shouldBe "vol1"
-                vols[0].properties!!["a"] shouldBe "b"
+                vols[0].properties["a"] shouldBe "b"
                 vols[1].name shouldBe "vol2"
-                vols[1].properties!!["c"] shouldBe "d"
+                vols[1].properties["c"] shouldBe "d"
+            }
+        }
+
+        "mark volume deleting succeeds" {
+            val vs = createVolumeSet()
+            transaction {
+                md.createVolume(vs, Volume(name = "vol"))
+                md.markVolumeDeleting(vs, "vol")
+                shouldThrow<NoSuchObjectException> {
+                    md.getVolume(vs, "vol")
+                }
             }
         }
 
         "delete volume succeeds" {
             val vs = createVolumeSet()
             transaction {
-                md.createVolume(vs, Volume(name = "vol", properties = emptyMap()))
+                md.createVolume(vs, Volume(name = "vol"))
                 md.deleteVolume(vs, "vol")
                 shouldThrow<NoSuchObjectException> {
                     md.getVolume(vs, "vol")

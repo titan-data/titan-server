@@ -40,6 +40,7 @@ import io.titandata.models.Error
 import io.titandata.models.VolumeResponse
 import io.titandata.orchestrator.CommitOrchestrator
 import io.titandata.orchestrator.OperationOrchestrator
+import io.titandata.orchestrator.Reaper
 import io.titandata.orchestrator.RemoteOrchestrator
 import io.titandata.orchestrator.RepositoryOrchestrator
 import io.titandata.orchestrator.VolumeOrchestrator
@@ -85,6 +86,7 @@ class ProviderModule(pool: String, inMemory: Boolean = true) {
     val operations = OperationOrchestrator(this)
     val volumes = VolumeOrchestrator(this)
     val remotes = RemoteOrchestrator(this)
+    val reaper = Reaper(this)
 
     val gson = ModelTypeAdapters.configure(GsonBuilder()).create()
     val commandExecutor = CommandExecutor()
@@ -130,7 +132,7 @@ internal fun ApplicationCompressionConfiguration(): Compression.Configuration.()
 fun Application.main() {
     val providers = ProviderModule(System.getenv("TITAN_POOL") ?: "titan", false)
     providers.metadata.init()
-    providers.storage.load()
+    Thread(providers.reaper).start()
     providers.operations.loadState()
     mainProvider(providers)
 }

@@ -28,23 +28,15 @@ class RemoteMetadataTest : StringSpec() {
     init {
         "add remote succeeds" {
             transaction {
-                md.createRepository(Repository(name = "foo", properties = mapOf()))
+                md.createRepository(Repository(name = "foo"))
                 md.addRemote("foo", NopRemote(name = "origin"))
-            }
-        }
-
-        "add remote for non-existent repository fails" {
-            shouldThrow<NoSuchObjectException> {
-                transaction {
-                    md.addRemote("foo", NopRemote(name = "origin"))
-                }
             }
         }
 
         "add duplicate remote fails" {
             shouldThrow<ObjectExistsException> {
                 transaction {
-                    md.createRepository(Repository(name = "foo", properties = mapOf()))
+                    md.createRepository(Repository(name = "foo"))
                     md.addRemote("foo", NopRemote(name = "origin"))
                     md.addRemote("foo", NopRemote(name = "origin"))
                 }
@@ -53,7 +45,7 @@ class RemoteMetadataTest : StringSpec() {
 
         "get remote succeeds" {
             val remote = transaction {
-                md.createRepository(Repository(name = "foo", properties = mapOf()))
+                md.createRepository(Repository(name = "foo"))
                 md.addRemote("foo", NopRemote(name = "origin"))
                 md.getRemote("foo", "origin")
             }
@@ -64,15 +56,7 @@ class RemoteMetadataTest : StringSpec() {
         "get non-existent remote fails" {
             shouldThrow<NoSuchObjectException> {
                 transaction {
-                    md.createRepository(Repository(name = "foo", properties = mapOf()))
-                    md.getRemote("foo", "origin")
-                }
-            }
-        }
-
-        "get remote of non-existent repo fails" {
-            shouldThrow<NoSuchObjectException> {
-                transaction {
+                    md.createRepository(Repository(name = "foo"))
                     md.getRemote("foo", "origin")
                 }
             }
@@ -80,7 +64,7 @@ class RemoteMetadataTest : StringSpec() {
 
         "list remotes succeeds" {
             val remotes = transaction {
-                md.createRepository(Repository(name = "foo", properties = mapOf()))
+                md.createRepository(Repository(name = "foo"))
                 md.addRemote("foo", NopRemote(name = "foo"))
                 md.addRemote("foo", S3Remote(name = "bar", bucket = "bucket"))
                 md.listRemotes("foo")
@@ -94,17 +78,9 @@ class RemoteMetadataTest : StringSpec() {
             s3.bucket shouldBe "bucket"
         }
 
-        "list remotes of non-existent repository fails" {
-            shouldThrow<NoSuchObjectException> {
-                transaction {
-                    md.listRemotes("foo")
-                }
-            }
-        }
-
         "remove remote succeeds" {
             val remotes = transaction {
-                md.createRepository(Repository(name = "foo", properties = mapOf()))
+                md.createRepository(Repository(name = "foo"))
                 md.addRemote("foo", NopRemote(name = "foo"))
                 md.removeRemote("foo", "foo")
                 md.listRemotes("foo")
@@ -115,15 +91,7 @@ class RemoteMetadataTest : StringSpec() {
         "remove non-existent remote fails" {
             shouldThrow<NoSuchObjectException> {
                 transaction {
-                    md.createRepository(Repository(name = "foo", properties = mapOf()))
-                    md.removeRemote("foo", "foo")
-                }
-            }
-        }
-
-        "remove remote from non-existent repo fails" {
-            shouldThrow<NoSuchObjectException> {
-                transaction {
+                    md.createRepository(Repository(name = "foo"))
                     md.removeRemote("foo", "foo")
                 }
             }
@@ -131,7 +99,7 @@ class RemoteMetadataTest : StringSpec() {
 
         "update remote succeeds" {
             val remote = transaction {
-                md.createRepository(Repository(name = "foo", properties = mapOf()))
+                md.createRepository(Repository(name = "foo"))
                 md.addRemote("foo", NopRemote(name = "origin"))
                 md.updateRemote("foo", "origin", S3Remote(name = "origin", bucket = "bucket"))
                 md.getRemote("foo", "origin")
@@ -142,9 +110,20 @@ class RemoteMetadataTest : StringSpec() {
             s3.bucket shouldBe "bucket"
         }
 
+        "update remote to conflicting name fails" {
+            shouldThrow<ObjectExistsException> {
+                transaction {
+                    md.createRepository(Repository(name = "foo"))
+                    md.addRemote("foo", NopRemote(name = "one"))
+                    md.addRemote("foo", NopRemote(name = "two"))
+                    md.updateRemote("foo", "one", NopRemote(name = "two"))
+                }
+            }
+        }
+
         "rename remote succeeds" {
             val remote = transaction {
-                md.createRepository(Repository(name = "foo", properties = mapOf()))
+                md.createRepository(Repository(name = "foo"))
                 md.addRemote("foo", NopRemote(name = "origin"))
                 md.updateRemote("foo", "origin", NopRemote(name = "upstream"))
                 md.getRemote("foo", "upstream")
@@ -155,15 +134,7 @@ class RemoteMetadataTest : StringSpec() {
         "update of non-existent remote fails" {
             shouldThrow<NoSuchObjectException> {
                 transaction {
-                    md.createRepository(Repository(name = "foo", properties = mapOf()))
-                    md.updateRemote("foo", "origin", NopRemote(name = "upstream"))
-                }
-            }
-        }
-
-        "update of remote for non-existent repo fails" {
-            shouldThrow<NoSuchObjectException> {
-                transaction {
+                    md.createRepository(Repository(name = "foo"))
                     md.updateRemote("foo", "origin", NopRemote(name = "upstream"))
                 }
             }

@@ -22,15 +22,18 @@ import io.ktor.server.testing.handleRequest
 import io.ktor.server.testing.setBody
 import io.ktor.util.KtorExperimentalAPI
 import io.mockk.MockKAnnotations
+import io.mockk.Runs
 import io.mockk.clearAllMocks
 import io.mockk.every
 import io.mockk.impl.annotations.InjectMockKs
 import io.mockk.impl.annotations.MockK
 import io.mockk.impl.annotations.OverrideMockKs
+import io.mockk.just
 import io.titandata.models.Error
 import io.titandata.models.Repository
+import io.titandata.models.RepositoryVolumeStatus
+import io.titandata.models.Volume
 import io.titandata.storage.zfs.ZfsStorageProvider
-import io.titandata.util.CommandExecutor
 import java.util.concurrent.TimeUnit
 import org.jetbrains.exposed.sql.transactions.transaction
 
@@ -38,10 +41,6 @@ import org.jetbrains.exposed.sql.transactions.transaction
 class RepositoriesApiTest : StringSpec() {
 
     @MockK
-    lateinit var executor: CommandExecutor
-
-    @InjectMockKs
-    @OverrideMockKs
     var zfsStorageProvider = ZfsStorageProvider("test")
 
     @InjectMockKs
@@ -124,39 +123,23 @@ class RepositoriesApiTest : StringSpec() {
         }
 
         "get repository status succeeds" {
-            val guid = transaction {
+            transaction {
                 providers.metadata.createRepository(Repository(name = "foo", properties = emptyMap()))
-                providers.metadata.createVolumeSet("foo", true)
+                val vs = providers.metadata.createVolumeSet("foo", null, true)
+                providers.metadata.createVolume(vs, Volume(name = "volume", properties = mapOf("path" to "/var/a")))
             }
-            every { executor.exec(*anyVararg()) } returns ""
-            every { executor.exec("zfs", "list", "-Ho", "name,defer_destroy,io.titan-data:metadata", "-t", "snapshot",
-                    "-d", "2", "test/repo/foo") } returns "test/repo/foo/$guid@hash\toff\t{}\n"
-            every { executor.exec("zfs", "list", "-Ho", "io.titan-data:metadata",
-                    "test/repo/foo/$guid@hash") } returns "{\"a\":\"b\"}\n"
-            every { executor.exec("zfs", "list", "-pHo", "logicalused,used", "test/repo/foo/$guid") } returns "40\t20\n"
-            every { executor.exec("zfs", "list", "-Ho", "origin", "-r", "test/repo/foo/$guid") } returns
-                    "test/repo/foo/guidtwo/v0@sourcehash\n"
-            every { executor.exec("zfs", "list", "-d", "1",
-                    "-pHo", "name,logicalreferenced,referenced,io.titan-data:metadata", "test/repo/foo/$guid") } returns arrayOf(
-                    "test/repo/foo/$guid\t4\t6\t{}",
-                    "test/repo/foo/$guid/v0\t5\t10\t{\"path\":\"/var/a\"}",
-                    "test/repo/foo/$guid/v1\t8\t16\t{\"path\":\"/var/b\"}"
-            ).joinToString("\n")
+            every { zfsStorageProvider.getVolumeStatus(any(), any()) } returns RepositoryVolumeStatus(name = "volume", logicalSize = 5, actualSize = 10)
             with(engine.handleRequest(HttpMethod.Get, "/v1/repositories/foo/status")) {
                 response.status() shouldBe HttpStatusCode.OK
                 response.contentType().toString() shouldBe "application/json; charset=UTF-8"
-                response.content shouldBe "{\"logicalSize\":40,\"actualSize\":20," +
-                    "\"lastCommit\":\"hash\",\"sourceCommit\":\"sourcehash\",\"volumeStatus\":[" +
-                "{\"name\":\"v0\",\"logicalSize\":5,\"actualSize\":10,\"properties\":{\"path\":\"/var/a\"}}," +
-                "{\"name\":\"v1\",\"logicalSize\":8,\"actualSize\":16,\"properties\":{\"path\":\"/var/b\"}}]}"
+                response.content shouldBe "{\"volumeStatus\":[{\"name\":\"volume\",\"logicalSize\":5,\"actualSize\":10,\"properties\":{\"path\":\"/var/a\"}}]}"
             }
         }
 
         "delete repository succeeds" {
             transaction {
-                providers.metadata.createRepository(Repository(name = "repo", properties = mapOf("a" to "b")))
+                providers.metadata.createRepository(Repository("repo"))
             }
-            every { executor.exec(*anyVararg()) } returns ""
             with(engine.handleRequest(HttpMethod.Delete, "/v1/repositories/repo")) {
                 response.status() shouldBe HttpStatusCode.NoContent
                 response.content shouldBe null
@@ -173,7 +156,7 @@ class RepositoriesApiTest : StringSpec() {
         }
 
         "create repository succeeds" {
-            every { executor.exec(*anyVararg()) } returns ""
+            every { zfsStorageProvider.createVolumeSet(any()) } just Runs
             with(engine.handleRequest(HttpMethod.Post, "/v1/repositories") {
                 addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
                 setBody("{\"name\":\"repo\",\"properties\":{\"a\":\"b\"}}")
@@ -185,7 +168,6 @@ class RepositoriesApiTest : StringSpec() {
         }
 
         "create repository fails with bad name" {
-            every { executor.exec(*anyVararg()) } returns ""
             with(engine.handleRequest(HttpMethod.Post, "/v1/repositories") {
                 addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
                 setBody("{\"name\":\"bad@name\",\"properties\":{\"a\":\"b\"}}")
@@ -234,7 +216,6 @@ class RepositoriesApiTest : StringSpec() {
         }
 
         "update repository fails with bad name" {
-            every { executor.exec(*anyVararg()) } returns ""
             with(engine.handleRequest(HttpMethod.Post, "/v1/repositories/repo") {
                 addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
                 setBody("{\"name\":\"bad@name\",\"properties\":{\"a\":\"b\"}}")

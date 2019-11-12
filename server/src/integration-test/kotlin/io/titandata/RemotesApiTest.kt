@@ -22,32 +22,16 @@ import io.ktor.server.testing.setBody
 import io.ktor.util.KtorExperimentalAPI
 import io.mockk.MockKAnnotations
 import io.mockk.clearAllMocks
-import io.mockk.every
 import io.mockk.impl.annotations.InjectMockKs
-import io.mockk.impl.annotations.MockK
 import io.mockk.impl.annotations.OverrideMockKs
-import io.mockk.mockk
 import io.titandata.models.Repository
 import io.titandata.remote.engine.EngineRemote
-import io.titandata.remote.engine.EngineRemoteProvider
 import io.titandata.remote.nop.NopRemote
-import io.titandata.storage.zfs.ZfsStorageProvider
-import io.titandata.util.CommandExecutor
 import java.util.concurrent.TimeUnit
 import org.jetbrains.exposed.sql.transactions.transaction
 
 @UseExperimental(KtorExperimentalAPI::class)
 class RemotesApiTest : StringSpec() {
-
-    @MockK
-    lateinit var executor: CommandExecutor
-
-    @InjectMockKs
-    @OverrideMockKs
-    var zfsStorageProvider = ZfsStorageProvider("test")
-
-    @MockK
-    lateinit var engineRemoteProvider: EngineRemoteProvider
 
     @InjectMockKs
     @OverrideMockKs
@@ -166,7 +150,6 @@ class RemotesApiTest : StringSpec() {
                 providers.metadata.addRemote("repo", NopRemote(name = "foo"))
                 providers.metadata.addRemote("repo", EngineRemote(name = "bar", address = "a", username = "u", password = "p", repository = "r"))
             }
-            every { executor.start(*anyVararg()) } returns mockk()
             with(engine.handleRequest(HttpMethod.Post, "/v1/repositories/repo/remotes/bar") {
                 addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
                 setBody("{\"provider\":\"engine\",\"name\":\"bar\",\"address\":\"b\"," +
@@ -184,7 +167,6 @@ class RemotesApiTest : StringSpec() {
                 providers.metadata.addRemote("repo", NopRemote(name = "foo"))
                 providers.metadata.addRemote("repo", EngineRemote(name = "bar", address = "a", username = "u", password = "p", repository = "r"))
             }
-            every { executor.start(*anyVararg()) } returns mockk()
             with(engine.handleRequest(HttpMethod.Post, "/v1/repositories/repo/remotes/bar") {
                 addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
                 setBody("{\"provider\":\"engine\",\"name\":\"baz\",\"address\":\"b\"," +
@@ -215,7 +197,6 @@ class RemotesApiTest : StringSpec() {
                 providers.metadata.addRemote("repo", NopRemote(name = "foo"))
                 providers.metadata.addRemote("repo", EngineRemote(name = "bar", address = "a", username = "u", password = "p", repository = "r"))
             }
-            every { executor.start(*anyVararg()) } returns mockk()
             with(engine.handleRequest(HttpMethod.Delete, "/v1/repositories/repo/remotes/bar")) {
                 response.status() shouldBe HttpStatusCode.NoContent
             }

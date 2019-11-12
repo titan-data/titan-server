@@ -38,7 +38,7 @@ abstract class BaseRemoteProvider : RemoteProvider {
     }
 
     fun getVolumeDesc(vol: Volume): String {
-        return vol.properties?.get("path")?.toString() ?: vol.name
+        return vol.properties.get("path")?.toString() ?: vol.name
     }
 
     override fun startOperation(operation: OperationExecutor): Any? {
@@ -53,16 +53,16 @@ abstract class BaseRemoteProvider : RemoteProvider {
         // Do nothing
     }
 
-    open fun syncVolume(operation: OperationExecutor, data: Any?, volume: Volume, basePath: String, scratchPath: String) {
+    open fun syncVolume(operation: OperationExecutor, data: Any?, volume: Volume, path: String, scratchPath: String) {
         // Do nothing
     }
 
-    override fun pushVolume(operation: OperationExecutor, data: Any?, volume: Volume, basePath: String, scratchPath: String) {
-        syncVolume(operation, data, volume, basePath, scratchPath)
+    override fun pushVolume(operation: OperationExecutor, data: Any?, volume: Volume, path: String, scratchPath: String) {
+        syncVolume(operation, data, volume, path, scratchPath)
     }
 
-    override fun pullVolume(operation: OperationExecutor, data: Any?, volume: Volume, basePath: String, scratchPath: String) {
-        syncVolume(operation, data, volume, basePath, scratchPath)
+    override fun pullVolume(operation: OperationExecutor, data: Any?, volume: Volume, path: String, scratchPath: String) {
+        syncVolume(operation, data, volume, path, scratchPath)
     }
 
     override fun pushMetadata(operation: OperationExecutor, data: Any?, commit: Commit, isUpdate: Boolean) {

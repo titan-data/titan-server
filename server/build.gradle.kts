@@ -30,12 +30,12 @@ dependencies {
     compile("ch.qos.logback:logback-classic:1.2.3")
     compile("com.google.code.gson:gson:2.8.6")
     compile("com.squareup.okhttp3:okhttp:4.2.2")
-    compile("org.jetbrains.exposed:exposed:0.17.6")
+    compile("org.jetbrains.exposed:exposed:0.17.7")
     compile("org.postgresql:postgresql:42.2.8")
     compile("com.zaxxer:HikariCP:3.4.1")
 
     // S3 Provider dependencies
-    compile("com.amazonaws:aws-java-sdk-s3:1.11.650")
+    compile("com.amazonaws:aws-java-sdk-s3:1.11.668")
     compile("javax.xml.bind:jaxb-api:2.3.1")
 
     testCompile("com.h2database:h2:1.4.200")

@@ -5,14 +5,13 @@
 package io.titandata.operation
 
 import io.titandata.ProviderModule
-import io.titandata.exception.NoSuchObjectException
 import io.titandata.models.Commit
 import io.titandata.models.Operation
 import io.titandata.models.ProgressEntry
 import io.titandata.models.Remote
 import io.titandata.models.RemoteParameters
+import io.titandata.models.Volume
 import io.titandata.remote.RemoteProvider
-import io.titandata.storage.OperationData
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.slf4j.LoggerFactory
 
@@ -27,7 +26,6 @@ class OperationExecutor(
     val repo: String,
     val remote: Remote,
     val params: RemoteParameters,
-    val isResume: Boolean = false,
     val metadataOnly: Boolean = false
 ) : Runnable {
 
@@ -35,8 +33,8 @@ class OperationExecutor(
         val log = LoggerFactory.getLogger(OperationExecutor::class.java)
     }
 
-    private var thread: Thread? = null
-    private var progress: MutableList<ProgressEntry> = mutableListOf()
+    internal var thread: Thread? = null
+    private var lastProgress: Int = 0
     private var commit: Commit? = null
 
     override fun run() {
@@ -49,61 +47,23 @@ class OperationExecutor(
                 commit = provider.getCommit(remote, operation.commitId, params)
             }
 
-            if (!isResume) {
-                var localCommit: String? = null
-                if (operation.type == Operation.Type.PUSH) {
-                    localCommit = operation.commitId
-                } else {
-                    /*
-                     * For pulls, we want to try to find the best possible source snapshot, so that incremental pulls
-                     * minimize the amount of storage changed. To do this, we rely on the CLI pushing metadat with a
-                     * "source" tag that indicates the source of the commmit. We chase this chain as far as we can
-                     * on the remote until we find a matching commit locally. In the event that the chain is broken on
-                     * the remote (because a commit has been deleted) or that we don't have any appropriate commits
-                     * locally, we simply use the latest commit and hope for the best.
-                     */
-                    try {
-                        var remoteCommit = commit!!
-                        while (localCommit == null && remoteCommit.properties.containsKey("tags")) {
-                            @Suppress("UNCHECKED_CAST")
-                            val tags = remoteCommit.properties["tags"] as Map<String, String>
-                            if (tags.containsKey("source")) {
-                                val source = tags["source"]!!
-                                try {
-                                    localCommit = providers.storage.getCommit(repo, source).id
-                                } catch (e: NoSuchObjectException) {
-                                    // Ignore local commits that don't exist and continue down chain
-                                }
-                                remoteCommit = provider.getCommit(remote, source, params)
-                            } else {
-                                break
-                            }
-                        }
-                    } catch (e: NoSuchObjectException) {
-                        // If we can't find a remote commit in the chain, then default to latest
-                    }
-                }
-
-                providers.storage.createOperation(repo, OperationData(operation = operation,
-                        params = params, metadataOnly = metadataOnly), localCommit)
-            }
-
             operationData = provider.startOperation(this)
 
             if (!metadataOnly) {
                 syncData(provider, operationData)
             } else if (operation.type == Operation.Type.PULL) {
-                providers.storage.updateCommit(repo, commit!!)
+                providers.commits.updateCommit(repo, commit!!)
             }
 
             if (operation.type == Operation.Type.PUSH) {
-                val localCommit = providers.storage.getCommit(repo, operation.commitId)
+                val localCommit = providers.commits.getCommit(repo, operation.commitId)
                 provider.pushMetadata(this, operationData, localCommit, metadataOnly)
             }
 
             provider.endOperation(this, operationData)
 
             addProgress(ProgressEntry(ProgressEntry.Type.COMPLETE))
+            operationData = null
         } catch (t: InterruptedException) {
             addProgress(ProgressEntry(ProgressEntry.Type.ABORT))
             log.info("${operation.type} operation ${operation.id} interrupted", t)
@@ -115,11 +75,9 @@ class OperationExecutor(
                 if (operation.state == Operation.State.COMPLETE &&
                         operation.type == Operation.Type.PULL && !metadataOnly) {
                     // It shouldn't be possible for commit to be null here, or else it would've failed
-                    providers.storage.commitOperation(repo, operation.id, commit!!)
-                } else {
-                    providers.storage.discardOperation(repo, operation.id)
+                    providers.commits.createCommit(repo, commit!!, operation.id)
                 }
-                operationData = null
+                // If an operation fails, then we don't explicitly delete it but wait for the last progress to be consumed
             } catch (t: Throwable) {
                 log.error("finalization of ${operation.type} failed", t)
             } finally {
@@ -132,26 +90,32 @@ class OperationExecutor(
 
     fun syncData(provider: RemoteProvider, data: Any?) {
         val operationId = operation.id
-        val scratch = providers.storage.createOperationScratch(repo, operationId)
-        try {
             val volumes = transaction {
-                val vs = providers.metadata.getActiveVolumeSet(repo)
-                providers.metadata.listVolumes(vs)
+                val vols = providers.metadata.listVolumes(operationId)
+                providers.metadata.createVolume(operation.id, Volume(name = "_scratch"))
+                vols
             }
-            val base = providers.storage.mountOperationVolumes(repo, operationId, volumes)
-            try {
-                for (volume in volumes) {
+        providers.storage.createVolume(operation.id, "_scratch")
+        try {
+            val scratch = providers.storage.mountVolume(operationId, "_scratch")
+            for (volume in volumes) {
+                val mountpoint = providers.storage.mountVolume(operationId, volume.name)
+                try {
                     if (operation.type == Operation.Type.PULL) {
-                        provider.pullVolume(this, data, volume, base, scratch)
+                        provider.pullVolume(this, data, volume, mountpoint, scratch)
                     } else {
-                        provider.pushVolume(this, data, volume, base, scratch)
+                        provider.pushVolume(this, data, volume, mountpoint, scratch)
                     }
+                } finally {
+                    providers.storage.unmountVolume(operationId, volume.name)
                 }
-            } finally {
-                providers.storage.unmountOperationVolumes(repo, operationId, volumes)
             }
         } finally {
-            providers.storage.destroyOperationScratch(repo, operationId)
+            providers.storage.unmountVolume(operationId, "_scratch")
+            providers.storage.deleteVolume(operationId, "_scratch")
+            transaction {
+                providers.metadata.deleteVolume(operationId, "_scratch")
+            }
         }
     }
 
@@ -170,19 +134,27 @@ class OperationExecutor(
 
     @Synchronized
     fun getProgress(): List<ProgressEntry> {
-        val ret = progress
-        progress = mutableListOf()
+        val ret = transaction {
+            providers.metadata.listProgressEntries(operation.id, lastProgress)
+        }
+        if (ret.size > 0) {
+            lastProgress = ret.last().id
+        }
         return ret
     }
 
     @Synchronized
     fun addProgress(entry: ProgressEntry) {
-        progress.add(entry)
-        when (entry.type) {
-            ProgressEntry.Type.FAILED -> operation.state = Operation.State.FAILED
-            ProgressEntry.Type.ABORT -> operation.state = Operation.State.ABORTED
-            ProgressEntry.Type.COMPLETE -> operation.state = Operation.State.COMPLETE
-            else -> operation.state = Operation.State.RUNNING
+        val operationState = when (entry.type) {
+            ProgressEntry.Type.FAILED -> Operation.State.FAILED
+            ProgressEntry.Type.ABORT -> Operation.State.ABORTED
+            ProgressEntry.Type.COMPLETE -> Operation.State.COMPLETE
+            else -> Operation.State.RUNNING
         }
+        transaction {
+            providers.metadata.addProgressEntry(operation.id, entry)
+            providers.metadata.updateOperationState(operation.id, operationState)
+        }
+        operation.state = operationState
     }
 }

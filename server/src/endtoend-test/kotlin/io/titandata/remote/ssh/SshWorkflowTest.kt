@@ -6,6 +6,7 @@ package io.titandata.remote.ssh
 
 import io.kotlintest.Spec
 import io.kotlintest.TestCaseOrder
+import io.kotlintest.matchers.string.shouldStartWith
 import io.kotlintest.shouldBe
 import io.kotlintest.shouldThrow
 import io.titandata.EndToEndTest
@@ -63,7 +64,7 @@ class SshWorkflowTest : EndToEndTest() {
 
         "mount volume succeeds" {
             val response = volumeApi.mountVolume(VolumeMountRequest(name = "foo/vol", ID = "id"))
-            response.mountpoint shouldBe "/var/lib/test/mnt/foo/vol"
+            response.mountpoint shouldStartWith "/var/lib/test/mnt/"
         }
 
         "create and write volume file succeeds" {

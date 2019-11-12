@@ -10,7 +10,7 @@ import io.titandata.models.Operation
 import io.titandata.models.ProgressEntry
 import io.titandata.models.Remote
 import io.titandata.models.RemoteParameters
-import io.titandata.models.docker.DockerVolume
+import io.titandata.models.Volume
 import io.titandata.remote.RemoteProvider
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.slf4j.LoggerFactory

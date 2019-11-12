@@ -26,7 +26,7 @@ import io.titandata.models.ProgressEntry
 import io.titandata.models.Remote
 import io.titandata.models.RemoteParameters
 import io.titandata.models.Repository
-import io.titandata.models.docker.DockerVolume
+import io.titandata.models.Volume
 import io.titandata.orchestrator.Reaper
 import io.titandata.remote.nop.NopRemoteProvider
 import io.titandata.storage.OperationData
@@ -214,8 +214,8 @@ class OperationExecutorTest : StringSpec() {
                 zfsStorageProvider.deactivateVolume(data.operation.id, "_scratch", mapOf("mountpoint" to "/scratch"))
                 zfsStorageProvider.deactivateVolume(data.operation.id, "volume", mapOf("mountpoint" to "/mountpoint"))
                 zfsStorageProvider.createVolume(data.operation.id, "_scratch")
-                zfsStorageProvider.deleteVolume(data.operation.id, "_scratch")
-                nopRemoteProvider.pushVolume(executor, null, DockerVolume(name = "volume"), "/mountpoint", "/scratch")
+                zfsStorageProvider.deleteVolume(data.operation.id, "_scratch", mapOf("mountpoint" to "/mountpoint"))
+                nopRemoteProvider.pushVolume(executor, null, Volume(name = "volume"), "/mountpoint", "/scratch")
             }
         }
 

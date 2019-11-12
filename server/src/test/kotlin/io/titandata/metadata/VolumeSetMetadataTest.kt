@@ -8,7 +8,7 @@ import io.kotlintest.specs.StringSpec
 import io.titandata.exception.NoSuchObjectException
 import io.titandata.models.Commit
 import io.titandata.models.Repository
-import io.titandata.models.docker.DockerVolume
+import io.titandata.models.Volume
 import java.util.UUID
 import org.jetbrains.exposed.sql.transactions.transaction
 

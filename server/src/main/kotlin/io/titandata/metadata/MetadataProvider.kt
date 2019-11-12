@@ -20,7 +20,7 @@ import io.titandata.models.ProgressEntry
 import io.titandata.models.Remote
 import io.titandata.models.RemoteParameters
 import io.titandata.models.Repository
-import io.titandata.models.docker.DockerVolume
+import io.titandata.models.Volume
 import io.titandata.storage.OperationData
 import java.util.UUID
 import org.jetbrains.exposed.exceptions.ExposedSQLException
@@ -309,13 +309,13 @@ class MetadataProvider(val inMemory: Boolean = true, val databaseName: String = 
         }.map { it[VolumeSets.id].toString() }
     }
 
-    private fun convertVolume(it: ResultRow) = DockerVolume(
+    private fun convertVolume(it: ResultRow) = Volume(
             name = it[Volumes.name],
             properties = gson.fromJson(it[Volumes.metadata], object : TypeToken<Map<String, Any>>() {}.type),
             config = gson.fromJson(it[Volumes.config], object : TypeToken<Map<String, Any>>() {}.type)
     )
 
-    fun createVolume(volumeSet: String, volume: DockerVolume) {
+    fun createVolume(volumeSet: String, volume: Volume) {
         try {
             Volumes.insert {
                 it[Volumes.volumeSet] = UUID.fromString(volumeSet)
@@ -357,7 +357,7 @@ class MetadataProvider(val inMemory: Boolean = true, val databaseName: String = 
         }
     }
 
-    fun getVolume(volumeSet: String, volumeName: String): DockerVolume {
+    fun getVolume(volumeSet: String, volumeName: String): Volume {
         return Volumes.select {
             (Volumes.volumeSet eq UUID.fromString(volumeSet)) and (Volumes.name eq volumeName) and (Volumes.state neq VolumeState.DELETING)
         }.map { convertVolume(it) }
@@ -365,13 +365,13 @@ class MetadataProvider(val inMemory: Boolean = true, val databaseName: String = 
                 ?: throw NoSuchObjectException("no such volume '$volumeName'")
     }
 
-    fun listVolumes(volumeSet: String): List<DockerVolume> {
+    fun listVolumes(volumeSet: String): List<Volume> {
         return Volumes.select {
             Volumes.volumeSet eq UUID.fromString(volumeSet)
         }.map { convertVolume(it) }
     }
 
-    fun listAllVolumes(): List<DockerVolume> {
+    fun listAllVolumes(): List<Volume> {
         return Volumes.selectAll().map { convertVolume(it) }
     }
 

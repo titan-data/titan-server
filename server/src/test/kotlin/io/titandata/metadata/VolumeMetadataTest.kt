@@ -8,7 +8,7 @@ import io.kotlintest.specs.StringSpec
 import io.titandata.exception.NoSuchObjectException
 import io.titandata.exception.ObjectExistsException
 import io.titandata.models.Repository
-import io.titandata.models.docker.DockerVolume
+import io.titandata.models.Volume
 import org.jetbrains.exposed.sql.transactions.transaction
 
 class VolumeMetadataTest : StringSpec() {
@@ -80,8 +80,8 @@ class VolumeMetadataTest : StringSpec() {
         "list volumes succeeds" {
             val vs = createVolumeSet()
             transaction {
-                md.createVolume(vs, DockerVolume(name = "vol1", properties = mapOf("a" to "b")))
-                md.createVolume(vs, DockerVolume(name = "vol2", properties = mapOf("c" to "d")))
+                md.createVolume(vs, Volume(name = "vol1", properties = mapOf("a" to "b")))
+                md.createVolume(vs, Volume(name = "vol2", properties = mapOf("c" to "d")))
                 val vols = md.listVolumes(vs).sortedBy { it.name }
                 vols.size shouldBe 2
                 vols[0].name shouldBe "vol1"
@@ -94,8 +94,8 @@ class VolumeMetadataTest : StringSpec() {
         "list all volumes succeeds" {
             val vs = createVolumeSet()
             transaction {
-                md.createVolume(vs, DockerVolume(name = "vol1", properties = mapOf("a" to "b")))
-                md.createVolume(vs, DockerVolume(name = "vol2", properties = mapOf("c" to "d")))
+                md.createVolume(vs, Volume(name = "vol1", properties = mapOf("a" to "b")))
+                md.createVolume(vs, Volume(name = "vol2", properties = mapOf("c" to "d")))
                 val vols = md.listAllVolumes().sortedBy { it.name }
                 vols.size shouldBe 2
                 vols[0].name shouldBe "vol1"

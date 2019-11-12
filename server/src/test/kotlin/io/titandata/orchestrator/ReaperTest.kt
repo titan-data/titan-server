@@ -28,7 +28,7 @@ import io.titandata.models.Commit
 import io.titandata.models.Operation
 import io.titandata.models.RemoteParameters
 import io.titandata.models.Repository
-import io.titandata.models.docker.DockerVolume
+import io.titandata.models.Volume
 import io.titandata.storage.OperationData
 import io.titandata.storage.zfs.ZfsStorageProvider
 import org.jetbrains.exposed.sql.transactions.transaction

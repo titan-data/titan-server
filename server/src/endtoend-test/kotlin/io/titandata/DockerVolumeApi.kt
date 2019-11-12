@@ -12,8 +12,6 @@ import io.titandata.client.infrastructure.ResponseType
 import io.titandata.client.infrastructure.ServerException
 import io.titandata.client.infrastructure.Success
 import io.titandata.models.PluginDescription
-import io.titandata.models.Volume
-import io.titandata.models.docker.DockerVolume
 import io.titandata.models.docker.DockerVolumeCapabilitiesResponse
 import io.titandata.models.docker.DockerVolumeCreateRequest
 import io.titandata.models.docker.DockerVolumeGetResponse
@@ -26,9 +24,9 @@ import io.titandata.models.docker.DockerVolumeResponse
 class DockerVolumeApi(basePath: String = "http://localhost:5001") : ApiClient(basePath) {
 
     @Suppress("UNCHECKED_CAST")
-    fun createVolume(volumeCreateRequest: DockerVolumeCreateRequest) : DockerVolumeResponse {
+    fun createVolume(volumeCreateRequest: DockerVolumeCreateRequest): DockerVolumeResponse {
         val localVariableBody: Any? = volumeCreateRequest
-        val localVariableQuery: Map<String,List<String>> = mapOf()
+        val localVariableQuery: Map<String, List<String>> = mapOf()
         val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
         val localVariableConfig = RequestConfig(
                 RequestMethod.POST,
@@ -50,9 +48,9 @@ class DockerVolumeApi(basePath: String = "http://localhost:5001") : ApiClient(ba
     }
 
     @Suppress("UNCHECKED_CAST")
-    fun getCapabilities() : DockerVolumeCapabilitiesResponse {
+    fun getCapabilities(): DockerVolumeCapabilitiesResponse {
         val localVariableBody: Any? = null
-        val localVariableQuery: Map<String,List<String>> = mapOf()
+        val localVariableQuery: Map<String, List<String>> = mapOf()
         val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
         val localVariableConfig = RequestConfig(
                 RequestMethod.POST,
@@ -74,9 +72,9 @@ class DockerVolumeApi(basePath: String = "http://localhost:5001") : ApiClient(ba
     }
 
     @Suppress("UNCHECKED_CAST")
-    fun pluginActivate() : PluginDescription {
+    fun pluginActivate(): PluginDescription {
         val localVariableBody: Any? = null
-        val localVariableQuery: Map<String,List<String>> = mapOf()
+        val localVariableQuery: Map<String, List<String>> = mapOf()
         val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
         val localVariableConfig = RequestConfig(
                 RequestMethod.POST,
@@ -98,9 +96,9 @@ class DockerVolumeApi(basePath: String = "http://localhost:5001") : ApiClient(ba
     }
 
     @Suppress("UNCHECKED_CAST")
-    fun getVolume(volumeRequest: DockerVolumeRequest) : DockerVolumeGetResponse {
+    fun getVolume(volumeRequest: DockerVolumeRequest): DockerVolumeGetResponse {
         val localVariableBody: Any? = volumeRequest
-        val localVariableQuery: Map<String,List<String>> = mapOf()
+        val localVariableQuery: Map<String, List<String>> = mapOf()
         val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
         val localVariableConfig = RequestConfig(
                 RequestMethod.POST,
@@ -122,9 +120,9 @@ class DockerVolumeApi(basePath: String = "http://localhost:5001") : ApiClient(ba
     }
 
     @Suppress("UNCHECKED_CAST")
-    fun getVolumePath(volumeRequest: DockerVolumeRequest) : DockerVolumePathResponse {
+    fun getVolumePath(volumeRequest: DockerVolumeRequest): DockerVolumePathResponse {
         val localVariableBody: Any? = volumeRequest
-        val localVariableQuery: Map<String,List<String>> = mapOf()
+        val localVariableQuery: Map<String, List<String>> = mapOf()
         val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
         val localVariableConfig = RequestConfig(
                 RequestMethod.POST,
@@ -146,9 +144,9 @@ class DockerVolumeApi(basePath: String = "http://localhost:5001") : ApiClient(ba
     }
 
     @Suppress("UNCHECKED_CAST")
-    fun listVolumes() : DockerVolumeListResponse {
+    fun listVolumes(): DockerVolumeListResponse {
         val localVariableBody: Any? = null
-        val localVariableQuery: Map<String,List<String>> = mapOf()
+        val localVariableQuery: Map<String, List<String>> = mapOf()
         val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
         val localVariableConfig = RequestConfig(
                 RequestMethod.POST,
@@ -170,9 +168,9 @@ class DockerVolumeApi(basePath: String = "http://localhost:5001") : ApiClient(ba
     }
 
     @Suppress("UNCHECKED_CAST")
-    fun mountVolume(volumeMountRequest: DockerVolumeMountRequest) : DockerVolumePathResponse {
+    fun mountVolume(volumeMountRequest: DockerVolumeMountRequest): DockerVolumePathResponse {
         val localVariableBody: Any? = volumeMountRequest
-        val localVariableQuery: Map<String,List<String>> = mapOf()
+        val localVariableQuery: Map<String, List<String>> = mapOf()
         val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
         val localVariableConfig = RequestConfig(
                 RequestMethod.POST,
@@ -194,9 +192,9 @@ class DockerVolumeApi(basePath: String = "http://localhost:5001") : ApiClient(ba
     }
 
     @Suppress("UNCHECKED_CAST")
-    fun removeVolume(volumeRequest: DockerVolumeRequest) : DockerVolumeResponse {
+    fun removeVolume(volumeRequest: DockerVolumeRequest): DockerVolumeResponse {
         val localVariableBody: Any? = volumeRequest
-        val localVariableQuery: Map<String,List<String>> = mapOf()
+        val localVariableQuery: Map<String, List<String>> = mapOf()
         val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
         val localVariableConfig = RequestConfig(
                 RequestMethod.POST,
@@ -218,9 +216,9 @@ class DockerVolumeApi(basePath: String = "http://localhost:5001") : ApiClient(ba
     }
 
     @Suppress("UNCHECKED_CAST")
-    fun unmountVolume(volumeMountRequest: DockerVolumeMountRequest) : DockerVolumeResponse {
+    fun unmountVolume(volumeMountRequest: DockerVolumeMountRequest): DockerVolumeResponse {
         val localVariableBody: Any? = volumeMountRequest
-        val localVariableQuery: Map<String,List<String>> = mapOf()
+        val localVariableQuery: Map<String, List<String>> = mapOf()
         val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
         val localVariableConfig = RequestConfig(
                 RequestMethod.POST,
@@ -241,28 +239,28 @@ class DockerVolumeApi(basePath: String = "http://localhost:5001") : ApiClient(ba
         }
     }
 
-    fun checkResponse(response: DockerVolumeResponse) : DockerVolumeResponse {
+    fun checkResponse(response: DockerVolumeResponse): DockerVolumeResponse {
         if (response.err != "") {
             throw ClientException(response.err)
         }
         return response
     }
 
-    fun checkResponse(response: DockerVolumeGetResponse) : DockerVolumeGetResponse {
+    fun checkResponse(response: DockerVolumeGetResponse): DockerVolumeGetResponse {
         if (response.err != "") {
             throw ClientException(response.err)
         }
         return response
     }
 
-    fun checkResponse(response: DockerVolumePathResponse) : DockerVolumePathResponse {
+    fun checkResponse(response: DockerVolumePathResponse): DockerVolumePathResponse {
         if (response.err != "") {
             throw ClientException(response.err)
         }
         return response
     }
 
-    fun checkResponse(response: DockerVolumeListResponse) : DockerVolumeListResponse {
+    fun checkResponse(response: DockerVolumeListResponse): DockerVolumeListResponse {
         if (response.err != "") {
             throw ClientException(response.err)
         }

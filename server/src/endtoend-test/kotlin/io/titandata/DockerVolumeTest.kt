@@ -6,22 +6,15 @@ package io.titandata
 
 import io.kotlintest.Spec
 import io.kotlintest.matchers.string.shouldStartWith
-import io.kotlintest.matchers.types.shouldBeInstanceOf
 import io.kotlintest.shouldBe
 import io.kotlintest.shouldNotBe
 import io.kotlintest.shouldThrow
 import io.titandata.client.infrastructure.ClientException
 import io.titandata.models.Commit
-import io.titandata.models.Operation
-import io.titandata.models.ProgressEntry
 import io.titandata.models.Repository
 import io.titandata.models.docker.DockerVolumeCreateRequest
 import io.titandata.models.docker.DockerVolumeMountRequest
 import io.titandata.models.docker.DockerVolumeRequest
-import io.titandata.remote.nop.NopParameters
-import io.titandata.remote.nop.NopRemote
-import java.time.Duration
-import kotlinx.coroutines.time.delay
 
 class DockerVolumeTest : EndToEndTest() {
 

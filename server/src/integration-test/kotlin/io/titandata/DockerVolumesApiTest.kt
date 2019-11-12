@@ -29,7 +29,7 @@ import io.mockk.impl.annotations.OverrideMockKs
 import io.mockk.just
 import io.mockk.verify
 import io.titandata.models.Repository
-import io.titandata.models.docker.DockerVolume
+import io.titandata.models.Volume
 import io.titandata.storage.zfs.ZfsStorageProvider
 import java.util.concurrent.TimeUnit
 import org.apache.commons.text.StringEscapeUtils

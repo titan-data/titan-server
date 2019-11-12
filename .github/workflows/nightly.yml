@@ -1,8 +1,6 @@
 #
 # Nightly, we do a full build and run a more complex set of end to end
 # tests that take longer to run (and may require secrets like S3 credentials).
-# End to end tests are still TBD, so for now this is just a full build
-# (including the docker build, which is not done in PR context).
 #
 name: Nightly Tests
 

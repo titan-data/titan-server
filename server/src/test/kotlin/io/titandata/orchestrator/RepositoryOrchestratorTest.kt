@@ -161,8 +161,8 @@ class RepositoryOrchestratorTest : StringSpec() {
             createRepository()
             every { zfsStorageProvider.createVolume(any(), any()) } just Runs
             every { zfsStorageProvider.getVolumeMountpoint(any(), any()) } returns ""
-            providers.volumes.createVolume("foo", "vol1", emptyMap())
-            providers.volumes.createVolume("foo", "vol2", emptyMap())
+            providers.dockerVolumes.createVolume("foo", "vol1", emptyMap())
+            providers.dockerVolumes.createVolume("foo", "vol2", emptyMap())
             every { zfsStorageProvider.createCommit(any(), any(), any()) } just Runs
             providers.commits.createCommit("foo", Commit(id = "id"))
             every { zfsStorageProvider.getVolumeStatus(any(), any()) } returns RepositoryVolumeStatus(

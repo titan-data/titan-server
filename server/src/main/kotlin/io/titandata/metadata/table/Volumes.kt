@@ -18,5 +18,6 @@ object Volumes : Table("volumes") {
     val volumeSet = uuid("volume_set").references(VolumeSets.id).primaryKey()
     val name = varchar("name", 64).primaryKey()
     val metadata = varchar("metadata", 8192)
+    val config = varchar("config", 8192)
     val state = enumerationByName("state", 16, MetadataProvider.VolumeState::class)
 }

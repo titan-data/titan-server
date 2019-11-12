@@ -36,7 +36,7 @@ import org.apache.commons.text.StringEscapeUtils
 import org.jetbrains.exposed.sql.transactions.transaction
 
 @UseExperimental(KtorExperimentalAPI::class)
-class VolumesApiTest : StringSpec() {
+class DockerVolumesApiTest : StringSpec() {
 
     lateinit var vs: String
 
@@ -148,7 +148,7 @@ class VolumesApiTest : StringSpec() {
             transaction {
                 providers.metadata.createVolume(vs, DockerVolume(name = "vol"))
             }
-            every { zfsStorageProvider.mountVolume(any(), any()) } returns "/mountpoint"
+            every { zfsStorageProvider.activateVolume(any(), any()) } returns "/mountpoint"
             every { zfsStorageProvider.getVolumeMountpoint(any(), any()) } returns "/mountpoint"
             with(engine.handleRequest(HttpMethod.Post, "/VolumeDriver.Mount") {
                 setBody("{\"Name\":\"foo/vol\"}")
@@ -158,7 +158,7 @@ class VolumesApiTest : StringSpec() {
                 response.content shouldBe "{\"Err\":\"\",\"Mountpoint\":\"/mountpoint\"}"
 
                 verify {
-                    zfsStorageProvider.mountVolume(vs, "vol")
+                    zfsStorageProvider.activateVolume(vs, "vol")
                 }
             }
         }
@@ -167,7 +167,7 @@ class VolumesApiTest : StringSpec() {
             transaction {
                 providers.metadata.createVolume(vs, DockerVolume(name = "vol"))
             }
-            every { zfsStorageProvider.unmountVolume(any(), any()) } just Runs
+            every { zfsStorageProvider.inactivateVolume(any(), any()) } just Runs
             with(engine.handleRequest(HttpMethod.Post, "/VolumeDriver.Unmount") {
                 setBody("{\"Name\":\"foo/vol\"}")
             }) {
@@ -176,7 +176,7 @@ class VolumesApiTest : StringSpec() {
                 response.content shouldBe "{\"Err\":\"\"}"
 
                 verify {
-                    zfsStorageProvider.unmountVolume(vs, "vol")
+                    zfsStorageProvider.inactivateVolume(vs, "vol")
                 }
             }
         }

@@ -13,7 +13,7 @@ import io.titandata.models.Operation
 import io.titandata.models.ProgressEntry
 import io.titandata.models.Remote
 import io.titandata.models.RemoteParameters
-import io.titandata.models.docker.DockerVolume
+import io.titandata.models.Volume
 import io.titandata.operation.OperationExecutor
 import io.titandata.remote.BaseRemoteProvider
 import io.titandata.serialization.ModelTypeAdapters
@@ -182,7 +182,7 @@ class SshRemoteProvider(val providers: ProviderModule) : BaseRemoteProvider() {
         }
     }
 
-    override fun syncVolume(operation: OperationExecutor, data: Any?, volume: DockerVolume, path: String, scratchPath: String) {
+    override fun syncVolume(operation: OperationExecutor, data: Any?, volume: Volume, path: String, scratchPath: String) {
         val remote = operation.remote as SshRemote
 
         val localPath = "$path/"

@@ -24,7 +24,7 @@ import io.mockk.verifyAll
 import io.titandata.ProviderModule
 import io.titandata.exception.NoSuchObjectException
 import io.titandata.models.Repository
-import io.titandata.models.docker.DockerVolume
+import io.titandata.models.Volume
 import io.titandata.storage.zfs.ZfsStorageProvider
 import org.jetbrains.exposed.sql.transactions.transaction
 
@@ -61,39 +61,37 @@ class VolumeOrchestratorTest : StringSpec() {
 
     override fun testCaseOrder() = TestCaseOrder.Random
 
-    fun createVolume(): DockerVolume {
-        every { zfsStorageProvider.createVolume(any(), any()) } just Runs
-        every { zfsStorageProvider.getVolumeMountpoint(any(), any()) } returns "/mountpoint"
-        return providers.volumes.createVolume("foo", "vol", mapOf("a" to "b"))
+    fun createVolume(): Volume {
+        every { zfsStorageProvider.createVolume(any(), any()) } returns mapOf("mountpoint" to "/mountpoint")
+        return providers.volumes.createVolume("foo", Volume("vol", mapOf("a" to "b")))
     }
 
     init {
         "create and get volume succeeds" {
             val vol = createVolume()
-            vol.name shouldBe "foo/vol"
-            vol.mountpoint shouldBe "/mountpoint"
+            vol.name shouldBe "vol"
+            vol.config["mountpoint"] shouldBe "/mountpoint"
             vol.properties["a"] shouldBe "b"
             verifyAll {
                 zfsStorageProvider.createVolume(vs, "vol")
-                zfsStorageProvider.getVolumeMountpoint(vs, "vol")
             }
         }
 
         "create volume with invalid repo name fails" {
             shouldThrow<IllegalArgumentException> {
-                providers.volumes.createVolume("bad/repo", "vol", emptyMap())
+                providers.volumes.createVolume("bad/repo", Volume("vol"))
             }
         }
 
         "create volume with invalid volume name fails" {
             shouldThrow<IllegalArgumentException> {
-                providers.volumes.createVolume("repo", "bad/vol", emptyMap())
+                providers.volumes.createVolume("repo", Volume("bad/vol"))
             }
         }
 
         "create volume with non-existent repo fails" {
             shouldThrow<NoSuchObjectException> {
-                providers.volumes.createVolume("bar", "vol", emptyMap())
+                providers.volumes.createVolume("bar", Volume("vol"))
             }
         }
 
@@ -140,8 +138,8 @@ class VolumeOrchestratorTest : StringSpec() {
         "get volume succeeds" {
             createVolume()
             val vol = providers.volumes.getVolume("foo", "vol")
-            vol.name shouldBe "foo/vol"
-            vol.mountpoint shouldBe "/mountpoint"
+            vol.name shouldBe "vol"
+            vol.config["mountpoint"] shouldBe "/mountpoint"
             vol.properties["a"] shouldBe "b"
         }
 
@@ -163,85 +161,84 @@ class VolumeOrchestratorTest : StringSpec() {
             }
         }
 
-        "mount volume succeeds" {
-            every { zfsStorageProvider.mountVolume(any(), any()) } returns ""
+        "activate volume succeeds" {
+            every { zfsStorageProvider.activateVolume(any(), any(), any()) } just Runs
             createVolume()
-            providers.volumes.mountVolume("foo", "vol")
+            providers.volumes.activateVolume("foo", "vol")
             verify {
-                zfsStorageProvider.mountVolume(vs, "vol")
+                zfsStorageProvider.activateVolume(vs, "vol", mapOf("mountpoint" to "/mountpoint"))
             }
         }
 
-        "mount volume with invalid repo name fails" {
+        "activate volume with invalid repo name fails" {
             shouldThrow<IllegalArgumentException> {
-                providers.volumes.mountVolume("bad/repo", "vol")
+                providers.volumes.activateVolume("bad/repo", "vol")
             }
         }
 
-        "mount volume with invalid volume name fails" {
+        "activate volume with invalid volume name fails" {
             shouldThrow<IllegalArgumentException> {
-                providers.volumes.mountVolume("repo", "bad/vol")
+                providers.volumes.activateVolume("repo", "bad/vol")
             }
         }
 
-        "mount volume for non-existing repo fails" {
+        "activate volume for non-existing repo fails" {
             shouldThrow<NoSuchObjectException> {
-                providers.volumes.mountVolume("bar", "vol")
+                providers.volumes.activateVolume("bar", "vol")
             }
         }
 
-        "mount volume for non-existing volume fails" {
+        "activate volume for non-existing volume fails" {
             shouldThrow<NoSuchObjectException> {
-                providers.volumes.mountVolume("foo", "vol")
+                providers.volumes.activateVolume("foo", "vol")
             }
         }
 
-        "unmount volume succeeds" {
-            every { zfsStorageProvider.unmountVolume(any(), any()) } just Runs
+        "inactivate volume succeeds" {
+            every { zfsStorageProvider.inactivateVolume(any(), any(), any()) } just Runs
             createVolume()
-            providers.volumes.unmountVolume("foo", "vol")
+            providers.volumes.inactivateVolume("foo", "vol")
             verify {
-                zfsStorageProvider.unmountVolume(vs, "vol")
+                zfsStorageProvider.inactivateVolume(vs, "vol", mapOf("mountpoint" to "/mountpoint"))
             }
         }
 
-        "unmount volume with invalid repo name fails" {
+        "inactivate volume with invalid repo name fails" {
             shouldThrow<IllegalArgumentException> {
-                providers.volumes.unmountVolume("bad/repo", "vol")
+                providers.volumes.inactivateVolume("bad/repo", "vol")
             }
         }
 
-        "unmount volume with invalid volume name fails" {
+        "inactivate volume with invalid volume name fails" {
             shouldThrow<IllegalArgumentException> {
-                providers.volumes.unmountVolume("repo", "bad/vol")
+                providers.volumes.inactivateVolume("repo", "bad/vol")
             }
         }
 
-        "unmount volume for non-existing repo fails" {
+        "inactivate volume for non-existing repo fails" {
             shouldThrow<NoSuchObjectException> {
-                providers.volumes.unmountVolume("bar", "vol")
+                providers.volumes.inactivateVolume("bar", "vol")
             }
         }
 
-        "unmount volume for non-existing volume fails" {
+        "inactivate volume for non-existing volume fails" {
             shouldThrow<NoSuchObjectException> {
-                providers.volumes.unmountVolume("foo", "vol")
+                providers.volumes.inactivateVolume("foo", "vol")
             }
         }
 
-        "list all volumes succeeds" {
+        "list volumes succeeds" {
             createVolume()
 
             transaction {
                 providers.metadata.createRepository(Repository(name = "bar"))
                 providers.metadata.createVolumeSet("bar", null, true)
-                providers.volumes.createVolume("bar", "vol2", emptyMap())
+                providers.volumes.createVolume("bar", Volume("vol2"))
             }
 
-            val volumes = providers.volumes.listAllVolumes().sortedBy { it.name }
-            volumes.size shouldBe 2
-            volumes[0].name shouldBe "bar/vol2"
-            volumes[1].name shouldBe "foo/vol"
+            val volumes = providers.volumes.listVolumes("foo")
+            volumes.size shouldBe 1
+            volumes[0].name shouldBe "vol"
         }
     }
 }

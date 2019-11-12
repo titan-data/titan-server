@@ -19,7 +19,7 @@ import io.titandata.models.Commit
 import io.titandata.models.ProgressEntry
 import io.titandata.models.Remote
 import io.titandata.models.RemoteParameters
-import io.titandata.models.docker.DockerVolume
+import io.titandata.models.Volume
 import io.titandata.operation.OperationExecutor
 import io.titandata.remote.BaseRemoteProvider
 import io.titandata.serialization.ModelTypeAdapters
@@ -206,7 +206,7 @@ class S3RemoteProvider(val providers: ProviderModule) : BaseRemoteProvider() {
         return S3Operation(this, operation)
     }
 
-    override fun pushVolume(operation: OperationExecutor, data: Any?, volume: DockerVolume, path: String, scratchPath: String) {
+    override fun pushVolume(operation: OperationExecutor, data: Any?, volume: Volume, path: String, scratchPath: String) {
         data as S3Operation
 
         val desc = getVolumeDesc(volume)
@@ -228,7 +228,7 @@ class S3RemoteProvider(val providers: ProviderModule) : BaseRemoteProvider() {
         operation.addProgress(ProgressEntry(type = ProgressEntry.Type.END))
     }
 
-    override fun pullVolume(operation: OperationExecutor, data: Any?, volume: DockerVolume, path: String, scratchPath: String) {
+    override fun pullVolume(operation: OperationExecutor, data: Any?, volume: Volume, path: String, scratchPath: String) {
         data as S3Operation
         val desc = getVolumeDesc(volume)
         operation.addProgress(ProgressEntry(type = ProgressEntry.Type.START,

@@ -17,9 +17,8 @@ interface StorageProvider {
     fun getCommitStatus(volumeSet: String, commitId: String, volumeNames: List<String>): CommitStatus
     fun deleteCommit(volumeSet: String, commitId: String, volumeNames: List<String>)
 
-    fun createVolume(volumeSet: String, volumeName: String)
-    fun deleteVolume(volumeSet: String, volumeName: String)
-    fun getVolumeMountpoint(volumeSet: String, volumeName: String): String
-    fun mountVolume(volumeSet: String, volumeName: String): String
-    fun unmountVolume(volumeSet: String, volumeName: String)
+    fun createVolume(volumeSet: String, volumeName: String): Map<String, Any>
+    fun deleteVolume(volumeSet: String, volumeName: String, config: Map<String, Any>)
+    fun activateVolume(volumeSet: String, volumeName: String, config: Map<String, Any>)
+    fun inactivateVolume(volumeSet: String, volumeName: String, config: Map<String, Any>)
 }

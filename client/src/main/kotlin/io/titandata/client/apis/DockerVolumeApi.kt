@@ -12,6 +12,8 @@ import io.titandata.client.infrastructure.ResponseType
 import io.titandata.client.infrastructure.ServerException
 import io.titandata.client.infrastructure.Success
 import io.titandata.models.PluginDescription
+import io.titandata.models.Volume
+import io.titandata.models.docker.DockerVolume
 import io.titandata.models.docker.DockerVolumeCapabilitiesResponse
 import io.titandata.models.docker.DockerVolumeCreateRequest
 import io.titandata.models.docker.DockerVolumeGetResponse

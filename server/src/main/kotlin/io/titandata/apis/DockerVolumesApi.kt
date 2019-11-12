@@ -12,6 +12,8 @@ import io.ktor.routing.post
 import io.ktor.routing.route
 import io.titandata.ProviderModule
 import io.titandata.models.PluginDescription
+import io.titandata.models.Volume
+import io.titandata.models.docker.DockerVolume
 import io.titandata.models.docker.DockerVolumeCapabilities
 import io.titandata.models.docker.DockerVolumeCapabilitiesResponse
 import io.titandata.models.docker.DockerVolumeCreateRequest
@@ -37,12 +39,21 @@ fun Route.DockerVolumeApi(providers: ProviderModule) {
         return Pair(components[0], components[1])
     }
 
+    fun convertVolume(repo: String, volume: Volume): DockerVolume {
+        return DockerVolume(
+                name = "$repo/${volume.name}",
+                properties = volume.properties,
+                mountpoint = volume.config["moutnpoint"] as String,
+                status = mapOf<String, Any>()
+        )
+    }
+
     route("/VolumeDriver.Create") {
         post {
             val request = call.receive(DockerVolumeCreateRequest::class)
             val opts = request.opts ?: mapOf()
             val (repo, volname) = getVolumeName(request.name)
-            providers.volumes.createVolume(repo, volname, opts)
+            providers.volumes.createVolume(repo, Volume(volname, opts))
             call.respond(DockerVolumeResponse())
         }
     }
@@ -63,7 +74,7 @@ fun Route.DockerVolumeApi(providers: ProviderModule) {
         post {
             val request = call.receive(DockerVolumeRequest::class)
             val (repo, volname) = getVolumeName(request.name)
-            val result = providers.volumes.getVolume(repo, volname)
+            val result = convertVolume(repo, providers.volumes.getVolume(repo, volname))
             call.respond(DockerVolumeGetResponse(volume = result.copy(name = "$repo/$volname")))
         }
     }
@@ -73,13 +84,16 @@ fun Route.DockerVolumeApi(providers: ProviderModule) {
             val request = call.receive(DockerVolumeRequest::class)
             val (repo, volname) = getVolumeName(request.name)
             val result = providers.volumes.getVolume(repo, volname)
-            call.respond(DockerVolumePathResponse(mountpoint = result.mountpoint))
+            call.respond(DockerVolumePathResponse(mountpoint = result.config["mountpoint"] as String))
         }
     }
 
     route("/VolumeDriver.List") {
         post {
-            val result = providers.volumes.listAllVolumes()
+            val result = mutableListOf<DockerVolume>()
+            for (repo in providers.repositories.listRepositories()) {
+                result.addAll(providers.volumes.listVolumes(repo.name).map { convertVolume(repo.name, it) })
+            }
             call.respond(DockerVolumeListResponse(volumes = result.toTypedArray()))
         }
     }
@@ -88,9 +102,9 @@ fun Route.DockerVolumeApi(providers: ProviderModule) {
         post {
             val request = call.receive(DockerVolumeMountRequest::class)
             val (repo, volname) = getVolumeName(request.name)
-            providers.volumes.mountVolume(repo, volname)
-            val vol = providers.volumes.getVolume(repo, volname)
-            call.respond(DockerVolumePathResponse(mountpoint = vol.mountpoint))
+            providers.volumes.activateVolume(repo, volname)
+            val result = providers.volumes.getVolume(repo, volname)
+            call.respond(DockerVolumePathResponse(mountpoint = result.config["mountpoint"] as String))
         }
     }
 
@@ -107,7 +121,7 @@ fun Route.DockerVolumeApi(providers: ProviderModule) {
         post {
             val request = call.receive(DockerVolumeMountRequest::class)
             val (repo, volname) = getVolumeName(request.name)
-            providers.volumes.unmountVolume(repo, volname)
+            providers.volumes.inactivateVolume(repo, volname)
             call.respond(DockerVolumeResponse())
         }
     }

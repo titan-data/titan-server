@@ -27,7 +27,7 @@ import io.titandata.exception.NoSuchObjectException
 import io.titandata.models.Commit
 import io.titandata.models.Operation
 import io.titandata.models.Repository
-import io.titandata.models.docker.DockerVolume
+import io.titandata.models.Volume
 import io.titandata.remote.nop.NopParameters
 import io.titandata.storage.OperationData
 import io.titandata.storage.zfs.ZfsStorageProvider
@@ -66,7 +66,7 @@ class ReaperTest : StringSpec() {
             val vs = transaction {
                 providers.metadata.createRepository(Repository("foo"))
                 val vs = providers.metadata.createVolumeSet("foo")
-                providers.metadata.createVolume(vs, DockerVolume(name = "volume"))
+                providers.metadata.createVolume(vs, Volume("volume"))
                 vs
             }
             providers.reaper.reapVolumes() shouldBe false
@@ -79,14 +79,14 @@ class ReaperTest : StringSpec() {
             val vs = transaction {
                 providers.metadata.createRepository(Repository("foo"))
                 val vs = providers.metadata.createVolumeSet("foo")
-                providers.metadata.createVolume(vs, DockerVolume(name = "volume"))
+                providers.metadata.createVolume(vs, Volume("volume"))
                 providers.metadata.markVolumeDeleting(vs, "volume")
                 vs
             }
-            every { zfsStorageProvider.deleteVolume(any(), any()) } just Runs
+            every { zfsStorageProvider.deleteVolume(any(), any(), any()) } just Runs
             providers.reaper.reapVolumes() shouldBe true
             verify {
-                zfsStorageProvider.deleteVolume(vs, "volume")
+                zfsStorageProvider.deleteVolume(vs, "volume", emptyMap())
             }
             shouldThrow<NoSuchObjectException> {
                 transaction {
@@ -121,17 +121,17 @@ class ReaperTest : StringSpec() {
             val vs = transaction {
                 providers.metadata.createRepository(Repository("foo"))
                 val vs = providers.metadata.createVolumeSet("foo")
-                providers.metadata.createVolume(vs, DockerVolume(name = "volume"))
+                providers.metadata.createVolume(vs, Volume("volume"))
                 providers.metadata.markVolumeSetDeleting(vs)
                 vs
             }
-            every { zfsStorageProvider.deleteVolume(any(), any()) } just Runs
+            every { zfsStorageProvider.deleteVolume(any(), any(), any()) } just Runs
             every { zfsStorageProvider.deleteVolumeSet(any()) } just Runs
 
             providers.reaper.reapVolumeSets() shouldBe true
 
             verify {
-                zfsStorageProvider.deleteVolume(vs, "volume")
+                zfsStorageProvider.deleteVolume(vs, "volume", emptyMap())
                 zfsStorageProvider.deleteVolumeSet(vs)
             }
 
@@ -230,7 +230,7 @@ class ReaperTest : StringSpec() {
             val vs = transaction {
                 providers.metadata.createRepository(Repository("foo"))
                 val vs = providers.metadata.createVolumeSet("foo")
-                providers.metadata.createVolume(vs, DockerVolume(name = "volume"))
+                providers.metadata.createVolume(vs, Volume("volume"))
                 providers.metadata.createCommit("foo", vs, Commit("id"))
                 providers.metadata.markCommitDeleting("foo", "id")
                 vs

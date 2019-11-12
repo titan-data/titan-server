@@ -413,7 +413,7 @@ class OperationOrchestratorTest : StringSpec() {
                 providers.metadata.addRemote("foo", NopRemote(name = "remote"))
             }
             every { zfsStorageProvider.activateVolume(any(), any(), any()) } just Runs
-            every { zfsStorageProvider.inactivateVolume(any(), any(), any()) } just Runs
+            every { zfsStorageProvider.deactivateVolume(any(), any(), any()) } just Runs
             every { zfsStorageProvider.createVolume(any(), any()) } returns mapOf("mountpoint" to "/mountpoint")
             every { zfsStorageProvider.deleteVolume(any(), any(), any()) } just Runs
             every { zfsStorageProvider.createCommit(any(), any(), any()) } just Runs
@@ -500,7 +500,7 @@ class OperationOrchestratorTest : StringSpec() {
                 providers.metadata.createOperation("foo", vs, buildOperation(Operation.Type.PUSH))
             }
             every { zfsStorageProvider.activateVolume(any(), any(), any()) } just Runs
-            every { zfsStorageProvider.inactivateVolume(any(), any(), any()) } just Runs
+            every { zfsStorageProvider.deactivateVolume(any(), any(), any()) } just Runs
             every { zfsStorageProvider.createVolume(any(), any()) } returns mapOf("mountpoint" to "/mountpoint")
             every { zfsStorageProvider.deleteVolume(any(), any(), any()) } just Runs
             every { zfsStorageProvider.createCommit(any(), any(), any()) } just Runs
@@ -519,7 +519,7 @@ class OperationOrchestratorTest : StringSpec() {
             }
 
             every { zfsStorageProvider.activateVolume(any(), any(), any()) } just Runs
-            every { zfsStorageProvider.inactivateVolume(any(), any(), any()) } just Runs
+            every { zfsStorageProvider.deactivateVolume(any(), any(), any()) } just Runs
             every { zfsStorageProvider.createVolume(any(), any()) } returns mapOf("mountpoint" to "/mountpoint")
             every { zfsStorageProvider.deleteVolume(any(), any(), any()) } just Runs
             every { zfsStorageProvider.createCommit(any(), any(), any()) } just Runs
@@ -610,7 +610,7 @@ class OperationOrchestratorTest : StringSpec() {
             }
 
             every { zfsStorageProvider.activateVolume(any(), any(), any()) } just Runs
-            every { zfsStorageProvider.inactivateVolume(any(), any(), any()) } just Runs
+            every { zfsStorageProvider.deactivateVolume(any(), any(), any()) } just Runs
             every { zfsStorageProvider.createVolume(any(), any()) } returns mapOf("mountpoint" to "/mountpoint")
             every { zfsStorageProvider.deleteVolume(any(), any(), any()) } just Runs
             every { zfsStorageProvider.createCommit(any(), any(), any()) } just Runs
@@ -630,7 +630,7 @@ class OperationOrchestratorTest : StringSpec() {
             }
 
             every { zfsStorageProvider.activateVolume(any(), any(), any()) } just Runs
-            every { zfsStorageProvider.inactivateVolume(any(), any(), any()) } just Runs
+            every { zfsStorageProvider.deactivateVolume(any(), any(), any()) } just Runs
             every { zfsStorageProvider.createVolume(any(), any()) } returns mapOf("mountpoint" to "/mountpoint")
             every { zfsStorageProvider.deleteVolume(any(), any(), any()) } just Runs
             every { zfsStorageProvider.createCommit(any(), any(), any()) } just Runs

@@ -20,5 +20,5 @@ interface StorageProvider {
     fun createVolume(volumeSet: String, volumeName: String): Map<String, Any>
     fun deleteVolume(volumeSet: String, volumeName: String, config: Map<String, Any>)
     fun activateVolume(volumeSet: String, volumeName: String, config: Map<String, Any>)
-    fun inactivateVolume(volumeSet: String, volumeName: String, config: Map<String, Any>)
+    fun deactivateVolume(volumeSet: String, volumeName: String, config: Map<String, Any>)
 }

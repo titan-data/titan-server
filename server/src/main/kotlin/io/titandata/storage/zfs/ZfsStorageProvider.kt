@@ -154,7 +154,7 @@ class ZfsStorageProvider(
      * unmounted), and also take the opportunity to dump file usage (via lsof) if we get an EBUSY
      * error.
      */
-    override fun inactivateVolume(volumeSet: String, volumeName: String, config: Map<String, Any>) {
+    override fun deactivateVolume(volumeSet: String, volumeName: String, config: Map<String, Any>) {
         try {
             executor.exec("umount", config["mountpoint"] as String)
         } catch (e: CommandException) {

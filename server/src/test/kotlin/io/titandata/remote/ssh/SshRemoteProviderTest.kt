@@ -230,7 +230,7 @@ class SshRemoteProviderTest : StringSpec() {
             val operationExecutor = OperationExecutor(providers, data.operation, "repo", getRemote(), data.params)
 
             every { zfsStorageProvider.activateVolume(any(), any(), any()) } just Runs
-            every { zfsStorageProvider.inactivateVolume(any(), any(), any()) } just Runs
+            every { zfsStorageProvider.deactivateVolume(any(), any(), any()) } just Runs
             every { zfsStorageProvider.createVolume(any(), any()) } returns mapOf("mountpoint" to "/mountpoint")
             every { zfsStorageProvider.deleteVolume(any(), any(), any()) } just Runs
 
@@ -273,7 +273,7 @@ class SshRemoteProviderTest : StringSpec() {
             val operationExecutor = OperationExecutor(providers, data.operation, "repo", getRemote(), data.params)
 
             every { zfsStorageProvider.activateVolume(any(), any(), any()) } just Runs
-            every { zfsStorageProvider.inactivateVolume(any(), any(), any()) } just Runs
+            every { zfsStorageProvider.deactivateVolume(any(), any(), any()) } just Runs
             every { zfsStorageProvider.createVolume(any(), any()) } returns mapOf("mountpoint" to "/mountpoint")
             every { zfsStorageProvider.deleteVolume(any(), any(), any()) } just Runs
 

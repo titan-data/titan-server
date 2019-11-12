@@ -121,7 +121,7 @@ fun Route.DockerVolumeApi(providers: ProviderModule) {
         post {
             val request = call.receive(DockerVolumeMountRequest::class)
             val (repo, volname) = getVolumeName(request.name)
-            providers.volumes.inactivateVolume(repo, volname)
+            providers.volumes.deactivateVolume(repo, volname)
             call.respond(DockerVolumeResponse())
         }
     }

@@ -155,7 +155,7 @@ class ZfsStorageProviderTest : StringSpec() {
 
         "unmount volume succeeds" {
             every { executor.exec(*anyVararg()) } returns ""
-            provider.inactivateVolume("vs", "vol", mapOf("mountpoint" to "/var/lib/test/mnt/vs/vol"))
+            provider.deactivateVolume("vs", "vol", mapOf("mountpoint" to "/var/lib/test/mnt/vs/vol"))
             verifyAll {
                 executor.exec("umount", "/var/lib/test/mnt/vs/vol")
             }
@@ -163,14 +163,14 @@ class ZfsStorageProviderTest : StringSpec() {
 
         "unmount ignored not mounted error" {
             every { executor.exec(*anyVararg()) } throws CommandException("", 1, "not mounted")
-            provider.inactivateVolume("vs", "vol", mapOf("mountpoint" to "/var/lib/test/mnt/vs/vol"))
+            provider.deactivateVolume("vs", "vol", mapOf("mountpoint" to "/var/lib/test/mnt/vs/vol"))
         }
 
         "unmount invokes lsof on EBUSY" {
             every { executor.exec("umount", *anyVararg()) } throws CommandException("", 1, "target is busy")
             every { executor.exec("lsof") } returns ""
             shouldThrow<CommandException> {
-                provider.inactivateVolume("vs", "vol", mapOf("mountpoint" to "/var/lib/test/mnt/vs/vol"))
+                provider.deactivateVolume("vs", "vol", mapOf("mountpoint" to "/var/lib/test/mnt/vs/vol"))
             }
             verifyAll {
                 executor.exec("umount", "/var/lib/test/mnt/vs/vol")
@@ -182,7 +182,7 @@ class ZfsStorageProviderTest : StringSpec() {
             every { executor.exec("umount", *anyVararg()) } throws CommandException("", 1, "target is busy")
             every { executor.exec("lsof") } throws CommandException("", 1, "")
             val ex = shouldThrow<CommandException> {
-                provider.inactivateVolume("vs", "vol", mapOf("mountpoint" to "/var/lib/test/mnt/vs/vol"))
+                provider.deactivateVolume("vs", "vol", mapOf("mountpoint" to "/var/lib/test/mnt/vs/vol"))
             }
             ex.output shouldBe "target is busy"
             verifyAll {

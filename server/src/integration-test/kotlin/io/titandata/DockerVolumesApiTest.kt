@@ -165,7 +165,7 @@ class DockerVolumesApiTest : StringSpec() {
             transaction {
                 providers.metadata.createVolume(vs, Volume("vol"))
             }
-            every { zfsStorageProvider.inactivateVolume(any(), any(), any()) } just Runs
+            every { zfsStorageProvider.deactivateVolume(any(), any(), any()) } just Runs
             with(engine.handleRequest(HttpMethod.Post, "/VolumeDriver.Unmount") {
                 setBody("{\"Name\":\"foo/vol\"}")
             }) {
@@ -174,7 +174,7 @@ class DockerVolumesApiTest : StringSpec() {
                 response.content shouldBe "{\"Err\":\"\"}"
 
                 verify {
-                    zfsStorageProvider.inactivateVolume(vs, "vol", emptyMap())
+                    zfsStorageProvider.deactivateVolume(vs, "vol", emptyMap())
                 }
             }
         }

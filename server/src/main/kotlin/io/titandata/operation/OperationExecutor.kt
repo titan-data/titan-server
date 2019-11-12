@@ -112,11 +112,11 @@ class OperationExecutor(
                         provider.pushVolume(this, data, volume, mountpoint, scratch)
                     }
                 } finally {
-                    providers.storage.inactivateVolume(operationId, volume.name, volume.config)
+                    providers.storage.deactivateVolume(operationId, volume.name, volume.config)
                 }
             }
         } finally {
-            providers.storage.inactivateVolume(operationId, "_scratch", scratchConfig)
+            providers.storage.deactivateVolume(operationId, "_scratch", scratchConfig)
             providers.storage.deleteVolume(operationId, "_scratch", scratchConfig)
             transaction {
                 providers.metadata.deleteVolume(operationId, "_scratch")

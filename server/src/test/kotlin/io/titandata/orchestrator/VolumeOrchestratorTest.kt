@@ -195,35 +195,35 @@ class VolumeOrchestratorTest : StringSpec() {
         }
 
         "inactivate volume succeeds" {
-            every { zfsStorageProvider.inactivateVolume(any(), any(), any()) } just Runs
+            every { zfsStorageProvider.deactivateVolume(any(), any(), any()) } just Runs
             createVolume()
-            providers.volumes.inactivateVolume("foo", "vol")
+            providers.volumes.deactivateVolume("foo", "vol")
             verify {
-                zfsStorageProvider.inactivateVolume(vs, "vol", mapOf("mountpoint" to "/mountpoint"))
+                zfsStorageProvider.deactivateVolume(vs, "vol", mapOf("mountpoint" to "/mountpoint"))
             }
         }
 
         "inactivate volume with invalid repo name fails" {
             shouldThrow<IllegalArgumentException> {
-                providers.volumes.inactivateVolume("bad/repo", "vol")
+                providers.volumes.deactivateVolume("bad/repo", "vol")
             }
         }
 
         "inactivate volume with invalid volume name fails" {
             shouldThrow<IllegalArgumentException> {
-                providers.volumes.inactivateVolume("repo", "bad/vol")
+                providers.volumes.deactivateVolume("repo", "bad/vol")
             }
         }
 
         "inactivate volume for non-existing repo fails" {
             shouldThrow<NoSuchObjectException> {
-                providers.volumes.inactivateVolume("bar", "vol")
+                providers.volumes.deactivateVolume("bar", "vol")
             }
         }
 
         "inactivate volume for non-existing volume fails" {
             shouldThrow<NoSuchObjectException> {
-                providers.volumes.inactivateVolume("foo", "vol")
+                providers.volumes.deactivateVolume("foo", "vol")
             }
         }
 

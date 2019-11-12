@@ -54,14 +54,14 @@ class VolumeOrchestrator(val providers: ProviderModule) {
         providers.storage.activateVolume(vs, name, volume.config)
     }
 
-    fun inactivateVolume(repo: String, name: String) {
+    fun deactivateVolume(repo: String, name: String) {
         NameUtil.validateVolumeName(name)
         providers.repositories.getRepository(repo)
         val (vs, volume) = transaction {
             val vs = providers.metadata.getActiveVolumeSet(repo)
             Pair(vs, providers.metadata.getVolume(vs, name))
         }
-        providers.storage.inactivateVolume(vs, name, volume.config)
+        providers.storage.deactivateVolume(vs, name, volume.config)
     }
 
     fun listVolumes(repo: String): List<Volume> {

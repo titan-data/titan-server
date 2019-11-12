@@ -102,7 +102,7 @@ class LocalWorkflowTest : EndToEndTest() {
             val vol = volumeApi.getVolume("foo", "vol")
             volumeMountpoint = vol.config["mountpoint"] as String
             volumeMountpoint shouldStartWith "/var/lib/test/mnt/"
-            vol.name shouldBe "foo/vol"
+            vol.name shouldBe "vol"
             vol.properties["a"] shouldBe "b"
         }
 

@@ -11,9 +11,6 @@ import io.titandata.client.infrastructure.RequestMethod
 import io.titandata.client.infrastructure.ResponseType
 import io.titandata.client.infrastructure.ServerException
 import io.titandata.client.infrastructure.Success
-import io.titandata.models.Commit
-import io.titandata.models.Remote
-import io.titandata.models.RemoteParameters
 import io.titandata.models.Volume
 
 class VolumesApi(basePath: String = "http://localhost:5001") : ApiClient(basePath) {
@@ -51,7 +48,7 @@ class VolumesApi(basePath: String = "http://localhost:5001") : ApiClient(basePat
                 query = localVariableQuery,
                 headers = localVariableHeaders
         )
-        val response = request<Remote>(
+        val response = request<Volume>(
             localVariableConfig,
             localVariableBody
         )
@@ -71,11 +68,11 @@ class VolumesApi(basePath: String = "http://localhost:5001") : ApiClient(basePat
         val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
         val localVariableConfig = RequestConfig(
                 RequestMethod.GET,
-                "/v1/repositories/$repositoryName",
+                "/v1/repositories/$repositoryName/volumes",
                 query = localVariableQuery,
                 headers = localVariableHeaders
         )
-        val response = request<Array<Commit>>(
+        val response = request<Array<Volume>>(
             localVariableConfig,
             localVariableBody
         )
@@ -98,7 +95,7 @@ class VolumesApi(basePath: String = "http://localhost:5001") : ApiClient(basePat
                 query = localVariableQuery,
                 headers = localVariableHeaders
         )
-        val response = request<Remote>(
+        val response = request<Volume>(
             localVariableConfig,
             localVariableBody
         )
@@ -121,7 +118,7 @@ class VolumesApi(basePath: String = "http://localhost:5001") : ApiClient(basePat
                 query = localVariableQuery,
                 headers = localVariableHeaders
         )
-        val response = request<Remote>(
+        val response = request<Any?>(
                 localVariableConfig,
                 localVariableBody
         )
@@ -145,7 +142,7 @@ class VolumesApi(basePath: String = "http://localhost:5001") : ApiClient(basePat
                 query = localVariableQuery,
                 headers = localVariableHeaders
         )
-        val response = request<Remote>(
+        val response = request<Any?>(
                 localVariableConfig,
                 localVariableBody
         )

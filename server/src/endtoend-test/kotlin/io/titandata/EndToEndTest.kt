@@ -7,6 +7,7 @@ package io.titandata
 import io.kotlintest.TestCaseOrder
 import io.kotlintest.specs.StringSpec
 import io.titandata.client.apis.CommitsApi
+import io.titandata.client.apis.DockerVolumeApi
 import io.titandata.client.apis.OperationsApi
 import io.titandata.client.apis.RemotesApi
 import io.titandata.client.apis.RepositoriesApi

@@ -1,7 +1,7 @@
 package io.titandata.orchestrator
 
 import io.titandata.ProviderModule
-import io.titandata.models.Volume
+import io.titandata.models.docker.DockerVolume
 import org.jetbrains.exposed.sql.transactions.transaction
 
 class VolumeOrchestrator(val providers: ProviderModule) {
@@ -33,7 +33,7 @@ class VolumeOrchestrator(val providers: ProviderModule) {
         providers.reaper.signal()
     }
 
-    fun getVolume(repo: String, name: String): Volume {
+    fun getVolume(repo: String, name: String): DockerVolume {
         NameUtil.validateVolumeName(name)
         providers.repositories.getRepository(repo)
 

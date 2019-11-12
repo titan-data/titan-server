@@ -30,7 +30,7 @@ import io.titandata.models.ProgressEntry
 import io.titandata.models.Remote
 import io.titandata.models.RemoteParameters
 import io.titandata.models.Repository
-import io.titandata.models.Volume
+import io.titandata.models.docker.DockerVolume
 import io.titandata.remote.nop.NopRemoteProvider
 import io.titandata.remote.s3.S3RemoteProvider
 import io.titandata.storage.OperationData

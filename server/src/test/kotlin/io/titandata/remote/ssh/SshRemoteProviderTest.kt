@@ -32,7 +32,7 @@ import io.titandata.models.ProgressEntry
 import io.titandata.models.Remote
 import io.titandata.models.RemoteParameters
 import io.titandata.models.Repository
-import io.titandata.models.Volume
+import io.titandata.models.docker.DockerVolume
 import io.titandata.operation.OperationExecutor
 import io.titandata.storage.OperationData
 import io.titandata.storage.zfs.ZfsStorageProvider

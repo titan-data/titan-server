@@ -89,6 +89,18 @@ util_script=/test/src/scripts/util.sh
   [ "$output" = "ts TITAN END" ]
 }
 
+@test "log finish prints marker" {
+  function docker() { /bin/true; }
+  function jq() { /bin/true; }
+
+  source $util_script
+  function timestamp { echo "ts"; }
+  export -f timestamp
+  run log_finished
+  [ $status -eq 0 ]
+  [ "$output" = "ts TITAN FINISHED" ]
+}
+
 @test "log error exits program" {
   function docker() { /bin/true; }
   function jq() { /bin/true; }

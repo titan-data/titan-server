@@ -27,6 +27,7 @@ import io.titandata.exception.ObjectExistsException
 import io.titandata.models.Commit
 import io.titandata.models.Repository
 import io.titandata.models.RepositoryVolumeStatus
+import io.titandata.models.Volume
 import io.titandata.storage.zfs.ZfsStorageProvider
 import org.jetbrains.exposed.sql.transactions.transaction
 
@@ -159,10 +160,9 @@ class RepositoryOrchestratorTest : StringSpec() {
 
         "get repository status succeeds" {
             createRepository()
-            every { zfsStorageProvider.createVolume(any(), any()) } just Runs
-            every { zfsStorageProvider.getVolumeMountpoint(any(), any()) } returns ""
-            providers.dockerVolumes.createVolume("foo", "vol1", emptyMap())
-            providers.dockerVolumes.createVolume("foo", "vol2", emptyMap())
+            every { zfsStorageProvider.createVolume(any(), any()) } returns emptyMap()
+            providers.volumes.createVolume("foo", Volume("vol1"))
+            providers.volumes.createVolume("foo", Volume("vol2"))
             every { zfsStorageProvider.createCommit(any(), any(), any()) } just Runs
             providers.commits.createCommit("foo", Commit(id = "id"))
             every { zfsStorageProvider.getVolumeStatus(any(), any()) } returns RepositoryVolumeStatus(

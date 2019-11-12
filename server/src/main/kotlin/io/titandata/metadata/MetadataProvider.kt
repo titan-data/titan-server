@@ -376,10 +376,10 @@ class MetadataProvider(val inMemory: Boolean = true, val databaseName: String = 
         return Volumes.selectAll().map { convertVolume(it) }
     }
 
-    fun listDeletingVolumes(): List<Pair<String, String>> {
+    fun listDeletingVolumes(): List<Pair<String, Volume>> {
         return Volumes.select {
             Volumes.state eq VolumeState.DELETING
-        }.map { Pair(it[Volumes.volumeSet].toString(), it[Volumes.name]) }
+        }.map { Pair(it[Volumes.volumeSet].toString(), convertVolume(it)) }
     }
 
     private fun convertCommit(it: ResultRow) = Commit(

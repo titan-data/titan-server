@@ -27,6 +27,7 @@ import io.titandata.exception.NoSuchObjectException
 import io.titandata.exception.ObjectExistsException
 import io.titandata.models.Commit
 import io.titandata.models.Repository
+import io.titandata.models.Volume
 import io.titandata.storage.zfs.ZfsStorageProvider
 import org.jetbrains.exposed.sql.transactions.transaction
 
@@ -235,8 +236,7 @@ class CommitOrchestratorTest : StringSpec() {
 
         "checkout commit succeeds" {
             every { zfsStorageProvider.cloneVolumeSet(any(), any(), any(), any()) } just Runs
-            every { zfsStorageProvider.createVolume(any(), any()) } just Runs
-            every { zfsStorageProvider.getVolumeMountpoint(any(), any()) } returns ""
+            every { zfsStorageProvider.createVolume(any(), any()) } returns emptyMap()
             every { reaper.signal() } just Runs
             providers.commits.createCommit("foo", Commit("id"))
             providers.commits.checkoutCommit("foo", "id")

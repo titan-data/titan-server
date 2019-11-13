@@ -35,31 +35,42 @@ class ZfsStorageProvider(
      * Create a new volume set. This is simply an empty placeholder volumeset.
      */
     override fun createVolumeSet(volumeSet: String) {
-        executor.exec("zfs", "create", "-o", "mountpoint=legacy", "$poolName/data/$volumeSet")
+        executor.exec("zfs", "create", "$poolName/data/$volumeSet")
     }
 
     /**
-     * Clone a volumeset from an existing commit. We create the plain volume set, and then go about cloning each
-     * volume from the old volumeset into the new space.
+     * Clone a volumeset from an existing commit. We create the plain dataset that will contain the volumes.
      */
     override fun cloneVolumeSet(
         sourceVolumeSet: String,
         sourceCommit: String,
-        newVolumeSet: String,
-        volumeNames: List<String>
+        newVolumeSet: String
     ) {
         createVolumeSet(newVolumeSet)
-        for (vol in volumeNames) {
-            executor.exec("zfs", "clone", "$poolName/data/$sourceVolumeSet/$vol@$sourceCommit",
-                    "$poolName/data/$newVolumeSet/$vol")
-        }
+    }
+
+    /**
+     * Clone an individual volume. Here's where we actually do the work of cloning the volume, and then making sure
+     * we pass back an updated config with the proper mountpoint.
+     */
+    override fun cloneVolume(sourceVolumeSet: String, sourceCommit: String, newVolumeSet: String, volumeName: String): Map<String, Any> {
+        executor.exec("zfs", "clone", "$poolName/data/$sourceVolumeSet/$volumeName@$sourceCommit",
+                "$poolName/data/$newVolumeSet/$volumeName")
+        return mapOf("mountpoint" to "/var/lib/$poolName/mnt/$newVolumeSet/$volumeName")
     }
 
     /**
      * Delete a volume set. This should only be invoked from the reaper after all volumes have been deleted.
      */
     override fun deleteVolumeSet(volumeSet: String) {
-        executor.exec("zfs", "destroy", "$poolName/data/$volumeSet")
+        try {
+            executor.exec("zfs", "destroy", "$poolName/data/$volumeSet")
+        } catch (e: CommandException) {
+            // Deletion should be idempotent, ignore errors if this object doens't exist
+            if (!e.output.contains("dataset does not exist")) {
+                throw e
+            }
+        }
 
         // Try to delete the directory, but it may not exist if no volumes have been created
         try {
@@ -119,7 +130,14 @@ class ZfsStorageProvider(
      * can just recursively delete the snapshot at the level of the volume set.
      */
     override fun deleteCommit(volumeSet: String, commitId: String, volumeNames: List<String>) {
-        executor.exec("zfs", "destroy", "-r", "$poolName/data/$volumeSet@$commitId")
+        try {
+            executor.exec("zfs", "destroy", "-r", "$poolName/data/$volumeSet@$commitId")
+        } catch (e: CommandException) {
+            // Deletion should be idempotent, ignore errors if this object doens't exist
+            if (!e.output.contains("could not find any snapshots to destroy")) {
+                throw e
+            }
+        }
     }
 
     /**
@@ -136,8 +154,26 @@ class ZfsStorageProvider(
      * that has had volumes removed in the middle of its lifecycle.
      */
     override fun deleteVolume(volumeSet: String, volumeName: String, config: Map<String, Any>) {
-        executor.exec("zfs", "destroy", "$poolName/data/$volumeSet/$volumeName")
-        executor.exec("rmdir", config["mountpoint"] as String)
+        try {
+            executor.exec("zfs", "destroy", "$poolName/data/$volumeSet/$volumeName")
+        } catch (e: CommandException) {
+            // Deletion should be idempotent, ignore errors if this object doens't exist
+            if (!e.output.contains("dataset does not exist")) {
+                throw e
+            }
+        }
+
+        if (config.containsKey("mountpoint")) {
+            // A partially constructed volume will not have any config, ignore cases with no mountpoint
+            try {
+                executor.exec("rmdir", config["mountpoint"] as String)
+            } catch (e: CommandException) {
+                // Deletion should be idempotent, ignore errors if the directory doesn't exist
+                if (!e.output.contains("No such file or directory")) {
+                    throw e
+                }
+            }
+        }
     }
 
     /**

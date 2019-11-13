@@ -98,7 +98,13 @@ class CommitOrchestrator(val providers: ProviderModule) {
             providers.metadata.listVolumes(newVolumeSet).map { it.name }
         }
 
-        providers.storage.cloneVolumeSet(sourceVolumeSet, commit, newVolumeSet, volumes)
+        providers.storage.cloneVolumeSet(sourceVolumeSet, commit, newVolumeSet)
+        for (v in volumes) {
+            val config = providers.storage.cloneVolume(sourceVolumeSet, commit, newVolumeSet, v)
+            transaction {
+                providers.metadata.updateVolumeConfig(newVolumeSet, v, config)
+            }
+        }
 
         transaction {
             providers.metadata.activateVolumeSet(repo, newVolumeSet)

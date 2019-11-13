@@ -271,7 +271,8 @@ class CommitsApiTest : StringSpec() {
                 providers.metadata.createCommit("foo", vs, Commit("hash"))
             }
 
-            every { zfsStorageProvider.cloneVolumeSet(any(), any(), any(), any()) } just Runs
+            every { zfsStorageProvider.cloneVolumeSet(any(), any(), any()) } just Runs
+            every { zfsStorageProvider.cloneVolume(any(), any(), any(), any()) } returns emptyMap()
 
             with(engine.handleRequest(HttpMethod.Post, "/v1/repositories/foo/commits/hash/checkout")) {
                 response.status() shouldBe HttpStatusCode.NoContent
@@ -280,7 +281,7 @@ class CommitsApiTest : StringSpec() {
                 }
                 activeVs shouldNotBe vs
                 verify {
-                    zfsStorageProvider.cloneVolumeSet(vs, "hash", activeVs, emptyList())
+                    zfsStorageProvider.cloneVolumeSet(vs, "hash", activeVs)
                 }
             }
         }

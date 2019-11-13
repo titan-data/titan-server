@@ -11,6 +11,7 @@ import io.titandata.models.Operation
 import io.titandata.models.ProgressEntry
 import io.titandata.models.Remote
 import io.titandata.models.RemoteParameters
+import io.titandata.models.Volume
 import io.titandata.operation.OperationExecutor
 import io.titandata.storage.OperationData
 import org.jetbrains.exposed.sql.transactions.transaction
@@ -130,7 +131,8 @@ class OperationOrchestrator(val providers: ProviderModule) {
             val vs = providers.metadata.createVolumeSet(repo, commit)
             val volumes = providers.metadata.listVolumes(providers.metadata.getActiveVolumeSet(repo))
             for (v in volumes) {
-                providers.metadata.createVolume(vs, v)
+                // Intentionally create the volume with no configuration, to be filled in later after it's created by the storage layer
+                providers.metadata.createVolume(vs, Volume(name = v.name, properties = v.properties))
             }
             val op = Operation(id = vs, type = type, state = Operation.State.RUNNING, remote = remoteName, commitId = commitId)
             providers.metadata.createOperation(repo, vs, OperationData(
@@ -155,14 +157,23 @@ class OperationOrchestrator(val providers: ProviderModule) {
             }
             providers.storage.createVolumeSet(volumeSet)
             for (v in volumes) {
-                providers.storage.createVolume(volumeSet, v.name)
+                val config = providers.storage.createVolume(volumeSet, v.name)
+                transaction {
+                    providers.metadata.updateVolumeConfig(volumeSet, v.name, config)
+                }
             }
         } else {
             val (sourceVolumeSet, volumes) = transaction {
                 val vs = providers.metadata.getCommit(repo, commit).first
                 Pair(vs, providers.metadata.listVolumes(vs).map { it.name })
             }
-            providers.storage.cloneVolumeSet(sourceVolumeSet, commit, volumeSet, volumes)
+            providers.storage.cloneVolumeSet(sourceVolumeSet, commit, volumeSet)
+            for (v in volumes) {
+                val config = providers.storage.cloneVolume(sourceVolumeSet, commit, volumeSet, v)
+                transaction {
+                    providers.metadata.updateVolumeConfig(volumeSet, v, config)
+                }
+            }
         }
     }
 

@@ -114,20 +114,24 @@ class Reaper(val providers: ProviderModule) : Runnable {
 
         var ret = false
         for (vs in volumeSets) {
-            val volumes = transaction {
-                providers.metadata.listVolumes(vs)
-            }
-            for (vol in volumes) {
-                providers.storage.deleteVolume(vs, vol.name, vol.config)
-                transaction {
-                    providers.metadata.deleteVolume(vs, vol.name)
+            try {
+                val volumes = transaction {
+                    providers.metadata.listVolumes(vs)
                 }
+                for (vol in volumes) {
+                    providers.storage.deleteVolume(vs, vol.name, vol.config)
+                    transaction {
+                        providers.metadata.deleteVolume(vs, vol.name)
+                    }
+                }
+                providers.storage.deleteVolumeSet(vs)
+                transaction {
+                    providers.metadata.deleteVolumeSet(vs)
+                }
+                ret = true
+            } catch (t: Throwable) {
+                log.error("error reaping volume set $vs", t)
             }
-            providers.storage.deleteVolumeSet(vs)
-            transaction {
-                providers.metadata.deleteVolumeSet(vs)
-            }
-            ret = true
         }
 
         return ret
@@ -140,11 +144,15 @@ class Reaper(val providers: ProviderModule) : Runnable {
         }
         var ret = false
         for ((vs, vol) in volumes) {
-            providers.storage.deleteVolume(vs, vol.name, vol.config)
-            transaction {
-                providers.metadata.deleteVolume(vs, vol.name)
+            try {
+                providers.storage.deleteVolume(vs, vol.name, vol.config)
+                transaction {
+                    providers.metadata.deleteVolume(vs, vol.name)
+                }
+                ret = true
+            } catch (t: Throwable) {
+                log.error("error reaping volume ${vol.name} in volume set $vs")
             }
-            ret = true
         }
         return ret
     }

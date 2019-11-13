@@ -49,22 +49,38 @@ class ZfsStorageProviderTest : StringSpec() {
             every { executor.exec(*anyVararg()) } returns ""
             provider.createVolumeSet("vs")
             verifyAll {
-                executor.exec("zfs", "create", "-o", "mountpoint=legacy", "test/data/vs")
+                executor.exec("zfs", "create", "test/data/vs")
             }
         }
 
-        "clone volume set clones each volume" {
+        "clone volume set creates new dataset" {
             every { executor.exec(*anyVararg()) } returns ""
-            provider.cloneVolumeSet("source", "commit", "dest", listOf("one", "two"))
+            provider.cloneVolumeSet("source", "commit", "dest")
             verifyAll {
-                executor.exec("zfs", "create", "-o", "mountpoint=legacy", "test/data/dest")
-                executor.exec("zfs", "clone", "test/data/source/one@commit", "test/data/dest/one")
-                executor.exec("zfs", "clone", "test/data/source/two@commit", "test/data/dest/two")
+                executor.exec("zfs", "create", "test/data/dest")
+            }
+        }
+
+        "clone volume clones dataset" {
+            every { executor.exec(*anyVararg()) } returns ""
+            provider.cloneVolume("source", "commit", "dest", "vol")
+            verifyAll {
+                executor.exec("zfs", "clone", "test/data/source/vol@commit", "test/data/dest/vol")
             }
         }
 
         "destroy volume set destroys dataset and removes directory" {
             every { executor.exec(*anyVararg()) } returns ""
+            provider.deleteVolumeSet("vs")
+            verifyAll {
+                executor.exec("zfs", "destroy", "test/data/vs")
+                executor.exec("rm", "-rf", "/var/lib/test/mnt/vs")
+            }
+        }
+
+        "destroy volume set ignores no such dataset exception" {
+            every { executor.exec("zfs", "destroy", *anyVararg()) } throws CommandException("", 1, "dataset does not exist")
+            every { executor.exec("rm", *anyVararg()) } returns ""
             provider.deleteVolumeSet("vs")
             verifyAll {
                 executor.exec("zfs", "destroy", "test/data/vs")
@@ -127,6 +143,14 @@ class ZfsStorageProviderTest : StringSpec() {
             }
         }
 
+        "delete commit ignores no snapshot exception" {
+            every { executor.exec(*anyVararg()) } throws CommandException("", 1, "could not find any snapshots to destroy")
+            provider.deleteCommit("vs", "commit", listOf("one", "two"))
+            verifyAll {
+                executor.exec("zfs", "destroy", "-r", "test/data/vs@commit")
+            }
+        }
+
         "create volume succeeds" {
             every { executor.exec(*anyVararg()) } returns ""
             provider.createVolume("vs", "vol")
@@ -137,6 +161,16 @@ class ZfsStorageProviderTest : StringSpec() {
 
         "delete volume succeeds" {
             every { executor.exec(*anyVararg()) } returns ""
+            provider.deleteVolume("vs", "vol", mapOf("mountpoint" to "/var/lib/test/mnt/vs/vol"))
+            verifyAll {
+                executor.exec("zfs", "destroy", "test/data/vs/vol")
+                executor.exec("rmdir", "/var/lib/test/mnt/vs/vol")
+            }
+        }
+
+        "delete volume ignores no such dataset exception" {
+            every { executor.exec("zfs", "destroy", *anyVararg()) } throws CommandException("", 1, "dataset does not exist")
+            every { executor.exec("rmdir", *anyVararg()) } returns ""
             provider.deleteVolume("vs", "vol", mapOf("mountpoint" to "/var/lib/test/mnt/vs/vol"))
             verifyAll {
                 executor.exec("zfs", "destroy", "test/data/vs/vol")

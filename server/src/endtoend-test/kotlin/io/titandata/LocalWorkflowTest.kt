@@ -232,6 +232,12 @@ class LocalWorkflowTest : EndToEndTest() {
             result shouldBe "Hello\n"
         }
 
+        "volume is mounted at a new location" {
+            val vol = volumeApi.getVolume("foo", "vol")
+            vol.config["mountpoint"] shouldNotBe volumeMountpoint
+            volumeMountpoint = vol.config["mountpoint"] as String
+        }
+
         "get repository status indicates source commit" {
             val status = repoApi.getRepositoryStatus("foo")
             status.sourceCommit shouldBe "id"

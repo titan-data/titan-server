@@ -226,7 +226,8 @@ class OperationsApiTest : StringSpec() {
                 providers.metadata.createCommit("foo", vs1, Commit("commit"))
             }
 
-            every { zfsStorageProvider.cloneVolumeSet(any(), any(), any(), any()) } just Runs
+            every { zfsStorageProvider.cloneVolumeSet(any(), any(), any()) } just Runs
+            every { zfsStorageProvider.cloneVolume(any(), any(), any(), any()) } returns emptyMap()
 
             val result = engine.handleRequest(HttpMethod.Post, "/v1/repositories/foo/remotes/remote/commits/commit/push") {
                 addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())

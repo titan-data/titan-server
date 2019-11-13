@@ -235,7 +235,8 @@ class CommitOrchestratorTest : StringSpec() {
         }
 
         "checkout commit succeeds" {
-            every { zfsStorageProvider.cloneVolumeSet(any(), any(), any(), any()) } just Runs
+            every { zfsStorageProvider.cloneVolumeSet(any(), any(), any()) } just Runs
+            every { zfsStorageProvider.cloneVolume(any(), any(), any(), any()) } returns emptyMap()
             every { zfsStorageProvider.createVolume(any(), any()) } returns emptyMap()
             every { reaper.signal() } just Runs
             providers.commits.createCommit("foo", Commit("id"))
@@ -253,7 +254,9 @@ class CommitOrchestratorTest : StringSpec() {
 
             verify {
                 reaper.signal()
-                zfsStorageProvider.cloneVolumeSet(vs, "id", vs2, listOf("vol1", "vol2"))
+                zfsStorageProvider.cloneVolumeSet(vs, "id", vs2)
+                zfsStorageProvider.cloneVolume(vs, "id", vs2, "vol1")
+                zfsStorageProvider.cloneVolume(vs, "id", vs2, "vol2")
             }
         }
 

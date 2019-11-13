@@ -162,9 +162,17 @@ class ZfsStorageProvider(
                 throw e
             }
         }
-        // A partially constructed volume will not have any config
+
         if (config.containsKey("mountpoint")) {
-            executor.exec("rmdir", config["mountpoint"] as String)
+            // A partially constructed volume will not have any config, ignore cases with no mountpoint
+            try {
+                executor.exec("rmdir", config["mountpoint"] as String)
+            } catch (e: CommandException) {
+                // Deletion should be idempotent, ignore errors if the directory doesn't exist
+                if (!e.output.contains("No such file or directory")) {
+                    throw e
+                }
+            }
         }
     }
 

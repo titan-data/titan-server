@@ -2,7 +2,6 @@ package io.titandata.util
 
 import io.kotlintest.shouldBe
 import io.kotlintest.specs.StringSpec
-import io.titandata.models.Commit
 import io.titandata.serialization.RemoteUtil
 
 class RemoteUtilTest : StringSpec() {

@@ -12,6 +12,7 @@ group = "io.titandata"
 version = titanVersion
 
 repositories {
+    mavenLocal()
     mavenCentral()
     jcenter()
     maven("https://dl.bintray.com/kotlin/ktor")
@@ -37,6 +38,9 @@ dependencies {
     compile("org.jetbrains.exposed:exposed:0.17.7")
     compile("org.postgresql:postgresql:42.2.8")
     compile("com.zaxxer:HikariCP:3.4.1")
+
+    // Remotes
+    compile("io.titandata:remote-sdk:0.0.3")
 
     // S3 Provider dependencies
     compile("com.amazonaws:aws-java-sdk-s3:1.11.668")

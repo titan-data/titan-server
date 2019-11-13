@@ -6,23 +6,27 @@ package io.titandata.serialization
 
 import io.titandata.models.Remote
 import io.titandata.models.RemoteParameters
-import io.titandata.remote.engine.EngineRemoteUtil
-import io.titandata.remote.nop.NopRemoteUtil
-import io.titandata.remote.s3.S3RemoteUtil
-import io.titandata.remote.s3web.S3WebRemoteUtil
-import io.titandata.remote.ssh.SshRemoteUtil
 import java.net.URI
 import java.net.URISyntaxException
+import java.util.ServiceLoader
+import io.titandata.remote.RemoteClient
+
 
 class RemoteUtil {
 
-    private val remoteUtil = mapOf(
-        "nop" to NopRemoteUtil(),
-        "ssh" to SshRemoteUtil(),
-        "engine" to EngineRemoteUtil(),
-        "s3" to S3RemoteUtil(),
-        "s3web" to S3WebRemoteUtil()
-    )
+    private val remoteUtil : Map<String, RemoteClient>
+
+    private val loader = ServiceLoader.load(RemoteClient::class.java)
+
+    init {
+        val providers = mutableMapOf<String, RemoteClient>()
+        loader.forEach {
+            if (it != null) {
+                providers[it.getProvider()] = it
+            }
+        }
+        remoteUtil = providers.toMap()
+    }
 
     fun parseUri(uriString: String, name: String, properties: Map<String, String>) : Remote {
         try {

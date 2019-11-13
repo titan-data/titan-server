@@ -19,7 +19,12 @@ java {
 }
 
 repositories {
+    mavenLocal()
     mavenCentral()
+    maven {
+        name = "titan"
+        url = uri("https://maven.titan-data.io")
+    }
 }
 
 val jar by tasks.getting(Jar::class) {
@@ -51,5 +56,10 @@ dependencies {
     compile(kotlin("stdlib"))
     compile("com.squareup.okhttp3:okhttp:3.14.2")
     compile("com.google.code.gson:gson:2.8.6")
-    compile("software.amazon.awssdk:auth:2.7.33")
+    compile("io.titandata:remote-sdk:0.0.3")
+    compile("io.titandata:nop-remote-client:0.0.1")
+    compile("io.titandata:ssh-remote-client:0.0.1")
+    compile("io.titandata:s3-remote-client:0.0.1")
+    compile("io.titandata:s3web-remote-client:0.0.1")
+    compile("io.titandata:delphix-remote-client:0.0.1")
 }

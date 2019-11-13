@@ -271,8 +271,8 @@ class S3WorkflowTest : EndToEndTest() {
 
         "add remote without keys succeeds" {
             val defaultRemote = getRemote()
-            val remote = Remote("s3", "origin", mapOf("bucket" to defaultRemote.properties["bucket"],
-                    "path" to defaultRemote.properties["path"]))
+            val remote = Remote("s3", "origin", mapOf("bucket" to defaultRemote.properties["bucket"]!!,
+                    "path" to defaultRemote.properties["path"]!!))
             remoteApi.createRemote("foo", remote)
         }
 

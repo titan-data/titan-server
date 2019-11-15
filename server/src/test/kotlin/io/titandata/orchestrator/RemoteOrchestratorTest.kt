@@ -66,6 +66,12 @@ class RemoteOrchestratorTest : StringSpec() {
             providers.remotes.addRemote("foo", Remote("nop", "origin"))
         }
 
+        "add remote fails with invalid properties" {
+            shouldThrow<IllegalArgumentException> {
+                providers.remotes.addRemote("foo", Remote("nop", "origin", mapOf("foo" to "bar")))
+            }
+        }
+
         "add remote with invalid repo name fails" {
             shouldThrow<IllegalArgumentException> {
                 providers.remotes.addRemote("bad/repo", Remote("nop", "origin"))
@@ -178,6 +184,13 @@ class RemoteOrchestratorTest : StringSpec() {
             }
         }
 
+        "update remote with invalid repo rpoerties fails" {
+            providers.remotes.addRemote("foo", Remote("nop", "origin"))
+            shouldThrow<IllegalArgumentException> {
+                providers.remotes.updateRemote("foo", "origin", Remote("nop", "origin", mapOf("foo" to "bar")))
+            }
+        }
+
         "update remote with invalid name fails" {
             shouldThrow<IllegalArgumentException> {
                 providers.remotes.updateRemote("foo", "bad/repo", Remote("nop", "origin"))
@@ -221,6 +234,16 @@ class RemoteOrchestratorTest : StringSpec() {
             result[1].id shouldBe "two"
         }
 
+        "list remote commits fails with invalid parameters" {
+            every { nopRemoteProvider.listCommits(any(), any(), any()) } returns
+                    listOf(Commit(id = "one"),
+                            Commit(id = "two"))
+            providers.remotes.addRemote("foo", Remote("nop", "origin"))
+            shouldThrow<IllegalArgumentException> {
+                providers.remotes.listRemoteCommits("foo", "origin", RemoteParameters("nop", mapOf("foo" to "bar")), null)
+            }
+        }
+
         "list remote commits with invalid repo name fails" {
             shouldThrow<IllegalArgumentException> {
                 providers.remotes.listRemoteCommits("bad/repo", "origin", params, null)
@@ -251,6 +274,15 @@ class RemoteOrchestratorTest : StringSpec() {
             providers.remotes.addRemote("foo", Remote("nop", "origin"))
             val result = providers.remotes.getRemoteCommit("foo", "origin", params, "id")
             result.id shouldBe "one"
+        }
+
+        "get remote commit fails with invalid parameters" {
+            every { nopRemoteProvider.getCommit(any(), any(), any()) } returns
+                    Commit(id = "one")
+            providers.remotes.addRemote("foo", Remote("nop", "origin"))
+            shouldThrow<IllegalArgumentException> {
+                providers.remotes.getRemoteCommit("foo", "origin", RemoteParameters("nop", mapOf("a" to "b")), "id")
+            }
         }
 
         "get remote commit with invalid repo name fails" {

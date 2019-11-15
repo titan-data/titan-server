@@ -46,6 +46,7 @@ import io.titandata.orchestrator.RemoteOrchestrator
 import io.titandata.orchestrator.RepositoryOrchestrator
 import io.titandata.orchestrator.VolumeOrchestrator
 import io.titandata.remote.RemoteProvider
+import io.titandata.remote.RemoteServer
 import io.titandata.remote.engine.EngineRemoteProvider
 import io.titandata.remote.nop.NopRemoteProvider
 import io.titandata.remote.s3.S3RemoteProvider
@@ -56,6 +57,7 @@ import io.titandata.storage.zfs.ZfsStorageProvider
 import io.titandata.util.CommandExecutor
 import java.io.PrintWriter
 import java.io.StringWriter
+import java.util.ServiceLoader
 import org.slf4j.event.Level
 
 fun exceptionToError(request: ApplicationRequest, t: Throwable): Any {
@@ -73,6 +75,19 @@ fun exceptionToError(request: ApplicationRequest, t: Throwable): Any {
 }
 
 class ProviderModule(pool: String, inMemory: Boolean = true) {
+    private val loader = ServiceLoader.load(RemoteServer::class.java)
+    private val dynamicRemotes: Map<String, RemoteServer>
+
+    init {
+        val providers = mutableMapOf<String, RemoteServer>()
+        loader.forEach {
+            if (it != null) {
+                providers[it.getProvider()] = it
+            }
+        }
+        dynamicRemotes = providers.toMap()
+    }
+
     private val zfsStorageProvider = ZfsStorageProvider(pool)
     private val nopRemoteProvider = NopRemoteProvider()
     private val engineRemoteProvider = EngineRemoteProvider(this)
@@ -101,6 +116,12 @@ class ProviderModule(pool: String, inMemory: Boolean = true) {
             throw IllegalArgumentException("unknown storage provider '$type'")
         }
         return zfsStorageProvider
+    }
+
+    // Get a new-style remote provider by name
+    fun dynamicRemote(type: String): RemoteServer {
+        return dynamicRemotes[type]
+                ?: throw IllegalArgumentException("unknown remote provider '$type'")
     }
 
     // Get a remote provider by name

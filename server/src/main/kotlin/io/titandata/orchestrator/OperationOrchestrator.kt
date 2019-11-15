@@ -282,12 +282,13 @@ class OperationOrchestrator(val providers: ProviderModule) {
         repository: String,
         remote: String,
         commitId: String,
-        params: RemoteParameters,
+        rawParams: RemoteParameters,
         metadataOnly: Boolean = false
     ): Operation {
 
         log.info("pull $commitId from $remote in $repository")
         NameUtil.validateCommitId(commitId)
+        val params = providers.remotes.validateParameters(rawParams)
         val r = providers.remotes.getRemote(repository, remote)
         if (r.provider != params.provider) {
             throw IllegalArgumentException("operation parameters type (${params.provider}) doesn't match type of remote '$remote' (${r.provider})")
@@ -327,12 +328,13 @@ class OperationOrchestrator(val providers: ProviderModule) {
         repository: String,
         remote: String,
         commitId: String,
-        params: RemoteParameters,
+        rawParams: RemoteParameters,
         metadataOnly: Boolean = false
     ): Operation {
 
         log.info("push $commitId to $remote in $repository")
         NameUtil.validateCommitId(commitId)
+        val params = providers.remotes.validateParameters(rawParams)
         val r = providers.remotes.getRemote(repository, remote)
         if (r.provider != params.provider) {
             throw IllegalArgumentException("operation parameters type (${params.provider}) doesn't match type of remote '$remote' (${r.provider})")

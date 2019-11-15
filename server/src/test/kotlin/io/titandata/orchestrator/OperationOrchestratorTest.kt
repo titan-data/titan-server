@@ -197,11 +197,18 @@ class OperationOrchestratorTest : StringSpec() {
             }
         }
 
+        "pull fails for invalid remote parameters" {
+            providers.remotes.addRemote("foo", Remote("nop", "remote"))
+            shouldThrow<IllegalArgumentException> {
+                providers.operations.startPull("foo", "remote", "commit", RemoteParameters("nop", mapOf("a" to "b")))
+            }
+        }
+
         "pull fails for non-existent remote commit" {
-            providers.remotes.addRemote("foo", Remote("s3", "remote"))
+            providers.remotes.addRemote("foo", Remote("s3", "remote", mapOf("bucket" to "bucket")))
             every { s3Provider.getCommit(any(), any(), any()) } throws NoSuchObjectException("")
             shouldThrow<NoSuchObjectException> {
-                providers.operations.startPull("foo", "remote", "id", RemoteParameters("s3"))
+                providers.operations.startPull("foo", "remote", "id", RemoteParameters("s3", mapOf("accessKey" to "key", "secretKey" to "key")))
             }
         }
 
@@ -259,6 +266,13 @@ class OperationOrchestratorTest : StringSpec() {
             }
         }
 
+        "push fails for invalid remote configuration" {
+            providers.remotes.addRemote("foo", Remote("nop", "remote"))
+            shouldThrow<IllegalArgumentException> {
+                providers.operations.startPush("foo", "remote", "id", RemoteParameters("nop", mapOf("foo" to "bar")))
+            }
+        }
+
         "push fails if local commit cannot be found" {
             providers.remotes.addRemote("foo", Remote("nop", "remote"))
             shouldThrow<NoSuchObjectException> {
@@ -267,13 +281,13 @@ class OperationOrchestratorTest : StringSpec() {
         }
 
         "push fails if remote commit exists" {
-            providers.remotes.addRemote("foo", Remote("s3", "remote"))
+            providers.remotes.addRemote("foo", Remote("s3", "remote", mapOf("bucket" to "bucket")))
             transaction {
                 providers.metadata.createCommit("foo", providers.metadata.getActiveVolumeSet("foo"), Commit(id = "id"))
             }
             every { s3Provider.getCommit(any(), any(), any()) } returns Commit("id")
             shouldThrow<ObjectExistsException> {
-                providers.operations.startPush("foo", "remote", "id", RemoteParameters("s3"))
+                providers.operations.startPush("foo", "remote", "id", RemoteParameters("s3", mapOf("accessKey" to "key", "secretKey" to "key")))
             }
         }
 

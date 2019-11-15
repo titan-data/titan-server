@@ -279,8 +279,8 @@ class S3WorkflowTest : EndToEndTest() {
         "list commits with keys succeeds" {
             val remote = getRemote()
             val commits = remoteApi.listRemoteCommits("foo", "origin", RemoteParameters("s3",
-                    mapOf("accessKey" to remote.properties["accessKey"], "secretKey" to remote.properties["secretKey"],
-                            "region" to remote.properties["region"])))
+                    mapOf("accessKey" to remote.properties["accessKey"]!!, "secretKey" to remote.properties["secretKey"]!!,
+                            "region" to remote.properties["region"]!!)))
             commits.size shouldBe 2
             commits[0].id shouldBe "id2"
             commits[1].id shouldBe "id"
@@ -297,7 +297,7 @@ class S3WorkflowTest : EndToEndTest() {
             val remote = getRemote()
             val exception = shouldThrow<ServerException> {
                 remoteApi.listRemoteCommits("foo", "origin", RemoteParameters("s3", mapOf(
-                        "accessKey" to "foo", "secretKey" to "bar", "region" to remote.properties["region"])))
+                        "accessKey" to "foo", "secretKey" to "bar", "region" to remote.properties["region"]!!)))
             }
             exception.code shouldBe "AmazonS3Exception"
         }

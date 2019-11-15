@@ -11,6 +11,21 @@ import org.jetbrains.exposed.sql.transactions.transaction
 
 class RemoteOrchestrator(val providers: ProviderModule) {
 
+    fun validateRemote(remote: Remote): Remote {
+        return Remote(
+                provider = remote.provider,
+                name = remote.name,
+                properties = providers.dynamicRemote(remote.provider).validateRemote(remote.properties)
+        )
+    }
+
+    fun validateParameters(parameters: RemoteParameters): RemoteParameters {
+        return RemoteParameters(
+                provider = parameters.provider,
+                properties = providers.dynamicRemote(parameters.provider).validateParameters(parameters.properties)
+        )
+    }
+
     fun listRemotes(repo: String): List<Remote> {
         providers.repositories.getRepository(repo)
         return transaction {
@@ -22,7 +37,7 @@ class RemoteOrchestrator(val providers: ProviderModule) {
         NameUtil.validateRemoteName(remote.name)
         providers.repositories.getRepository(repo)
         transaction {
-            providers.metadata.addRemote(repo, remote)
+            providers.metadata.addRemote(repo, validateRemote(remote))
         }
     }
 
@@ -47,13 +62,13 @@ class RemoteOrchestrator(val providers: ProviderModule) {
         NameUtil.validateRemoteName(remote.name)
         providers.repositories.getRepository(repo)
         transaction {
-            providers.metadata.updateRemote(repo, remoteName, remote)
+            providers.metadata.updateRemote(repo, remoteName, validateRemote(remote))
         }
     }
 
     fun listRemoteCommits(repo: String, remoteName: String, params: RemoteParameters, tags: List<String>?): List<Commit> {
         val remote = getRemote(repo, remoteName)
-        val commits = providers.remote(remote.provider).listCommits(remote, params, tags)
+        val commits = providers.remote(remote.provider).listCommits(remote, validateParameters(params), tags)
         return commits.sortedByDescending { OffsetDateTime.parse(it.properties.get("timestamp")?.toString()
                 ?: DateTimeFormatter.ISO_INSTANT.format(Instant.ofEpochSecond(0)),
                 DateTimeFormatter.ISO_DATE_TIME) }
@@ -61,6 +76,6 @@ class RemoteOrchestrator(val providers: ProviderModule) {
 
     fun getRemoteCommit(repo: String, remoteName: String, params: RemoteParameters, commitId: String): Commit {
         val remote = getRemote(repo, remoteName)
-        return providers.remote(remote.provider).getCommit(remote, commitId, params)
+        return providers.remote(remote.provider).getCommit(remote, commitId, validateParameters(params))
     }
 }

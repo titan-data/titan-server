@@ -231,7 +231,7 @@ class OperationsApiTest : StringSpec() {
 
             val result = engine.handleRequest(HttpMethod.Post, "/v1/repositories/foo/remotes/remote/commits/commit/push") {
                 addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
-                setBody("{\"provider\":\"nop\"}")
+                setBody("{\"provider\":\"nop\",\"properties\":{}}")
             }
             result.response.status() shouldBe HttpStatusCode.OK
             val operation = gson.fromJson(result.response.content, Operation::class.java)
@@ -249,7 +249,7 @@ class OperationsApiTest : StringSpec() {
 
             val result = engine.handleRequest(HttpMethod.Post, "/v1/repositories/foo/remotes/remote/commits/commit/pull") {
                 addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
-                setBody("{\"provider\":\"nop\"}")
+                setBody("{\"provider\":\"nop\",\"properties\":{}}")
             }
             result.response.status() shouldBe HttpStatusCode.OK
             val operation = gson.fromJson(result.response.content, Operation::class.java)

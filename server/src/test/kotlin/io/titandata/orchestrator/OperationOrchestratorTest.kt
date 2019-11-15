@@ -198,10 +198,10 @@ class OperationOrchestratorTest : StringSpec() {
         }
 
         "pull fails for non-existent remote commit" {
-            providers.remotes.addRemote("foo", Remote("s3", "remote"))
+            providers.remotes.addRemote("foo", Remote("s3", "remote", mapOf("bucket" to "bucket")))
             every { s3Provider.getCommit(any(), any(), any()) } throws NoSuchObjectException("")
             shouldThrow<NoSuchObjectException> {
-                providers.operations.startPull("foo", "remote", "id", RemoteParameters("s3"))
+                providers.operations.startPull("foo", "remote", "id", RemoteParameters("s3", mapOf("accessKey" to "key", "secretKey" to "key")))
             }
         }
 
@@ -267,13 +267,13 @@ class OperationOrchestratorTest : StringSpec() {
         }
 
         "push fails if remote commit exists" {
-            providers.remotes.addRemote("foo", Remote("s3", "remote"))
+            providers.remotes.addRemote("foo", Remote("s3", "remote", mapOf("bucket" to "bucket")))
             transaction {
                 providers.metadata.createCommit("foo", providers.metadata.getActiveVolumeSet("foo"), Commit(id = "id"))
             }
             every { s3Provider.getCommit(any(), any(), any()) } returns Commit("id")
             shouldThrow<ObjectExistsException> {
-                providers.operations.startPush("foo", "remote", "id", RemoteParameters("s3"))
+                providers.operations.startPush("foo", "remote", "id", RemoteParameters("s3", mapOf("accessKey" to "key", "secretKey" to "key")))
             }
         }
 

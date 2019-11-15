@@ -98,23 +98,10 @@ class RemotesApiTest : StringSpec() {
             }
             with(engine.handleRequest(HttpMethod.Post, "/v1/repositories/repo/remotes") {
                 addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
-                setBody("{\"provider\":\"nop\",\"name\":\"a\"}")
+                setBody("{\"provider\":\"nop\",\"name\":\"a\",\"properties\":{}}")
             }) {
                 response.status() shouldBe HttpStatusCode.Created
-                response.content shouldBe "{\"provider\":\"nop\",\"name\":\"a\"}"
-            }
-        }
-
-        "add remote succeeds" {
-            transaction {
-                providers.metadata.createRepository(Repository(name = "repo", properties = mapOf()))
-            }
-            with(engine.handleRequest(HttpMethod.Post, "/v1/repositories/repo/remotes") {
-                addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
-                setBody("{\"provider\":\"engine\",\"name\":\"bar\",\"address\":\"a\"," +
-                        "\"username\":\"u\",\"password\":\"p\"}")
-            }) {
-                response.status() shouldBe HttpStatusCode.Created
+                response.content shouldBe "{\"provider\":\"nop\",\"name\":\"a\",\"properties\":{}}"
             }
         }
 
@@ -125,7 +112,7 @@ class RemotesApiTest : StringSpec() {
             }
             with(engine.handleRequest(HttpMethod.Post, "/v1/repositories/repo/remotes") {
                 addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
-                setBody("{\"provider\":\"nop\",\"name\":\"a\"}")
+                setBody("{\"provider\":\"nop\",\"name\":\"a\",\"properties\":{}}")
             }) {
                 response.status() shouldBe HttpStatusCode.Conflict
             }
@@ -137,7 +124,7 @@ class RemotesApiTest : StringSpec() {
             }
             with(engine.handleRequest(HttpMethod.Post, "/v1/repositories/repo/remotes/foo") {
                 addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
-                setBody("{\"provider\":\"nop\",\"name\":\"a\"}")
+                setBody("{\"provider\":\"nop\",\"name\":\"a\",\"properties\":{}}")
             }) {
                 response.status() shouldBe HttpStatusCode.NotFound
             }
@@ -152,11 +139,11 @@ class RemotesApiTest : StringSpec() {
             with(engine.handleRequest(HttpMethod.Post, "/v1/repositories/repo/remotes/bar") {
                 addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
                 setBody("{\"provider\":\"engine\",\"name\":\"bar\",\"properties\":{\"address\":\"b\"," +
-                        "\"username\":\"u\",\"password\":\"p\"}}")
+                        "\"username\":\"u\",\"password\":\"p\",\"repository\":\"r\"}}")
             }) {
                 response.status() shouldBe HttpStatusCode.OK
                 response.content shouldBe "{\"provider\":\"engine\",\"name\":\"bar\",\"properties\":{\"address\":\"b\"," +
-                        "\"username\":\"u\",\"password\":\"p\"}}"
+                        "\"username\":\"u\",\"password\":\"p\",\"repository\":\"r\"}}"
             }
         }
 
@@ -164,12 +151,11 @@ class RemotesApiTest : StringSpec() {
             transaction {
                 providers.metadata.createRepository(Repository(name = "repo", properties = mapOf()))
                 providers.metadata.addRemote("repo", Remote("nop", "foo"))
-                providers.metadata.addRemote("repo", Remote("engine", "bar", mapOf("address" to "a", "username" to "u", "password" to "p", "repository" to "r")))
+                providers.metadata.addRemote("repo", Remote("nop", "bar"))
             }
             with(engine.handleRequest(HttpMethod.Post, "/v1/repositories/repo/remotes/bar") {
                 addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
-                setBody("{\"provider\":\"engine\",\"name\":\"baz\",\"address\":\"b\"," +
-                        "\"username\":\"u\",\"password\":\"p\"}")
+                setBody("{\"provider\":\"nop\",\"name\":\"baz\",\"properties\":{}}")
             }) {
                 response.status() shouldBe HttpStatusCode.OK
             }
@@ -179,12 +165,11 @@ class RemotesApiTest : StringSpec() {
             transaction {
                 providers.metadata.createRepository(Repository(name = "repo", properties = mapOf()))
                 providers.metadata.addRemote("repo", Remote("nop", "foo"))
-                providers.metadata.addRemote("repo", Remote("engine", "bar", mapOf("address" to "a", "username" to "u", "password" to "p", "repository" to "r")))
+                providers.metadata.addRemote("repo", Remote("nop", "bar"))
             }
             with(engine.handleRequest(HttpMethod.Post, "/v1/repositories/repo/remotes/bar") {
                 addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
-                setBody("{\"provider\":\"engine\",\"name\":\"foo\",\"address\":\"b\"," +
-                        "\"username\":\"u\",\"password\":\"p\"}")
+                setBody("{\"provider\":\"nop\",\"name\":\"foo\",\"properties\":{}}")
             }) {
                 response.status() shouldBe HttpStatusCode.Conflict
             }
@@ -194,7 +179,7 @@ class RemotesApiTest : StringSpec() {
             transaction {
                 providers.metadata.createRepository(Repository(name = "repo", properties = mapOf()))
                 providers.metadata.addRemote("repo", Remote("nop", "foo"))
-                providers.metadata.addRemote("repo", Remote("engine", "bar", mapOf("address" to "a", "username" to "u", "password" to "p", "repository" to "r")))
+                providers.metadata.addRemote("repo", Remote("nop", "bar"))
             }
             with(engine.handleRequest(HttpMethod.Delete, "/v1/repositories/repo/remotes/bar")) {
                 response.status() shouldBe HttpStatusCode.NoContent
@@ -207,7 +192,7 @@ class RemotesApiTest : StringSpec() {
                 providers.metadata.addRemote("repo", Remote("nop", "foo"))
             }
             with(engine.handleRequest(HttpMethod.Get, "/v1/repositories/repo/remotes/foo/commits") {
-                addHeader("titan-remote-parameters", "{\"provider\":\"nop\"}")
+                addHeader("titan-remote-parameters", "{\"provider\":\"nop\",\"properties\":{}}")
             }) {
                 response.status() shouldBe HttpStatusCode.OK
                 response.contentType().toString() shouldBe "application/json; charset=UTF-8"
@@ -221,7 +206,7 @@ class RemotesApiTest : StringSpec() {
                 providers.metadata.addRemote("repo", Remote("nop", "foo"))
             }
             with(engine.handleRequest(HttpMethod.Get, "/v1/repositories/repo/remotes/foo/commits/c") {
-                addHeader("titan-remote-parameters", "{\"provider\":\"nop\"}")
+                addHeader("titan-remote-parameters", "{\"provider\":\"nop\",\"properties\":{}}")
             }) {
                 response.status() shouldBe HttpStatusCode.OK
                 response.contentType().toString() shouldBe "application/json; charset=UTF-8"

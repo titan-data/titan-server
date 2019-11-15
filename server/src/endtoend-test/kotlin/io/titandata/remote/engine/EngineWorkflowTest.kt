@@ -218,7 +218,7 @@ class EngineWorkflowTest : EndToEndTest() {
 
         "list commits with password succeeds" {
             val commits = remoteApi.listRemoteCommits("foo", "origin", RemoteParameters("engine",
-                    mapOf("password" to getRemote().properties["password"])))
+                    mapOf("password" to getRemote().properties["password"]!!)))
             commits.size shouldBe 1
             commits[0].id shouldBe "id"
             commits[0].properties["a"] shouldBe "b"

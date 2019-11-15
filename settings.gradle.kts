@@ -1,4 +1,4 @@
-rootProject.name = "titan"
+rootProject.name = "titan-server"
 
 include("client")
 include("server")

@@ -197,6 +197,13 @@ class OperationOrchestratorTest : StringSpec() {
             }
         }
 
+        "pull fails for invalid remote parameters" {
+            providers.remotes.addRemote("foo", Remote("nop", "remote"))
+            shouldThrow<IllegalArgumentException> {
+                providers.operations.startPull("foo", "remote", "commit", RemoteParameters("nop", mapOf("a" to "b")))
+            }
+        }
+
         "pull fails for non-existent remote commit" {
             providers.remotes.addRemote("foo", Remote("s3", "remote", mapOf("bucket" to "bucket")))
             every { s3Provider.getCommit(any(), any(), any()) } throws NoSuchObjectException("")
@@ -256,6 +263,13 @@ class OperationOrchestratorTest : StringSpec() {
             providers.remotes.addRemote("foo", Remote("nop", "remote"))
             shouldThrow<IllegalArgumentException> {
                 providers.operations.startPush("foo", "remote", "id", RemoteParameters("s3"))
+            }
+        }
+
+        "push fails for invalid remote configuration" {
+            providers.remotes.addRemote("foo", Remote("nop", "remote"))
+            shouldThrow<IllegalArgumentException> {
+                providers.operations.startPush("foo", "remote", "id", RemoteParameters("nop", mapOf("foo" to "bar")))
             }
         }
 

@@ -45,7 +45,7 @@ class RemoteOrchestrator(val providers: ProviderModule) {
         NameUtil.validateRemoteName(remoteName)
         providers.repositories.getRepository(repo)
         return transaction {
-            providers.metadata.getRemote(repo, remoteName)
+            validateRemote(providers.metadata.getRemote(repo, remoteName))
         }
     }
 

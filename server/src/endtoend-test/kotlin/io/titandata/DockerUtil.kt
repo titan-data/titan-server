@@ -214,6 +214,7 @@ class DockerUtil(
     }
 
     fun getSshUri(): String {
-        return "ssh://root:root@${getSshHost()}"
+        // We explicitly add the port even though it's superfluous, as it helps validate serialization
+        return "ssh://root:root@${getSshHost()}:22"
     }
 }

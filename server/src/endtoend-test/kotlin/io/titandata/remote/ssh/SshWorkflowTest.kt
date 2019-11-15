@@ -80,7 +80,7 @@ class SshWorkflowTest : EndToEndTest() {
             remote.properties["address"] shouldBe dockerUtil.getSshHost()
             remote.properties["password"] shouldBe "root"
             remote.properties["username"] shouldBe "root"
-            remote.properties["port"] shouldBe null
+            remote.properties["port"] shouldBe 22
             remote.name shouldBe "origin"
 
             remoteApi.createRemote("foo", remote)

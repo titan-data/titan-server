@@ -44,8 +44,8 @@ dependencies {
     compile("io.titandata:nop-remote-server:0.0.3")
     compile("io.titandata:ssh-remote-server:0.0.4")
     compile("io.titandata:s3-remote-server:0.0.5")
-    compile("io.titandata:s3web-remote-server:0.0.2")
-    compile("io.titandata:delphix-remote-server:0.0.2")
+    compile("io.titandata:s3web-remote-server:0.0.3")
+    compile("io.titandata:delphix-remote-server:0.0.3")
 
     // S3 Provider dependencies
     compile("com.amazonaws:aws-java-sdk-s3:1.11.668")

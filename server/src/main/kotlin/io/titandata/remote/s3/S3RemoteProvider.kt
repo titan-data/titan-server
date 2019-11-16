@@ -154,7 +154,7 @@ class S3RemoteProvider(val providers: ProviderModule) : BaseRemoteProvider() {
         s3.putObject(bucket, getMetadataKey(key), metadata)
     }
 
-    override fun listCommits(remote: Remote, params: RemoteParameters, tags: List<String>?): List<Commit> {
+    fun listCommits(remote: Remote, params: RemoteParameters, tags: List<String>?): List<Commit> {
         val metadata = getMetadataContent(remote, params)
         val ret = mutableListOf<Commit>()
 
@@ -166,22 +166,6 @@ class S3RemoteProvider(val providers: ProviderModule) : BaseRemoteProvider() {
         metadata.close()
 
         return TagFilter(tags).filter(ret)
-    }
-
-    override fun getCommit(remote: Remote, commitId: String, params: RemoteParameters): Commit {
-        val s3 = getClient(remote, params)
-        val (bucket, key) = getPath(remote, commitId)
-        try {
-            val obj = s3.getObjectMetadata(bucket, key)
-
-            return objectToCommit(obj)
-                    ?: throw NoSuchObjectException("no such commit $commitId in remote '${remote.name}'")
-        } catch (e: AmazonS3Exception) {
-            if (e.statusCode == 404) {
-                throw NoSuchObjectException("no such commit $commitId in remote '${remote.name}'")
-            }
-            throw e
-        }
     }
 
     private class S3Operation(provider: S3RemoteProvider, operation: OperationExecutor) {

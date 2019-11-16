@@ -190,21 +190,6 @@ class EngineRemoteProvider(val providers: ProviderModule) : BaseRemoteProvider()
         return ret.sortedByDescending { OffsetDateTime.parse(it.getString("creation"), DateTimeFormatter.ISO_DATE_TIME) }
     }
 
-    override fun listCommits(remote: Remote, params: RemoteParameters, tags: List<String> ?): List<Commit> {
-        val engine = connect(remote, params)
-        val filter = TagFilter(tags)
-        return filter.filter(listSnapshots(engine, remote).map {
-            Commit(id = it.getString("hash"), properties = it.getJSONObject("metadata").toMap())
-        })
-    }
-
-    override fun getCommit(remote: Remote, commitId: String, params: RemoteParameters): Commit {
-        // This is horribly inefficient, but all we can do until we have a better API
-        val commits = listCommits(remote, params, null)
-        return commits.find { it -> it.id == commitId }
-            ?: throw NoSuchObjectException("no such commit $commitId in remote ${remote.name}")
-    }
-
     private fun buildContainer(engine: Delphix, operation: Operation): AppDataContainer {
         val operationsGroup = findByName(engine.group().list(), "operations")
                 ?: throw InvalidStateException("engine not properly configured for titan")

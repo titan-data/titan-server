@@ -80,26 +80,22 @@ class OperationOrchestrator(val providers: ProviderModule) {
             return commitId
         } else {
             var localCommit: String? = null
-            try {
-                val provider = providers.remote(remote.provider)
-                var remoteCommit = provider.getCommit(remote, commitId, params)
-                while (localCommit == null && remoteCommit.properties.containsKey("tags")) {
-                    @Suppress("UNCHECKED_CAST")
-                    val tags = remoteCommit.properties["tags"] as Map<String, String>
-                    if (tags.containsKey("source")) {
-                        val source = tags["source"]!!
-                        try {
-                            localCommit = providers.commits.getCommit(repo, source).id
-                        } catch (e: NoSuchObjectException) {
-                            // Ignore local commits that don't exist and continue down chain
-                        }
-                        remoteCommit = provider.getCommit(remote, source, params)
-                    } else {
-                        break
+            val provider = providers.dynamicRemote(remote.provider)
+            var remoteCommit = provider.getCommit(remote.properties, params.properties, commitId)
+            while (localCommit == null && remoteCommit != null && remoteCommit.containsKey("tags")) {
+                @Suppress("UNCHECKED_CAST")
+                val tags = remoteCommit["tags"] as Map<String, String>
+                if (tags.containsKey("source")) {
+                    val source = tags["source"]!!
+                    try {
+                        localCommit = providers.commits.getCommit(repo, source).id
+                    } catch (e: NoSuchObjectException) {
+                        // Ignore local commits that don't exist and continue down chain
                     }
+                    remoteCommit = provider.getCommit(remote.properties, params.properties, source)
+                } else {
+                    break
                 }
-            } catch (e: NoSuchObjectException) {
-                // If we can't find a remote commit in the chain, then default to latest
             }
 
             if (localCommit == null) {
@@ -294,7 +290,7 @@ class OperationOrchestrator(val providers: ProviderModule) {
             throw IllegalArgumentException("operation parameters type (${params.provider}) doesn't match type of remote '$remote' (${r.provider})")
         }
         if (r.provider != "nop") {
-            providers.remote(r.provider).getCommit(r, commitId, params)
+            providers.remotes.getRemoteCommit(repository, remote, params, commitId)
         }
 
         val inProgress = transaction {
@@ -340,9 +336,10 @@ class OperationOrchestrator(val providers: ProviderModule) {
             throw IllegalArgumentException("operation parameters type (${params.provider}) doesn't match type of remote '$remote' (${r.provider})")
         }
         providers.commits.getCommit(repository, commitId) // check commit exists
-        val remoteProvider = providers.remote(r.provider)
-        if (metadataOnly) {
-            remoteProvider.getCommit(r, commitId, params) // for metadata only must exist in remote as well
+        val remoteProvider = providers.dynamicRemote(r.provider)
+        val remoteCommit = remoteProvider.getCommit(r.properties, params.properties, commitId)
+        if (metadataOnly && remoteCommit != null) {
+            throw NoSuchObjectException("no such commit '$commitId' in remote '$remote")
         }
 
         val inProgress = transaction {
@@ -352,17 +349,8 @@ class OperationOrchestrator(val providers: ProviderModule) {
             throw ObjectExistsException("Push operation $inProgress to remote $remote already in progress for commit $commitId")
         }
 
-        if (r.provider != "nop") {
-            try {
-                remoteProvider.getCommit(r, commitId, params)
-                if (!metadataOnly) {
-                    throw ObjectExistsException("commit $commitId exists in remote '$remote'")
-                }
-            } catch (e: NoSuchObjectException) {
-                if (metadataOnly) {
-                    throw e
-                }
-            }
+        if (r.provider != "nop" && remoteCommit != null && !metadataOnly) {
+            throw ObjectExistsException("commit $commitId exists in remote '$remote'")
         }
 
         return createAndStartOperation(Operation.Type.PUSH, repository, r, commitId, params, metadataOnly)

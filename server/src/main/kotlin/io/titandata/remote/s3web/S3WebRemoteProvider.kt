@@ -42,40 +42,6 @@ class S3WebRemoteProvider(val providers: ProviderModule) : BaseRemoteProvider() 
         return client.newCall(request).execute()
     }
 
-    private fun getAllCommits(remote: Remote): List<Commit> {
-        val response = getFile(remote, "titan")
-        val url = remote.properties["url"] as String
-        val body = when (response.isSuccessful) {
-            true -> response.body!!.string()
-            false -> when (response.code) {
-                404 -> ""
-                else -> throw IOException("failed to get $url/titan, error code ${response.code}")
-            }
-        }
-
-        val ret = mutableListOf<Commit>()
-
-        for (line in body.split("\n")) {
-            if (line != "") {
-                ret.add(gson.fromJson(line, Commit::class.java))
-            }
-        }
-
-        return ret
-    }
-
-    override fun listCommits(remote: Remote, params: RemoteParameters, tags: List<String> ?): List<Commit> {
-        return TagFilter(tags).filter(getAllCommits(remote))
-    }
-
-    override fun getCommit(remote: Remote, commitId: String, params: RemoteParameters): Commit {
-        val commits = getAllCommits(remote)
-        val commit = commits.find { it.id == commitId }
-
-        return commit
-                ?: throw NoSuchObjectException("no such commit $commitId in remote '${remote.name}'")
-    }
-
     override fun pushVolume(operation: OperationExecutor, data: Any?, volume: Volume, path: String, scratchPath: String) {
         throw IllegalStateException("push operations are not supported for s3web provider")
     }

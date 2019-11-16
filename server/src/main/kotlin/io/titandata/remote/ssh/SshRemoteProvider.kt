@@ -141,39 +141,6 @@ class SshRemoteProvider(val providers: ProviderModule) : BaseRemoteProvider() {
         }
     }
 
-    override fun listCommits(remote: Remote, params: RemoteParameters, tags: List<String>?): List<Commit> {
-        val output = runSsh(remote, params, "ls", "-1", remote.properties["path"] as String)
-        val commits = mutableListOf<Commit>()
-        val filter = TagFilter(tags)
-        for (line in output.lines()) {
-            val commitId = line.trim()
-            if (commitId != "") {
-                try {
-                    val commit = getCommit(remote, commitId, params)
-                    if (filter.match(commit)) {
-                        commits.add(commit)
-                    }
-                } catch (e: NoSuchObjectException) {
-                    // Ignore broken links
-                }
-            }
-        }
-
-        return commits
-    }
-
-    override fun getCommit(remote: Remote, commitId: String, params: RemoteParameters): Commit {
-        try {
-            val json = runSsh(remote, params, "cat", "${remote.properties["path"]}/$commitId/metadata.json")
-            return gson.fromJson(json, Commit::class.java)
-        } catch (e: CommandException) {
-            if (e.output.contains("No such file or directory")) {
-                throw NoSuchObjectException("no such commit $commitId in remote '${remote.name}'")
-            }
-            throw e
-        }
-    }
-
     override fun syncVolume(operation: OperationExecutor, data: Any?, volume: Volume, path: String, scratchPath: String) {
         val localPath = "$path/"
         val props = operation.remote.properties

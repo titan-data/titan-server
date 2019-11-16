@@ -44,7 +44,7 @@ class OperationExecutor(
             log.info("starting ${operation.type} operation ${operation.id}")
 
             if (operation.type == Operation.Type.PULL) {
-                commit = provider.getCommit(remote, operation.commitId, params)
+                commit = providers.remotes.getRemoteCommit(repo, remote.name, params, operation.commitId)
             }
 
             operationData = provider.startOperation(this)

@@ -11,9 +11,6 @@ import io.titandata.models.Volume
 import io.titandata.operation.OperationExecutor
 
 interface RemoteProvider {
-    fun listCommits(remote: Remote, params: RemoteParameters, tags: List<String>?): List<Commit>
-    fun getCommit(remote: Remote, commitId: String, params: RemoteParameters): Commit
-
     fun startOperation(operation: OperationExecutor): Any?
     fun endOperation(operation: OperationExecutor, data: Any?)
     fun failOperation(operation: OperationExecutor, data: Any?)

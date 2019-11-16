@@ -30,7 +30,6 @@ import io.titandata.models.Volume
 import io.titandata.operation.OperationExecutor
 import io.titandata.remote.BaseRemoteProvider
 import io.titandata.sync.RsyncExecutor
-import io.titandata.util.TagFilter
 import java.time.OffsetDateTime
 import java.time.format.DateTimeFormatter
 import org.json.JSONObject

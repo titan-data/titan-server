@@ -6,8 +6,6 @@ package io.titandata.remote.ssh
 
 import com.google.gson.GsonBuilder
 import io.titandata.ProviderModule
-import io.titandata.exception.CommandException
-import io.titandata.exception.NoSuchObjectException
 import io.titandata.models.Commit
 import io.titandata.models.Operation
 import io.titandata.models.ProgressEntry
@@ -17,7 +15,6 @@ import io.titandata.models.Volume
 import io.titandata.operation.OperationExecutor
 import io.titandata.remote.BaseRemoteProvider
 import io.titandata.sync.RsyncExecutor
-import io.titandata.util.TagFilter
 import java.io.File
 import java.io.IOException
 import java.nio.file.Files

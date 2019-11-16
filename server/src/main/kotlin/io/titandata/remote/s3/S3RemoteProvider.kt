@@ -14,7 +14,6 @@ import com.amazonaws.services.s3.model.ObjectMetadata
 import com.amazonaws.services.s3.model.PutObjectRequest
 import com.google.gson.GsonBuilder
 import io.titandata.ProviderModule
-import io.titandata.exception.NoSuchObjectException
 import io.titandata.models.Commit
 import io.titandata.models.ProgressEntry
 import io.titandata.models.Remote

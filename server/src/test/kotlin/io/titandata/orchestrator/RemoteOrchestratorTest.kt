@@ -23,12 +23,11 @@ import io.mockk.slot
 import io.titandata.ProviderModule
 import io.titandata.exception.NoSuchObjectException
 import io.titandata.exception.ObjectExistsException
-import io.titandata.models.Commit
 import io.titandata.models.Remote
 import io.titandata.models.RemoteParameters
 import io.titandata.models.Repository
-import io.titandata.remote.nop.NopRemoteProvider
-import io.titandata.remote.ssh.SshRemoteProvider
+import io.titandata.remote.nop.server.NopRemoteServer
+import io.titandata.remote.ssh.server.SshRemoteServer
 import io.titandata.storage.zfs.ZfsStorageProvider
 import org.jetbrains.exposed.sql.transactions.transaction
 
@@ -40,14 +39,14 @@ class RemoteOrchestratorTest : StringSpec() {
     lateinit var zfsStorageProvider: ZfsStorageProvider
 
     @SpyK
-    var nopRemoteProvider = NopRemoteProvider()
+    var nopProvider = NopRemoteServer()
+
+    @SpyK
+    var sshProvider = SshRemoteServer()
 
     @InjectMockKs
     @OverrideMockKs
     var providers = ProviderModule("test")
-
-    @SpyK
-    var sshRemoteProvider = SshRemoteProvider(providers)
 
     override fun beforeSpec(spec: Spec) {
         providers.metadata.init()
@@ -58,7 +57,9 @@ class RemoteOrchestratorTest : StringSpec() {
         transaction {
             providers.metadata.createRepository(Repository(name = "foo"))
         }
-        return MockKAnnotations.init(this)
+        MockKAnnotations.init(this)
+        providers.setDynamicRemote("nop", nopProvider)
+        providers.setDynamicRemote("ssh", sshProvider)
     }
 
     override fun afterTest(testCase: TestCase, result: TestResult) {
@@ -230,9 +231,8 @@ class RemoteOrchestratorTest : StringSpec() {
         }
 
         "list remote commits succeeds" {
-            every { nopRemoteProvider.listCommits(any(), any(), any()) } returns
-                    listOf(Commit(id = "one"),
-                            Commit(id = "two"))
+            every { nopProvider.listCommits(any(), any(), any()) } returns
+                    listOf("one" to emptyMap(), "two" to emptyMap())
             providers.remotes.addRemote("foo", Remote("nop", "origin"))
             val result = providers.remotes.listRemoteCommits("foo", "origin", params, null)
             result.size shouldBe 2
@@ -241,9 +241,8 @@ class RemoteOrchestratorTest : StringSpec() {
         }
 
         "list remote commits fails with invalid parameters" {
-            every { nopRemoteProvider.listCommits(any(), any(), any()) } returns
-                    listOf(Commit(id = "one"),
-                            Commit(id = "two"))
+            every { nopProvider.listCommits(any(), any(), any()) } returns
+                    listOf("one" to emptyMap(), "two" to emptyMap())
             providers.remotes.addRemote("foo", Remote("nop", "origin"))
             shouldThrow<IllegalArgumentException> {
                 providers.remotes.listRemoteCommits("foo", "origin", RemoteParameters("nop", mapOf("foo" to "bar")), null)
@@ -274,39 +273,53 @@ class RemoteOrchestratorTest : StringSpec() {
             }
         }
 
-        "list remote commits convert remote port" {
+        "mismatched remote parameter types fail on list" {
+            providers.remotes.addRemote("foo", Remote("ssh", "origin", mapOf("address" to "host", "username" to "user",
+                    "path" to "/path")))
+            shouldThrow<IllegalArgumentException> {
+                providers.remotes.listRemoteCommits("foo", "origin", params, null)
+            }
+        }
+
+        "list remote commits converts remote port" {
             providers.remotes.addRemote("foo", Remote("ssh", "origin", mapOf("address" to "host", "username" to "user",
                     "path" to "/path", "port" to 8022)))
-            val slot = slot<Remote>()
-            every { sshRemoteProvider.listCommits(capture(slot), any(), any()) } returns emptyList()
-            val result = providers.remotes.listRemoteCommits("foo", "origin", params, null)
+            val slot = slot<Map<String, Any>>()
+            every { sshProvider.listCommits(capture(slot), any(), any()) } returns emptyList()
+            val result = providers.remotes.listRemoteCommits("foo", "origin", RemoteParameters("ssh", mapOf("password" to "pass")), null)
             result.size shouldBe 0
-            slot.captured.properties["port"] shouldBe 8022
-            slot.captured.properties["port"].shouldBeInstanceOf<Int>()
+            slot.captured["port"] shouldBe 8022
+            slot.captured["port"].shouldBeInstanceOf<Int>()
         }
 
         "get remote commit succeeds" {
-            every { nopRemoteProvider.getCommit(any(), any(), any()) } returns
-                    Commit(id = "one")
+            every { nopProvider.getCommit(any(), any(), any()) } returns emptyMap()
             providers.remotes.addRemote("foo", Remote("nop", "origin"))
             val result = providers.remotes.getRemoteCommit("foo", "origin", params, "id")
-            result.id shouldBe "one"
+            result.id shouldBe "id"
         }
 
-        "get remote commit convert remote port" {
+        "mismatched remote parameter types fail on get" {
+            providers.remotes.addRemote("foo", Remote("ssh", "origin", mapOf("address" to "host", "username" to "user",
+                    "path" to "/path")))
+            shouldThrow<IllegalArgumentException> {
+                providers.remotes.getRemoteCommit("foo", "origin", params, "id")
+            }
+        }
+
+        "get remote commit converts remote port" {
             providers.remotes.addRemote("foo", Remote("ssh", "origin", mapOf("address" to "host", "username" to "user",
                     "path" to "/path", "port" to 8022)))
-            val slot = slot<Remote>()
-            every { sshRemoteProvider.getCommit(capture(slot), any(), any()) } returns Commit("id")
-            val result = providers.remotes.getRemoteCommit("foo", "origin", params, "id")
+            val slot = slot<Map<String, Any>>()
+            every { sshProvider.getCommit(capture(slot), any(), any()) } returns emptyMap()
+            val result = providers.remotes.getRemoteCommit("foo", "origin", RemoteParameters("ssh", mapOf("password" to "pass")), "id")
             result.id shouldBe "id"
-            slot.captured.properties["port"] shouldBe 8022
-            slot.captured.properties["port"].shouldBeInstanceOf<Int>()
+            slot.captured["port"] shouldBe 8022
+            slot.captured["port"].shouldBeInstanceOf<Int>()
         }
 
         "get remote commit fails with invalid parameters" {
-            every { nopRemoteProvider.getCommit(any(), any(), any()) } returns
-                    Commit(id = "one")
+            every { nopProvider.getCommit(any(), any(), any()) } returns emptyMap()
             providers.remotes.addRemote("foo", Remote("nop", "origin"))
             shouldThrow<IllegalArgumentException> {
                 providers.remotes.getRemoteCommit("foo", "origin", RemoteParameters("nop", mapOf("a" to "b")), "id")

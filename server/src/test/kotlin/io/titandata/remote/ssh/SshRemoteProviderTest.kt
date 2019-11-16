@@ -10,7 +10,6 @@ import io.kotlintest.TestCaseOrder
 import io.kotlintest.TestResult
 import io.kotlintest.matchers.string.shouldContain
 import io.kotlintest.shouldBe
-import io.kotlintest.shouldThrow
 import io.kotlintest.specs.StringSpec
 import io.mockk.MockKAnnotations
 import io.mockk.Runs
@@ -22,10 +21,7 @@ import io.mockk.impl.annotations.OverrideMockKs
 import io.mockk.impl.annotations.SpyK
 import io.mockk.just
 import io.mockk.mockk
-import io.mockk.slot
 import io.titandata.ProviderModule
-import io.titandata.exception.CommandException
-import io.titandata.exception.NoSuchObjectException
 import io.titandata.models.Commit
 import io.titandata.models.Operation
 import io.titandata.models.ProgressEntry
@@ -39,7 +35,6 @@ import io.titandata.storage.zfs.ZfsStorageProvider
 import io.titandata.util.CommandExecutor
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
-import java.io.File
 import java.io.InputStream
 import org.jetbrains.exposed.sql.transactions.transaction
 

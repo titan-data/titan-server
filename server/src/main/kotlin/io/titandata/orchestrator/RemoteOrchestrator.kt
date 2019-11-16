@@ -5,14 +5,11 @@ import io.titandata.exception.NoSuchObjectException
 import io.titandata.models.Commit
 import io.titandata.models.Remote
 import io.titandata.models.RemoteParameters
-import java.time.Instant
-import java.time.OffsetDateTime
-import java.time.format.DateTimeFormatter
 import org.jetbrains.exposed.sql.transactions.transaction
 
 class RemoteOrchestrator(val providers: ProviderModule) {
 
-    internal fun getTags(tags: List<String>?) : List<Pair<String, String?>> {
+    internal fun getTags(tags: List<String>?): List<Pair<String, String?>> {
         if (tags == null) {
             return emptyList()
         }
@@ -84,18 +81,24 @@ class RemoteOrchestrator(val providers: ProviderModule) {
 
     fun listRemoteCommits(repo: String, remoteName: String, params: RemoteParameters, tags: List<String>?): List<Commit> {
         val remote = getRemote(repo, remoteName)
+        if (params.provider != remote.provider) {
+            throw IllegalArgumentException("invalid remote parameter type '${params.provider}' for remote type '${remote.provider}")
+        }
         val commits = providers.dynamicRemote(remote.provider).listCommits(remote.properties,
                 validateParameters(params).properties, getTags(tags))
-        return commits.map { Commit(id=it.first, properties=it.second)}
+        return commits.map { Commit(id = it.first, properties = it.second) }
     }
 
     fun getRemoteCommit(repo: String, remoteName: String, params: RemoteParameters, commitId: String): Commit {
         val remote = getRemote(repo, remoteName)
+        if (params.provider != remote.provider) {
+            throw IllegalArgumentException("invalid remote parameter type '${params.provider}' for remote type '${remote.provider}")
+        }
         val commit = providers.dynamicRemote(remote.provider).getCommit(remote.properties,
                 validateParameters(params).properties, commitId)
         if (commit == null) {
             throw NoSuchObjectException("no such commit '$commitId' in remote '$remoteName'")
         }
-        return Commit(id= commitId, properties=commit)
+        return Commit(id = commitId, properties = commit)
     }
 }

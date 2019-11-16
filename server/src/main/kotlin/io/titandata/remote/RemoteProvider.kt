@@ -5,8 +5,6 @@
 package io.titandata.remote
 
 import io.titandata.models.Commit
-import io.titandata.models.Remote
-import io.titandata.models.RemoteParameters
 import io.titandata.models.Volume
 import io.titandata.operation.OperationExecutor
 

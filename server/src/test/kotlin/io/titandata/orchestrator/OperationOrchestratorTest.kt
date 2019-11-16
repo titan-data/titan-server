@@ -32,7 +32,8 @@ import io.titandata.models.RemoteParameters
 import io.titandata.models.Repository
 import io.titandata.models.Volume
 import io.titandata.remote.nop.NopRemoteProvider
-import io.titandata.remote.s3.S3RemoteProvider
+import io.titandata.remote.nop.server.NopRemoteServer
+import io.titandata.remote.s3.server.S3RemoteServer
 import io.titandata.storage.OperationData
 import io.titandata.storage.zfs.ZfsStorageProvider
 import java.util.UUID
@@ -43,8 +44,11 @@ class OperationOrchestratorTest : StringSpec() {
     @MockK
     lateinit var zfsStorageProvider: ZfsStorageProvider
 
-    @MockK
-    lateinit var s3Provider: S3RemoteProvider
+    @SpyK
+    var s3Provider = S3RemoteServer()
+
+    @SpyK
+    var nopProvider = NopRemoteServer()
 
     @SpyK
     var nopRemoteProvider = NopRemoteProvider()
@@ -67,7 +71,9 @@ class OperationOrchestratorTest : StringSpec() {
             providers.metadata.createVolume(vs, Volume("volume", config = mapOf("mountpoint" to "/mountpoint")))
             vs
         }
-        return MockKAnnotations.init(this)
+        MockKAnnotations.init(this)
+        providers.setDynamicRemote("nop", nopProvider)
+        providers.setDynamicRemote("s3", s3Provider)
     }
 
     override fun afterTest(testCase: TestCase, result: TestResult) {
@@ -285,7 +291,7 @@ class OperationOrchestratorTest : StringSpec() {
             transaction {
                 providers.metadata.createCommit("foo", providers.metadata.getActiveVolumeSet("foo"), Commit(id = "id"))
             }
-            every { s3Provider.getCommit(any(), any(), any()) } returns Commit("id")
+            every { s3Provider.getCommit(any(), any(), any()) } returns emptyMap()
             shouldThrow<ObjectExistsException> {
                 providers.operations.startPush("foo", "remote", "id", RemoteParameters("s3", mapOf("accessKey" to "key", "secretKey" to "key")))
             }
@@ -395,7 +401,7 @@ class OperationOrchestratorTest : StringSpec() {
         }
 
         "find local commit returns null if no remote commits exist" {
-            every { nopRemoteProvider.getCommit(any(), any(), any()) } throws NoSuchObjectException("")
+            every { nopProvider.getCommit(any(), any(), any()) } returns null
             val commit = providers.operations.findLocalCommit(Operation.Type.PULL, "foo", Remote("nop", "remote"),
                     params, "id")
             commit shouldBe null
@@ -406,13 +412,11 @@ class OperationOrchestratorTest : StringSpec() {
                 providers.metadata.createCommit("foo", vs, Commit(id = "one"))
                 providers.metadata.createCommit("foo", vs, Commit(id = "two"))
             }
-            every { nopRemoteProvider.getCommit(any(), "three", any()) } returns Commit(id = "three", properties = mapOf("tags" to mapOf(
-                    "source" to "two"
-            )))
-            every { nopRemoteProvider.getCommit(any(), "two", any()) } returns Commit(id = "three", properties = mapOf("tags" to mapOf(
-                    "source" to "one"
-            )))
-            every { nopRemoteProvider.getCommit(any(), "one", any()) } throws NoSuchObjectException("")
+            every { nopProvider.getCommit(any(), any(), "three") } returns mapOf("tags" to mapOf(
+                    "source" to "two"))
+            every { nopProvider.getCommit(any(), any(), "two") } returns mapOf("tags" to mapOf(
+                    "source" to "one"))
+            every { nopProvider.getCommit(any(), any(), "one") } returns null
             val commit = providers.operations.findLocalCommit(Operation.Type.PULL, "foo", Remote("nop", "remote"),
                     params, "three")
             commit shouldBe "two"
@@ -422,20 +426,18 @@ class OperationOrchestratorTest : StringSpec() {
             transaction {
                 providers.metadata.createCommit("foo", vs, Commit(id = "one"))
             }
-            every { nopRemoteProvider.getCommit(any(), "three", any()) } returns Commit(id = "three", properties = mapOf("tags" to mapOf(
-                    "source" to "two"
-            )))
-            every { nopRemoteProvider.getCommit(any(), "two", any()) } returns Commit(id = "three", properties = mapOf("tags" to mapOf(
-                    "source" to "one"
-            )))
-            every { nopRemoteProvider.getCommit(any(), "one", any()) } throws NoSuchObjectException("")
+            every { nopProvider.getCommit(any(), any(), "three") } returns mapOf("tags" to mapOf(
+                    "source" to "two"))
+            every { nopProvider.getCommit(any(), any(), "two") } returns mapOf("tags" to mapOf(
+                    "source" to "one"))
+            every { nopProvider.getCommit(any(), any(), "one") } returns null
             val commit = providers.operations.findLocalCommit(Operation.Type.PULL, "foo", Remote("nop", "remote"),
                     params, "three")
             commit shouldBe "one"
         }
 
         "find local commit returns null if remote commit doesn't have source tag" {
-            every { nopRemoteProvider.getCommit(any(), "three", any()) } returns Commit(id = "three")
+            every { nopProvider.getCommit(any(), any(), "three") } returns emptyMap()
             val commit = providers.operations.findLocalCommit(Operation.Type.PULL, "foo", Remote("nop", "remote"),
                     params, "three")
             commit shouldBe null

@@ -4,10 +4,7 @@
 
 package io.titandata.remote.nop
 
-import io.titandata.models.Commit
 import io.titandata.models.ProgressEntry
-import io.titandata.models.Remote
-import io.titandata.models.RemoteParameters
 import io.titandata.operation.OperationExecutor
 import io.titandata.remote.BaseRemoteProvider
 

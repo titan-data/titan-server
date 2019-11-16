@@ -6,15 +6,12 @@ package io.titandata.remote.s3web
 
 import com.google.gson.GsonBuilder
 import io.titandata.ProviderModule
-import io.titandata.exception.NoSuchObjectException
 import io.titandata.models.Commit
 import io.titandata.models.ProgressEntry
 import io.titandata.models.Remote
-import io.titandata.models.RemoteParameters
 import io.titandata.models.Volume
 import io.titandata.operation.OperationExecutor
 import io.titandata.remote.BaseRemoteProvider
-import io.titandata.util.TagFilter
 import java.io.File
 import java.io.IOException
 import okhttp3.OkHttpClient

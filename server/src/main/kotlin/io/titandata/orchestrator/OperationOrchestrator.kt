@@ -338,7 +338,7 @@ class OperationOrchestrator(val providers: ProviderModule) {
         providers.commits.getCommit(repository, commitId) // check commit exists
         val remoteProvider = providers.dynamicRemote(r.provider)
         val remoteCommit = remoteProvider.getCommit(r.properties, params.properties, commitId)
-        if (metadataOnly && remoteCommit != null) {
+        if (metadataOnly && remoteCommit == null) {
             throw NoSuchObjectException("no such commit '$commitId' in remote '$remote")
         }
 

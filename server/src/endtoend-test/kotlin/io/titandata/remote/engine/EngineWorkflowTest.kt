@@ -13,6 +13,7 @@ import io.kotlintest.shouldBe
 import io.kotlintest.shouldThrow
 import io.titandata.EndToEndTest
 import io.titandata.client.infrastructure.ClientException
+import io.titandata.client.infrastructure.ServerException
 import io.titandata.models.Commit
 import io.titandata.models.ProgressEntry
 import io.titandata.models.Remote
@@ -114,11 +115,9 @@ class EngineWorkflowTest : EndToEndTest() {
             remoteApi.createRemote("foo", remote)
         }
 
-        "list remote commits returns an error" {
-            val e = shouldThrow<ClientException> {
-                remoteApi.listRemoteCommits("foo", "origin", params)
-            }
-            e.code shouldBe "NoSuchObjectException"
+        "list remote commits returns an empty list" {
+            val commits = remoteApi.listRemoteCommits("foo", "origin", params)
+            commits.size shouldBe 0
         }
 
         "push commit succeeds" {

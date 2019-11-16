@@ -13,7 +13,6 @@ import io.kotlintest.shouldBe
 import io.kotlintest.shouldThrow
 import io.titandata.EndToEndTest
 import io.titandata.client.infrastructure.ClientException
-import io.titandata.client.infrastructure.ServerException
 import io.titandata.models.Commit
 import io.titandata.models.ProgressEntry
 import io.titandata.models.Remote

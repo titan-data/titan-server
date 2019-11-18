@@ -35,6 +35,7 @@ import io.titandata.apis.RemotesApi
 import io.titandata.apis.RepositoriesApi
 import io.titandata.apis.VolumesApi
 import io.titandata.context.docker.DockerZfsContext
+import io.titandata.context.kubernetes.KubernetesCsiContext
 import io.titandata.exception.NoSuchObjectException
 import io.titandata.exception.ObjectExistsException
 import io.titandata.models.Error
@@ -73,13 +74,17 @@ internal fun ApplicationCompressionConfiguration(): Compression.Configuration.()
 fun Application.main() {
     val context = System.getProperty("titan.context")
             ?: throw IllegalArgumentException("titan.context property must be set")
+    log.info("Running with context $context")
     val runtimeContext = when (context) {
         "docker-zfs" -> {
             val pool = System.getProperty("titan.pool")
                     ?: throw IllegalArgumentException("titan.pool property must be set")
             DockerZfsContext(pool)
         }
-        else -> throw IllegalArgumentException("unknown context '$context', must be one of ('docker-zfs')")
+        "kubernetes-csi" -> {
+            KubernetesCsiContext()
+        }
+        else -> throw IllegalArgumentException("unknown context '$context', must be one of ('docker-zfs', 'kubernetes-csi')")
     }
 
     val services = ServiceLocator(runtimeContext, false)

@@ -41,6 +41,9 @@ RUN apt-get -y install docker-ce
 RUN DEBIAN_FRONTEND=noninteractive apt-get -y install tzdata
 RUN apt-get -y install postgresql-12 postgresql-client-12
 
+RUN curl -o /usr/local/bin/kubectl -LO https://storage.googleapis.com/kubernetes-release/release/`curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt`/bin/linux/amd64/kubectl
+RUN chmod 755 /usr/local/bin/kubectl
+
 ################################################
 # Titan software installation and configuration
 ################################################

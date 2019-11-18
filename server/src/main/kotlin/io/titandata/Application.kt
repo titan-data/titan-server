@@ -48,7 +48,6 @@ import io.titandata.orchestrator.VolumeOrchestrator
 import io.titandata.remote.RemoteServer
 import io.titandata.storage.StorageProvider
 import io.titandata.storage.zfs.ZfsStorageProvider
-import io.titandata.util.CommandExecutor
 import java.io.PrintWriter
 import java.io.StringWriter
 import java.util.ServiceLoader
@@ -93,7 +92,6 @@ class ProviderModule(pool: String, inMemory: Boolean = true) {
     val reaper = Reaper(this)
 
     val gson = GsonBuilder().create()
-    val commandExecutor = CommandExecutor()
 
     // Return the default storage provider
     val storage: StorageProvider

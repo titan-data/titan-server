@@ -200,11 +200,9 @@ class OperationsApiTest : StringSpec() {
             with(engine.handleRequest(HttpMethod.Get, "/v1/repositories/foo/operations/$vs2/progress")) {
                 response.status() shouldBe HttpStatusCode.OK
                 val entries: List<ProgressEntry> = gson.fromJson(response.content, object : TypeToken<List<ProgressEntry>>() { }.type)
-                entries.size shouldBe 2
+                entries.size shouldBe 1
                 entries[0].type shouldBe ProgressEntry.Type.MESSAGE
                 entries[0].message shouldBe "Retrying operation after restart"
-                entries[1].type shouldBe ProgressEntry.Type.START
-                entries[1].message shouldBe "Running operation"
             }
         }
 

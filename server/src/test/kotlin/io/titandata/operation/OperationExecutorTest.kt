@@ -211,7 +211,7 @@ class OperationExecutorTest : StringSpec() {
                 zfsStorageProvider.deactivateVolume(data.operation.id, "volume", mapOf("mountpoint" to "/mountpoint"))
                 zfsStorageProvider.createVolume(data.operation.id, "_scratch")
                 zfsStorageProvider.deleteVolume(data.operation.id, "_scratch", mapOf("mountpoint" to "/scratch"))
-                nopProvider.syncVolume(remoteOperation, "volume", "/mountpoint", "/mountpoint", "/scratch")
+                nopProvider.syncVolume(remoteOperation, "volume", "volume", "/mountpoint", "/scratch")
             }
         }
 
@@ -234,7 +234,7 @@ class OperationExecutorTest : StringSpec() {
                 zfsStorageProvider.deactivateVolume(data.operation.id, "volume", mapOf("mountpoint" to "/mountpoint"))
                 zfsStorageProvider.createVolume(data.operation.id, "_scratch")
                 zfsStorageProvider.deleteVolume(data.operation.id, "_scratch", mapOf("mountpoint" to "/scratch"))
-                nopProvider.syncVolume(remoteOperation, "volume", "/mountpoint", "/mountpoint", "/scratch")
+                nopProvider.syncVolume(remoteOperation, "volume", "volume", "/mountpoint", "/scratch")
             }
         }
 
@@ -252,7 +252,7 @@ class OperationExecutorTest : StringSpec() {
             data.operation.state shouldBe Operation.State.COMPLETE
 
             verify {
-                nopProvider.syncVolume(any(), "volume", "/mountpoint", "/mountpoint", "/scratch")
+                nopProvider.syncVolume(any(), "volume", "volume", "/mountpoint", "/scratch")
                 zfsStorageProvider.createCommit(data.operation.id, "id", listOf("volume"))
             }
         }
@@ -275,7 +275,7 @@ class OperationExecutorTest : StringSpec() {
             data.operation.state shouldBe Operation.State.COMPLETE
 
             verify {
-                nopProvider.syncVolume(any(), "volume", "/mountpoint", "/mountpoint", "scratch")
+                nopProvider.syncVolume(any(), "volume", "volume", "/mountpoint", "/scratch")
             }
         }
 
@@ -297,7 +297,7 @@ class OperationExecutorTest : StringSpec() {
                 zfsStorageProvider.deactivateVolume(data.operation.id, "_scratch", mapOf("mountpoint" to "/scratch"))
                 zfsStorageProvider.deactivateVolume(data.operation.id, "volume", mapOf("mountpoint" to "/mountpoint"))
                 zfsStorageProvider.deleteVolume(data.operation.id, "_scratch", mapOf("mountpoint" to "/scratch"))
-                nopProvider.syncVolume(any(), "volume", "/mountpoint", "/mountpoint", "scratch")
+                nopProvider.syncVolume(any(), "volume", "volume", "/mountpoint", "/scratch")
             }
 
             shouldThrow<NoSuchObjectException> {
@@ -323,7 +323,7 @@ class OperationExecutorTest : StringSpec() {
                 zfsStorageProvider.deactivateVolume(data.operation.id, "_scratch", mapOf("mountpoint" to "/scratch"))
                 zfsStorageProvider.deactivateVolume(data.operation.id, "volume", mapOf("mountpoint" to "/mountpoint"))
                 zfsStorageProvider.deleteVolume(data.operation.id, "_scratch", mapOf("mountpoint" to "/scratch"))
-                nopProvider.syncVolume(any(), "volume", "/mountpoint", "/mountpoint", "scratch")
+                nopProvider.syncVolume(any(), "volume", "volume", "/mountpoint", "/scratch")
             }
 
             shouldThrow<NoSuchObjectException> {
@@ -346,7 +346,7 @@ class OperationExecutorTest : StringSpec() {
             data.operation.state shouldBe Operation.State.FAILED
 
             verify {
-                nopProvider.endOperation(any(), true)
+                nopProvider.endOperation(any(), false)
             }
         }
     }

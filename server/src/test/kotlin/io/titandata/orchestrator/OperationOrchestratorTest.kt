@@ -31,9 +31,6 @@ import io.titandata.models.Remote
 import io.titandata.models.RemoteParameters
 import io.titandata.models.Repository
 import io.titandata.models.Volume
-import io.titandata.remote.RemoteOperation
-import io.titandata.remote.RemoteOperationType
-import io.titandata.remote.RemoteProgress
 import io.titandata.remote.nop.server.NopRemoteServer
 import io.titandata.remote.s3.server.S3RemoteServer
 import io.titandata.storage.OperationData
@@ -464,12 +461,9 @@ class OperationOrchestratorTest : StringSpec() {
             op.state shouldBe Operation.State.COMPLETE
 
             val progress = providers.operations.getProgress("foo", op.id)
-            progress.size shouldBe 4
+            progress.size shouldBe 2
             progress[0].type shouldBe ProgressEntry.Type.MESSAGE
-            progress[1].type shouldBe ProgressEntry.Type.START
-            progress[1].message shouldBe "Running operation"
-            progress[2].type shouldBe ProgressEntry.Type.END
-            progress[3].type shouldBe ProgressEntry.Type.COMPLETE
+            progress[1].type shouldBe ProgressEntry.Type.COMPLETE
 
             shouldThrow<NoSuchObjectException> {
                 providers.operations.getOperation("foo", op.id)
@@ -569,13 +563,10 @@ class OperationOrchestratorTest : StringSpec() {
             op.state shouldBe Operation.State.COMPLETE
 
             val progress = providers.operations.getProgress("foo", op.id)
-            progress.size shouldBe 4
+            progress.size shouldBe 2
             progress[0].type shouldBe ProgressEntry.Type.MESSAGE
             progress[0].message shouldBe "Pushing id to 'remote'"
-            progress[1].type shouldBe ProgressEntry.Type.START
-            progress[1].message shouldBe "Running operation"
-            progress[2].type shouldBe ProgressEntry.Type.END
-            progress[3].type shouldBe ProgressEntry.Type.COMPLETE
+            progress[1].type shouldBe ProgressEntry.Type.COMPLETE
 
             shouldThrow<NoSuchObjectException> {
                 providers.operations.getOperation("foo", op.id)
@@ -681,13 +672,10 @@ class OperationOrchestratorTest : StringSpec() {
             op.state shouldBe Operation.State.COMPLETE
 
             val progress = providers.operations.getProgress("foo", op.id)
-            progress.size shouldBe 4
+            progress.size shouldBe 2
             progress[0].type shouldBe ProgressEntry.Type.MESSAGE
             progress[0].message shouldBe "Retrying operation after restart"
-            progress[1].type shouldBe ProgressEntry.Type.START
-            progress[1].message shouldBe "Running operation"
-            progress[2].type shouldBe ProgressEntry.Type.END
-            progress[3].type shouldBe ProgressEntry.Type.COMPLETE
+            progress[1].type shouldBe ProgressEntry.Type.COMPLETE
         }
     }
 }

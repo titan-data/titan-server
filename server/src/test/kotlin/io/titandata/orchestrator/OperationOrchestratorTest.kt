@@ -31,7 +31,6 @@ import io.titandata.models.Remote
 import io.titandata.models.RemoteParameters
 import io.titandata.models.Repository
 import io.titandata.models.Volume
-import io.titandata.remote.nop.NopRemoteProvider
 import io.titandata.remote.nop.server.NopRemoteServer
 import io.titandata.remote.s3.server.S3RemoteServer
 import io.titandata.storage.OperationData
@@ -49,9 +48,6 @@ class OperationOrchestratorTest : StringSpec() {
 
     @SpyK
     var nopProvider = NopRemoteServer()
-
-    @SpyK
-    var nopRemoteProvider = NopRemoteProvider()
 
     lateinit var vs: String
 

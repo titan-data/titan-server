@@ -17,7 +17,6 @@ import io.kotlintest.TestCaseOrder
 import io.kotlintest.shouldBe
 import io.kotlintest.shouldThrow
 import io.titandata.EndToEndTest
-import io.titandata.ProviderModule
 import io.titandata.client.infrastructure.ClientException
 import io.titandata.client.infrastructure.ServerException
 import io.titandata.models.Commit
@@ -25,6 +24,7 @@ import io.titandata.models.Remote
 import io.titandata.models.RemoteParameters
 import io.titandata.models.Repository
 import io.titandata.models.Volume
+import io.titandata.remote.s3.server.S3RemoteServer
 import java.io.ByteArrayInputStream
 import java.util.UUID
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider
@@ -99,11 +99,11 @@ class S3WorkflowTest : EndToEndTest() {
 
         "creating and deleting S3 object succeeds" {
             val remote = getRemote()
-            val provider = S3RemoteProvider(ProviderModule("test"))
+            val provider = S3RemoteServer()
 
-            val s3 = provider.getClient(remote, params)
+            val s3 = provider.getClient(remote.properties, params.properties)
             try {
-                val (bucket, key) = provider.getPath(remote, "id")
+                val (bucket, key) = provider.getPath(remote.properties, "id")
                 val metadata = ObjectMetadata()
                 metadata.userMetadata = mapOf("test" to "test")
                 val input = ByteArrayInputStream("Hello, world!".toByteArray())

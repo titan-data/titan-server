@@ -30,7 +30,6 @@ class EngineWorkflowTest : EndToEndTest() {
     fun waitForJob(engine: Delphix, result: JSONObject) {
         val actionResult: JSONObject = engine.action().read(result.getString("action")).getJSONObject("result")
         if (actionResult.optString("state") != "COMPLETED") {
-            EngineRemoteProvider.log.debug("waiting for job ${result.getString("job")}")
             var job: JSONObject = engine.job().read(result.getString("job")).getJSONObject("result")
             while (job.optString("jobState") == "RUNNING") {
                 Thread.sleep(5000)

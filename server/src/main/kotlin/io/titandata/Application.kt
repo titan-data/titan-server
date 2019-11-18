@@ -45,13 +45,7 @@ import io.titandata.orchestrator.Reaper
 import io.titandata.orchestrator.RemoteOrchestrator
 import io.titandata.orchestrator.RepositoryOrchestrator
 import io.titandata.orchestrator.VolumeOrchestrator
-import io.titandata.remote.RemoteProvider
 import io.titandata.remote.RemoteServer
-import io.titandata.remote.engine.EngineRemoteProvider
-import io.titandata.remote.nop.NopRemoteProvider
-import io.titandata.remote.s3.S3RemoteProvider
-import io.titandata.remote.s3web.S3WebRemoteProvider
-import io.titandata.remote.ssh.SshRemoteProvider
 import io.titandata.storage.StorageProvider
 import io.titandata.storage.zfs.ZfsStorageProvider
 import io.titandata.util.CommandExecutor
@@ -89,11 +83,6 @@ class ProviderModule(pool: String, inMemory: Boolean = true) {
     }
 
     private val zfsStorageProvider = ZfsStorageProvider(pool)
-    private val nopRemoteProvider = NopRemoteProvider()
-    private val engineRemoteProvider = EngineRemoteProvider(this)
-    private val sshRemoteProvider = SshRemoteProvider(this)
-    private val s3Provider = S3RemoteProvider(this)
-    private val s3WebProvider = S3WebRemoteProvider(this)
 
     val metadata = MetadataProvider(inMemory)
     val commits = CommitOrchestrator(this)
@@ -127,18 +116,6 @@ class ProviderModule(pool: String, inMemory: Boolean = true) {
     // For testing purposes
     fun setDynamicRemote(type: String, server: RemoteServer) {
         dynamicRemotes[type] = server
-    }
-
-    // Get a remote provider by name
-    fun remote(type: String): RemoteProvider {
-        return when (type) {
-            "nop" -> nopRemoteProvider
-            "engine" -> engineRemoteProvider
-            "ssh" -> sshRemoteProvider
-            "s3" -> s3Provider
-            "s3web" -> s3WebProvider
-            else -> throw IllegalArgumentException("unknown remote provider '$type'")
-        }
     }
 }
 

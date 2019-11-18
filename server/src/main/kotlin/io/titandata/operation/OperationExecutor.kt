@@ -11,7 +11,10 @@ import io.titandata.models.ProgressEntry
 import io.titandata.models.Remote
 import io.titandata.models.RemoteParameters
 import io.titandata.models.Volume
-import io.titandata.remote.RemoteProvider
+import io.titandata.remote.RemoteOperation
+import io.titandata.remote.RemoteOperationType
+import io.titandata.remote.RemoteProgress
+import io.titandata.remote.RemoteServer
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.slf4j.LoggerFactory
 
@@ -37,9 +40,21 @@ class OperationExecutor(
     private var lastProgress: Int = 0
     private var commit: Commit? = null
 
+    val updateProgress = fun(type: RemoteProgress, message: String?, percent: Int?) {
+        val progressType = when (type) {
+            RemoteProgress.START -> ProgressEntry.Type.START
+            RemoteProgress.END -> ProgressEntry.Type.END
+            RemoteProgress.PROGRESS -> ProgressEntry.Type.PROGRESS
+            RemoteProgress.MESSAGE -> ProgressEntry.Type.MESSAGE
+        }
+        addProgress(ProgressEntry(progressType, message, percent))
+    }
+
     override fun run() {
-        val provider = providers.remote(remote.provider)
-        var operationData: Any? = null
+        val provider = providers.dynamicRemote(remote.provider)
+
+        var success = false
+        var operationData: RemoteOperation? = null
         try {
             log.info("starting ${operation.type} operation ${operation.id}")
 
@@ -47,7 +62,24 @@ class OperationExecutor(
                 commit = providers.remotes.getRemoteCommit(repo, remote.name, params, operation.commitId)
             }
 
-            operationData = provider.startOperation(this)
+            val localCommit = if (operation.type == Operation.Type.PUSH) {
+                providers.commits.getCommit(repo, operation.commitId)
+            } else {
+                null
+            }
+
+            operationData = RemoteOperation(
+                    updateProgress = updateProgress,
+                    remote = remote.properties,
+                    parameters = params.properties,
+                    operationId = operation.id,
+                    commitId = operation.commitId,
+                    commit = localCommit?.properties,
+                    type = if (operation.type == Operation.Type.PUSH) { RemoteOperationType.PUSH } else { RemoteOperationType.PULL },
+                    data = null
+            )
+
+            provider.startOperation(operationData)
 
             if (!metadataOnly) {
                 syncData(provider, operationData)
@@ -55,15 +87,14 @@ class OperationExecutor(
                 providers.commits.updateCommit(repo, commit!!)
             }
 
-            if (operation.type == Operation.Type.PUSH) {
-                val localCommit = providers.commits.getCommit(repo, operation.commitId)
-                provider.pushMetadata(this, operationData, localCommit, metadataOnly)
+            if (localCommit != null) {
+                provider.pushMetadata(operationData, localCommit.properties, metadataOnly)
             }
 
-            provider.endOperation(this, operationData)
+            success = true
+            provider.endOperation(operationData, true)
 
             addProgress(ProgressEntry(ProgressEntry.Type.COMPLETE))
-            operationData = null
         } catch (t: InterruptedException) {
             addProgress(ProgressEntry(ProgressEntry.Type.ABORT))
             log.info("${operation.type} operation ${operation.id} interrupted", t)
@@ -81,14 +112,18 @@ class OperationExecutor(
             } catch (t: Throwable) {
                 log.error("finalization of ${operation.type} failed", t)
             } finally {
-                if (operationData != null) {
-                    provider.failOperation(this, operationData)
+                if (!success && operationData != null) {
+                    provider.endOperation(operationData, success)
                 }
             }
         }
     }
 
-    fun syncData(provider: RemoteProvider, data: Any?) {
+    fun getVolumeDesc(vol: Volume): String {
+        return vol.properties.get("path")?.toString() ?: vol.name
+    }
+
+    fun syncData(provider: RemoteServer, data: RemoteOperation) {
         val operationId = operation.id
             val volumes = transaction {
                 val vols = providers.metadata.listVolumes(operationId)
@@ -106,11 +141,7 @@ class OperationExecutor(
                 providers.storage.activateVolume(operationId, volume.name, volume.config)
                 val mountpoint = volume.config["mountpoint"] as String
                 try {
-                    if (operation.type == Operation.Type.PULL) {
-                        provider.pullVolume(this, data, volume, mountpoint, scratch)
-                    } else {
-                        provider.pushVolume(this, data, volume, mountpoint, scratch)
-                    }
+                    provider.syncVolume(data, volume.name, getVolumeDesc(volume), mountpoint, scratch)
                 } finally {
                     providers.storage.deactivateVolume(operationId, volume.name, volume.config)
                 }

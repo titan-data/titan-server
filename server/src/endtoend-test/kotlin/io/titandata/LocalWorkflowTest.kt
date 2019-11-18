@@ -359,7 +359,7 @@ class LocalWorkflowTest : EndToEndTest() {
         }
 
         "get pull progress succeeds" {
-            delay(Duration.ofMillis(500))
+            delay(Duration.ofMillis(1000))
             val result = operationApi.getOperation("foo", currentOp.id)
             result.state shouldBe Operation.State.COMPLETE
             val progress = operationApi.getProgress("foo", currentOp.id)

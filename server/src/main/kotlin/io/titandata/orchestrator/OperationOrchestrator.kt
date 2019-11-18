@@ -4,7 +4,7 @@
 
 package io.titandata.orchestrator
 
-import io.titandata.ProviderModule
+import io.titandata.ServiceLocator
 import io.titandata.exception.NoSuchObjectException
 import io.titandata.exception.ObjectExistsException
 import io.titandata.metadata.OperationData
@@ -30,7 +30,7 @@ import org.slf4j.LoggerFactory
  * model of simply discarding progress entries once they've been read, and marking the entire
  * operation complete once the last progress message has been read.
  */
-class OperationOrchestrator(val providers: ProviderModule) {
+class OperationOrchestrator(val services: ServiceLocator) {
 
     companion object {
         val log = LoggerFactory.getLogger(OperationOrchestrator::class.java)
@@ -55,7 +55,7 @@ class OperationOrchestrator(val providers: ProviderModule) {
         }
 
         // Run executor
-        val exec = OperationExecutor(providers, operation, repository, remote, params, metadataOnly)
+        val exec = OperationExecutor(services, operation, repository, remote, params, metadataOnly)
         executors.put(exec.operation.id, exec)
         val message = when (type) {
             Operation.Type.PULL -> "Pulling $commitId from '${remote.name}'"
@@ -80,7 +80,7 @@ class OperationOrchestrator(val providers: ProviderModule) {
             return commitId
         } else {
             var localCommit: String? = null
-            val provider = providers.remoteProvider(remote.provider)
+            val provider = services.remoteProvider(remote.provider)
             var remoteCommit = provider.getCommit(remote.properties, params.properties, commitId)
             while (localCommit == null && remoteCommit != null && remoteCommit.containsKey("tags")) {
                 @Suppress("UNCHECKED_CAST")
@@ -88,7 +88,7 @@ class OperationOrchestrator(val providers: ProviderModule) {
                 if (tags.containsKey("source")) {
                     val source = tags["source"]!!
                     try {
-                        localCommit = providers.commits.getCommit(repo, source).id
+                        localCommit = services.commits.getCommit(repo, source).id
                     } catch (e: NoSuchObjectException) {
                         // Ignore local commits that don't exist and continue down chain
                     }
@@ -100,7 +100,7 @@ class OperationOrchestrator(val providers: ProviderModule) {
 
             if (localCommit == null) {
                 localCommit = transaction {
-                    providers.metadata.getLastCommit(repo)
+                    services.metadata.getLastCommit(repo)
                 }
             }
             return localCommit
@@ -124,14 +124,14 @@ class OperationOrchestrator(val providers: ProviderModule) {
         commit: String?
     ): Pair<String, Operation> {
         return transaction {
-            val vs = providers.metadata.createVolumeSet(repo, commit)
-            val volumes = providers.metadata.listVolumes(providers.metadata.getActiveVolumeSet(repo))
+            val vs = services.metadata.createVolumeSet(repo, commit)
+            val volumes = services.metadata.listVolumes(services.metadata.getActiveVolumeSet(repo))
             for (v in volumes) {
                 // Intentionally create the volume with no configuration, to be filled in later after it's created by the storage layer
-                providers.metadata.createVolume(vs, Volume(name = v.name, properties = v.properties))
+                services.metadata.createVolume(vs, Volume(name = v.name, properties = v.properties))
             }
             val op = Operation(id = vs, type = type, state = Operation.State.RUNNING, remote = remoteName, commitId = commitId)
-            providers.metadata.createOperation(repo, vs, OperationData(
+            services.metadata.createOperation(repo, vs, OperationData(
                     metadataOnly = metadataOnly,
                     params = params,
                     operation = op
@@ -148,26 +148,26 @@ class OperationOrchestrator(val providers: ProviderModule) {
     internal fun createStorage(repo: String, volumeSet: String, commit: String?) {
         if (commit == null) {
             val volumes = transaction {
-                val vs = providers.metadata.getActiveVolumeSet(repo)
-                providers.metadata.listVolumes(vs)
+                val vs = services.metadata.getActiveVolumeSet(repo)
+                services.metadata.listVolumes(vs)
             }
-            providers.context.createVolumeSet(volumeSet)
+            services.context.createVolumeSet(volumeSet)
             for (v in volumes) {
-                val config = providers.context.createVolume(volumeSet, v.name)
+                val config = services.context.createVolume(volumeSet, v.name)
                 transaction {
-                    providers.metadata.updateVolumeConfig(volumeSet, v.name, config)
+                    services.metadata.updateVolumeConfig(volumeSet, v.name, config)
                 }
             }
         } else {
             val (sourceVolumeSet, volumes) = transaction {
-                val vs = providers.metadata.getCommit(repo, commit).first
-                Pair(vs, providers.metadata.listVolumes(vs).map { it.name })
+                val vs = services.metadata.getCommit(repo, commit).first
+                Pair(vs, services.metadata.listVolumes(vs).map { it.name })
             }
-            providers.context.cloneVolumeSet(sourceVolumeSet, commit, volumeSet)
+            services.context.cloneVolumeSet(sourceVolumeSet, commit, volumeSet)
             for (v in volumes) {
-                val config = providers.context.cloneVolume(sourceVolumeSet, commit, volumeSet, v)
+                val config = services.context.cloneVolume(sourceVolumeSet, commit, volumeSet, v)
                 transaction {
-                    providers.metadata.updateVolumeConfig(volumeSet, v, config)
+                    services.metadata.updateVolumeConfig(volumeSet, v, config)
                 }
             }
         }
@@ -177,7 +177,7 @@ class OperationOrchestrator(val providers: ProviderModule) {
      * Convenience routine to fetch the given executor, with some additional checks.
      */
     internal fun getExecutor(repository: String, id: String): OperationExecutor {
-        providers.repositories.getRepository(repository)
+        services.repositories.getRepository(repository)
         NameUtil.validateOperationId(id)
         val op = executors[id]
         if (op == null || op.repo != repository) {
@@ -189,13 +189,13 @@ class OperationOrchestrator(val providers: ProviderModule) {
     @Synchronized
     fun loadState() {
         log.debug("loading operation state")
-        for (r in providers.repositories.listRepositories()) {
+        for (r in services.repositories.listRepositories()) {
             val operations = transaction {
-                providers.metadata.listOperations(r.name)
+                services.metadata.listOperations(r.name)
             }
             for (op in operations) {
-                val exec = OperationExecutor(providers, op.operation, r.name,
-                        providers.remotes.getRemote(r.name, op.operation.remote), op.params, op.metadataOnly)
+                val exec = OperationExecutor(services, op.operation, r.name,
+                        services.remotes.getRemote(r.name, op.operation.remote), op.params, op.metadataOnly)
                 executors.put(exec.operation.id, exec)
                 if (op.operation.state == Operation.State.RUNNING) {
                     log.info("retrying operation ${op.operation.id} after restart")
@@ -230,31 +230,31 @@ class OperationOrchestrator(val providers: ProviderModule) {
         }
         if (remove) {
             transaction {
-                providers.metadata.deleteOperation(id)
+                services.metadata.deleteOperation(id)
             }
             executors.remove(exec.operation.id)
             /*
              * If the operation failed or this was a push operation, then this will leave an abandoned volumeset that
              * will be reaped automatically.
              */
-            providers.reaper.signal()
+            services.reaper.signal()
         }
         return ret
     }
 
     fun listOperations(repository: String): List<Operation> {
-        providers.repositories.getRepository(repository)
+        services.repositories.getRepository(repository)
         return transaction {
-            providers.metadata.listOperations(repository).map { it.operation }
+            services.metadata.listOperations(repository).map { it.operation }
         }
     }
 
     fun getOperation(repository: String, id: String): Operation {
         NameUtil.validateOperationId(id)
-        providers.repositories.getRepository(repository)
+        services.repositories.getRepository(repository)
         return transaction {
-            val op = providers.metadata.getOperation(id).operation
-            if (providers.metadata.getVolumeSetRepo(op.id) != repository) {
+            val op = services.metadata.getOperation(id).operation
+            if (services.metadata.getVolumeSetRepo(op.id) != repository) {
                 throw NoSuchObjectException("no such operation '$id' in repository '$repository'")
             }
             op
@@ -284,24 +284,24 @@ class OperationOrchestrator(val providers: ProviderModule) {
 
         log.info("pull $commitId from $remote in $repository")
         NameUtil.validateCommitId(commitId)
-        val params = providers.remotes.validateParameters(rawParams)
-        val r = providers.remotes.getRemote(repository, remote)
+        val params = services.remotes.validateParameters(rawParams)
+        val r = services.remotes.getRemote(repository, remote)
         if (r.provider != params.provider) {
             throw IllegalArgumentException("operation parameters type (${params.provider}) doesn't match type of remote '$remote' (${r.provider})")
         }
         if (r.provider != "nop") {
-            providers.remotes.getRemoteCommit(repository, remote, params, commitId)
+            services.remotes.getRemoteCommit(repository, remote, params, commitId)
         }
 
         val inProgress = transaction {
-            providers.metadata.operationInProgress(repository, Operation.Type.PULL, commitId, null)
+            services.metadata.operationInProgress(repository, Operation.Type.PULL, commitId, null)
         }
         if (inProgress != null) {
             throw ObjectExistsException("Pull operation $inProgress already in progress for commit $commitId")
         }
 
         try {
-            providers.commits.getCommit(repository, commitId)
+            services.commits.getCommit(repository, commitId)
             if (!metadataOnly) {
                 throw ObjectExistsException("commit '$commitId' already exists in repository '$repository'")
             }
@@ -330,20 +330,20 @@ class OperationOrchestrator(val providers: ProviderModule) {
 
         log.info("push $commitId to $remote in $repository")
         NameUtil.validateCommitId(commitId)
-        val params = providers.remotes.validateParameters(rawParams)
-        val r = providers.remotes.getRemote(repository, remote)
+        val params = services.remotes.validateParameters(rawParams)
+        val r = services.remotes.getRemote(repository, remote)
         if (r.provider != params.provider) {
             throw IllegalArgumentException("operation parameters type (${params.provider}) doesn't match type of remote '$remote' (${r.provider})")
         }
-        providers.commits.getCommit(repository, commitId) // check commit exists
-        val remoteProvider = providers.remoteProvider(r.provider)
+        services.commits.getCommit(repository, commitId) // check commit exists
+        val remoteProvider = services.remoteProvider(r.provider)
         val remoteCommit = remoteProvider.getCommit(r.properties, params.properties, commitId)
         if (metadataOnly && remoteCommit == null) {
             throw NoSuchObjectException("no such commit '$commitId' in remote '$remote")
         }
 
         val inProgress = transaction {
-            providers.metadata.operationInProgress(repository, Operation.Type.PUSH, commitId, remote)
+            services.metadata.operationInProgress(repository, Operation.Type.PUSH, commitId, remote)
         }
         if (inProgress != null) {
             throw ObjectExistsException("Push operation $inProgress to remote $remote already in progress for commit $commitId")

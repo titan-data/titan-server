@@ -10,7 +10,7 @@ import io.ktor.response.respond
 import io.ktor.routing.Route
 import io.ktor.routing.post
 import io.ktor.routing.route
-import io.titandata.ProviderModule
+import io.titandata.ServiceLocator
 import io.titandata.models.PluginDescription
 import io.titandata.models.Volume
 import io.titandata.models.docker.DockerVolume
@@ -24,7 +24,7 @@ import io.titandata.models.docker.DockerVolumePathResponse
 import io.titandata.models.docker.DockerVolumeRequest
 import io.titandata.models.docker.DockerVolumeResponse
 
-fun Route.DockerVolumeApi(providers: ProviderModule) {
+fun Route.DockerVolumeApi(services: ServiceLocator) {
 
     /**
      * Volumes names are expressed as "repo/vol". This is a helper method to separate the
@@ -53,7 +53,7 @@ fun Route.DockerVolumeApi(providers: ProviderModule) {
             val request = call.receive(DockerVolumeCreateRequest::class)
             val opts = request.opts ?: mapOf()
             val (repo, volname) = getVolumeName(request.name)
-            providers.volumes.createVolume(repo, Volume(volname, opts))
+            services.volumes.createVolume(repo, Volume(volname, opts))
             call.respond(DockerVolumeResponse())
         }
     }
@@ -74,7 +74,7 @@ fun Route.DockerVolumeApi(providers: ProviderModule) {
         post {
             val request = call.receive(DockerVolumeRequest::class)
             val (repo, volname) = getVolumeName(request.name)
-            val result = convertVolume(repo, providers.volumes.getVolume(repo, volname))
+            val result = convertVolume(repo, services.volumes.getVolume(repo, volname))
             call.respond(DockerVolumeGetResponse(volume = result.copy(name = "$repo/$volname")))
         }
     }
@@ -83,7 +83,7 @@ fun Route.DockerVolumeApi(providers: ProviderModule) {
         post {
             val request = call.receive(DockerVolumeRequest::class)
             val (repo, volname) = getVolumeName(request.name)
-            val result = providers.volumes.getVolume(repo, volname)
+            val result = services.volumes.getVolume(repo, volname)
             call.respond(DockerVolumePathResponse(mountpoint = result.config["mountpoint"] as String))
         }
     }
@@ -91,8 +91,8 @@ fun Route.DockerVolumeApi(providers: ProviderModule) {
     route("/VolumeDriver.List") {
         post {
             val result = mutableListOf<DockerVolume>()
-            for (repo in providers.repositories.listRepositories()) {
-                result.addAll(providers.volumes.listVolumes(repo.name).map { convertVolume(repo.name, it) })
+            for (repo in services.repositories.listRepositories()) {
+                result.addAll(services.volumes.listVolumes(repo.name).map { convertVolume(repo.name, it) })
             }
             call.respond(DockerVolumeListResponse(volumes = result.toTypedArray()))
         }
@@ -102,8 +102,8 @@ fun Route.DockerVolumeApi(providers: ProviderModule) {
         post {
             val request = call.receive(DockerVolumeMountRequest::class)
             val (repo, volname) = getVolumeName(request.name)
-            providers.volumes.activateVolume(repo, volname)
-            val result = providers.volumes.getVolume(repo, volname)
+            services.volumes.activateVolume(repo, volname)
+            val result = services.volumes.getVolume(repo, volname)
             call.respond(DockerVolumePathResponse(mountpoint = result.config["mountpoint"] as String))
         }
     }
@@ -112,7 +112,7 @@ fun Route.DockerVolumeApi(providers: ProviderModule) {
         post {
             val request = call.receive(DockerVolumeRequest::class)
             val (repo, volname) = getVolumeName(request.name)
-            providers.volumes.deleteVolume(repo, volname)
+            services.volumes.deleteVolume(repo, volname)
             call.respond(DockerVolumeResponse())
         }
     }
@@ -121,7 +121,7 @@ fun Route.DockerVolumeApi(providers: ProviderModule) {
         post {
             val request = call.receive(DockerVolumeMountRequest::class)
             val (repo, volname) = getVolumeName(request.name)
-            providers.volumes.deactivateVolume(repo, volname)
+            services.volumes.deactivateVolume(repo, volname)
             call.respond(DockerVolumeResponse())
         }
     }

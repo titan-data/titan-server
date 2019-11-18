@@ -18,7 +18,7 @@ import io.mockk.impl.annotations.SpyK
 import io.mockk.just
 import io.mockk.mockk
 import io.mockk.verify
-import io.titandata.ProviderModule
+import io.titandata.ServiceLocator
 import io.titandata.context.docker.DockerZfsContext
 import io.titandata.exception.NoSuchObjectException
 import io.titandata.metadata.OperationData
@@ -29,7 +29,6 @@ import io.titandata.models.Remote
 import io.titandata.models.RemoteParameters
 import io.titandata.models.Repository
 import io.titandata.models.Volume
-import io.titandata.orchestrator.Reaper
 import io.titandata.remote.RemoteOperation
 import io.titandata.remote.RemoteOperationType
 import io.titandata.remote.RemoteProgress
@@ -40,9 +39,6 @@ class OperationExecutorTest : StringSpec() {
     @MockK
     lateinit var dockerZfsContext: DockerZfsContext
 
-    @MockK
-    lateinit var reaper: Reaper
-
     lateinit var vs: String
 
     @SpyK
@@ -50,22 +46,22 @@ class OperationExecutorTest : StringSpec() {
 
     @InjectMockKs
     @OverrideMockKs
-    var providers = ProviderModule("test")
+    var services = ServiceLocator("test")
 
     override fun beforeSpec(spec: Spec) {
-        providers.metadata.init()
+        services.metadata.init()
     }
 
     override fun beforeTest(testCase: TestCase) {
-        providers.metadata.clear()
+        services.metadata.clear()
         transaction {
-            providers.metadata.createRepository(Repository("foo"))
-            vs = providers.metadata.createVolumeSet("foo", null, true)
-            providers.metadata.createVolume(vs, Volume("volume", config = mapOf("mountpoint" to "/mountpoint")))
-            providers.metadata.addRemote("foo", Remote("nop", "origin"))
+            services.metadata.createRepository(Repository("foo"))
+            vs = services.metadata.createVolumeSet("foo", null, true)
+            services.metadata.createVolume(vs, Volume("volume", config = mapOf("mountpoint" to "/mountpoint")))
+            services.metadata.addRemote("foo", Remote("nop", "origin"))
         }
         val ret = MockKAnnotations.init(this)
-        providers.setRemoteProvider("nop", nopProvider)
+        services.setRemoteProvider("nop", nopProvider)
         every { dockerZfsContext.createCommit(any(), any(), any()) } just Runs
         return ret
     }
@@ -85,7 +81,7 @@ class OperationExecutorTest : StringSpec() {
                 commitId = "id"
         ), params = RemoteParameters("nop"), metadataOnly = false)
         transaction {
-            providers.metadata.createOperation("foo", vs, data)
+            services.metadata.createOperation("foo", vs, data)
         }
         return data
     }
@@ -104,7 +100,7 @@ class OperationExecutorTest : StringSpec() {
     }
 
     fun getExecutor(data: OperationData): OperationExecutor {
-        return OperationExecutor(providers, data.operation, "foo", Remote("nop", "origin"), RemoteParameters("nop"),
+        return OperationExecutor(services, data.operation, "foo", Remote("nop", "origin"), RemoteParameters("nop"),
                 data.metadataOnly)
     }
 
@@ -114,7 +110,7 @@ class OperationExecutorTest : StringSpec() {
             val executor = getExecutor(data)
             executor.addProgress(ProgressEntry(type = ProgressEntry.Type.MESSAGE, message = "message"))
             val entries = transaction {
-                providers.metadata.listProgressEntries(vs)
+                services.metadata.listProgressEntries(vs)
             }
             entries.size shouldBe 1
             entries[0].message shouldBe "message"
@@ -126,7 +122,7 @@ class OperationExecutorTest : StringSpec() {
             executor.addProgress(ProgressEntry(type = ProgressEntry.Type.FAILED, message = "message"))
             executor.operation.state shouldBe Operation.State.FAILED
             val op = transaction {
-                providers.metadata.getOperation(vs)
+                services.metadata.getOperation(vs)
             }
             op.operation.state shouldBe Operation.State.FAILED
         }
@@ -137,7 +133,7 @@ class OperationExecutorTest : StringSpec() {
             executor.addProgress(ProgressEntry(type = ProgressEntry.Type.ABORT, message = "message"))
             executor.operation.state shouldBe Operation.State.ABORTED
             val op = transaction {
-                providers.metadata.getOperation(vs)
+                services.metadata.getOperation(vs)
             }
             op.operation.state shouldBe Operation.State.ABORTED
         }
@@ -148,7 +144,7 @@ class OperationExecutorTest : StringSpec() {
             executor.addProgress(ProgressEntry(type = ProgressEntry.Type.COMPLETE, message = "message"))
             executor.operation.state shouldBe Operation.State.COMPLETE
             val op = transaction {
-                providers.metadata.getOperation(vs)
+                services.metadata.getOperation(vs)
             }
             op.operation.state shouldBe Operation.State.COMPLETE
         }
@@ -265,7 +261,7 @@ class OperationExecutorTest : StringSpec() {
             every { dockerZfsContext.deleteVolume(any(), any(), any()) } just Runs
 
             transaction {
-                providers.metadata.createCommit("foo", vs, Commit("id"))
+                services.metadata.createCommit("foo", vs, Commit("id"))
             }
 
             val data = createOperation(Operation.Type.PUSH)
@@ -301,7 +297,7 @@ class OperationExecutorTest : StringSpec() {
             }
 
             shouldThrow<NoSuchObjectException> {
-                providers.commits.getCommit("foo", "id")
+                services.commits.getCommit("foo", "id")
             }
         }
 
@@ -327,7 +323,7 @@ class OperationExecutorTest : StringSpec() {
             }
 
             shouldThrow<NoSuchObjectException> {
-                providers.commits.getCommit("foo", "id")
+                services.commits.getCommit("foo", "id")
             }
         }
 

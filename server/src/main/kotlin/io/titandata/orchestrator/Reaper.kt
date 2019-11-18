@@ -1,6 +1,6 @@
 package io.titandata.orchestrator
 
-import io.titandata.ProviderModule
+import io.titandata.ServiceLocator
 import java.util.concurrent.locks.ReentrantLock
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.slf4j.LoggerFactory
@@ -14,7 +14,7 @@ import org.slf4j.LoggerFactory
  * It respects the ZFS dependency chain between commits and volumesets, ensuring that they're deleted
  * in that order. It will ensure that any clones of a commit are deleted before the commit itself is deleted.
  */
-class Reaper(val providers: ProviderModule) : Runnable {
+class Reaper(val services: ServiceLocator) : Runnable {
     private val lock = ReentrantLock()
     private val cv = lock.newCondition()
 
@@ -66,20 +66,20 @@ class Reaper(val providers: ProviderModule) : Runnable {
      */
     fun reapCommits(): Boolean {
         val commits = transaction {
-            providers.metadata.listDeletingCommits().filter {
-                !providers.metadata.hasClones(it)
+            services.metadata.listDeletingCommits().filter {
+                !services.metadata.hasClones(it)
             }
         }
 
         var ret = false
         for (c in commits) {
             val volumes = transaction {
-                providers.metadata.listVolumes(c.volumeSet).map { it.name }
+                services.metadata.listVolumes(c.volumeSet).map { it.name }
             }
             try {
-                providers.context.deleteCommit(c.volumeSet, c.guid, volumes)
+                services.context.deleteCommit(c.volumeSet, c.guid, volumes)
                 transaction {
-                    providers.metadata.deleteCommit(c)
+                    services.metadata.deleteCommit(c)
                 }
                 ret = true
             } catch (e: Throwable) {
@@ -92,23 +92,23 @@ class Reaper(val providers: ProviderModule) : Runnable {
 
     fun markEmptyVolumeSets() {
         val volumeSets = transaction {
-            providers.metadata.listInactiveVolumeSets().filter {
-                providers.metadata.isVolumeSetEmpty(it) &&
-                        !providers.metadata.operationExists(it)
+            services.metadata.listInactiveVolumeSets().filter {
+                services.metadata.isVolumeSetEmpty(it) &&
+                        !services.metadata.operationExists(it)
             }
         }
 
         transaction {
             for (vs in volumeSets) {
-                providers.metadata.markVolumeSetDeleting(vs)
+                services.metadata.markVolumeSetDeleting(vs)
             }
         }
     }
 
     fun reapVolumeSets(): Boolean {
         val volumeSets = transaction {
-            providers.metadata.listDeletingVolumeSets().filter {
-                providers.metadata.isVolumeSetEmpty(it)
+            services.metadata.listDeletingVolumeSets().filter {
+                services.metadata.isVolumeSetEmpty(it)
             }
         }
 
@@ -116,17 +116,17 @@ class Reaper(val providers: ProviderModule) : Runnable {
         for (vs in volumeSets) {
             try {
                 val volumes = transaction {
-                    providers.metadata.listVolumes(vs)
+                    services.metadata.listVolumes(vs)
                 }
                 for (vol in volumes) {
-                    providers.context.deleteVolume(vs, vol.name, vol.config)
+                    services.context.deleteVolume(vs, vol.name, vol.config)
                     transaction {
-                        providers.metadata.deleteVolume(vs, vol.name)
+                        services.metadata.deleteVolume(vs, vol.name)
                     }
                 }
-                providers.context.deleteVolumeSet(vs)
+                services.context.deleteVolumeSet(vs)
                 transaction {
-                    providers.metadata.deleteVolumeSet(vs)
+                    services.metadata.deleteVolumeSet(vs)
                 }
                 ret = true
             } catch (t: Throwable) {
@@ -140,14 +140,14 @@ class Reaper(val providers: ProviderModule) : Runnable {
     // We don't recursively mark volumes deleted, this is only true when volumes are explicitly deleted
     fun reapVolumes(): Boolean {
         val volumes = transaction {
-            providers.metadata.listDeletingVolumes()
+            services.metadata.listDeletingVolumes()
         }
         var ret = false
         for ((vs, vol) in volumes) {
             try {
-                providers.context.deleteVolume(vs, vol.name, vol.config)
+                services.context.deleteVolume(vs, vol.name, vol.config)
                 transaction {
-                    providers.metadata.deleteVolume(vs, vol.name)
+                    services.metadata.deleteVolume(vs, vol.name)
                 }
                 ret = true
             } catch (t: Throwable) {

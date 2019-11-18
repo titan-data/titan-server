@@ -13,38 +13,38 @@ import io.ktor.routing.delete
 import io.ktor.routing.get
 import io.ktor.routing.post
 import io.ktor.routing.route
-import io.titandata.ProviderModule
+import io.titandata.ServiceLocator
 import io.titandata.models.Repository
 
-fun Route.RepositoriesApi(providers: ProviderModule) {
+fun Route.RepositoriesApi(services: ServiceLocator) {
     route("/v1/repositories") {
         post {
             val repo = call.receive(Repository::class)
-            providers.repositories.createRepository(repo)
+            services.repositories.createRepository(repo)
             call.respond(HttpStatusCode.Created, repo)
         }
 
         get {
-            call.respond(providers.repositories.listRepositories())
+            call.respond(services.repositories.listRepositories())
         }
     }
 
     route("/v1/repositories/{repositoryName}") {
         get {
             val name = call.parameters["repositoryName"] ?: throw IllegalArgumentException("missing repositoryName parameter")
-            call.respond(providers.repositories.getRepository(name))
+            call.respond(services.repositories.getRepository(name))
         }
 
         post {
             val name = call.parameters["repositoryName"] ?: throw IllegalArgumentException("missing repositoryName parameter")
             val repo = call.receive(Repository::class)
-            providers.repositories.updateRepository(name, repo)
+            services.repositories.updateRepository(name, repo)
             call.respond(repo)
         }
 
         delete {
             val name = call.parameters["repositoryName"] ?: throw IllegalArgumentException("missing repositoryName parameter")
-            providers.repositories.deleteRepository(name)
+            services.repositories.deleteRepository(name)
             call.respond(HttpStatusCode.NoContent)
         }
     }
@@ -52,7 +52,7 @@ fun Route.RepositoriesApi(providers: ProviderModule) {
     route("/v1/repositories/{repositoryName}/status") {
         get {
             val name = call.parameters["repositoryName"] ?: throw IllegalArgumentException("missing repositoryName parameter")
-            call.respond(providers.repositories.getRepositoryStatus(name))
+            call.respond(services.repositories.getRepositoryStatus(name))
         }
     }
 }

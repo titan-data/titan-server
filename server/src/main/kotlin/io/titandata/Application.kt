@@ -67,7 +67,7 @@ fun exceptionToError(request: ApplicationRequest, t: Throwable): Any {
     }
 }
 
-class ProviderModule(pool: String, inMemory: Boolean = true) {
+class ServiceLocator(pool: String, inMemory: Boolean = true) {
     private val loader = ServiceLoader.load(RemoteServer::class.java)
     private val remoteProviders: MutableMap<String, RemoteServer>
 
@@ -123,15 +123,15 @@ internal fun ApplicationCompressionConfiguration(): Compression.Configuration.()
 
 @KtorExperimentalAPI
 fun Application.main() {
-    val providers = ProviderModule(System.getenv("TITAN_POOL") ?: "titan", false)
-    providers.metadata.init()
-    Thread(providers.reaper).start()
-    providers.operations.loadState()
-    mainProvider(providers)
+    val services = ServiceLocator(System.getenv("TITAN_POOL") ?: "titan", false)
+    services.metadata.init()
+    Thread(services.reaper).start()
+    services.operations.loadState()
+    mainProvider(services)
 }
 
 @KtorExperimentalAPI
-fun Application.mainProvider(providers: ProviderModule) {
+fun Application.mainProvider(services: ServiceLocator) {
     install(DefaultHeaders)
     val gsonConverter = GsonConverter(GsonBuilder().create())
     install(ContentNegotiation) {
@@ -145,12 +145,12 @@ fun Application.mainProvider(providers: ProviderModule) {
     }
     install(Compression, ApplicationCompressionConfiguration())
     install(Routing) {
-        CommitsApi(providers)
-        DockerVolumeApi(providers)
-        OperationsApi(providers)
-        RemotesApi(providers)
-        RepositoriesApi(providers)
-        VolumesApi(providers)
+        CommitsApi(services)
+        DockerVolumeApi(services)
+        OperationsApi(services)
+        RemotesApi(services)
+        RepositoriesApi(services)
+        VolumesApi(services)
     }
     install(StatusPages) {
         exception<NoSuchObjectException> { cause ->

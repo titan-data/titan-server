@@ -34,15 +34,15 @@ class RemotesApiTest : StringSpec() {
 
     @InjectMockKs
     @OverrideMockKs
-    var providers = ProviderModule("test")
+    var services = ServiceLocator("test")
 
     var engine = TestApplicationEngine(createTestEnvironment())
 
     override fun beforeSpec(spec: Spec) {
         with(engine) {
             start()
-            providers.metadata.init()
-            application.mainProvider(providers)
+            services.metadata.init()
+            application.mainProvider(services)
         }
     }
 
@@ -51,7 +51,7 @@ class RemotesApiTest : StringSpec() {
     }
 
     override fun beforeTest(testCase: TestCase) {
-        providers.metadata.clear()
+        services.metadata.clear()
         return MockKAnnotations.init(this)
     }
 
@@ -68,7 +68,7 @@ class RemotesApiTest : StringSpec() {
     init {
         "get empty remote list succeeds" {
             transaction {
-                providers.metadata.createRepository(Repository(name = "repo", properties = mapOf()))
+                services.metadata.createRepository(Repository(name = "repo", properties = mapOf()))
             }
             with(engine.handleRequest(HttpMethod.Get, "/v1/repositories/repo/remotes")) {
                 response.status() shouldBe HttpStatusCode.OK
@@ -79,9 +79,9 @@ class RemotesApiTest : StringSpec() {
 
         "get remote list succeeds" {
             transaction {
-                providers.metadata.createRepository(Repository(name = "repo", properties = mapOf()))
-                providers.metadata.addRemote("repo", Remote("nop", "foo"))
-                providers.metadata.addRemote("repo", Remote("engine", "bar", mapOf("address" to "a", "username" to "u", "password" to "p", "repository" to "r")))
+                services.metadata.createRepository(Repository(name = "repo", properties = mapOf()))
+                services.metadata.addRemote("repo", Remote("nop", "foo"))
+                services.metadata.addRemote("repo", Remote("engine", "bar", mapOf("address" to "a", "username" to "u", "password" to "p", "repository" to "r")))
             }
             with(engine.handleRequest(HttpMethod.Get, "/v1/repositories/repo/remotes")) {
                 response.status() shouldBe HttpStatusCode.OK
@@ -94,7 +94,7 @@ class RemotesApiTest : StringSpec() {
 
         "create remote succeeds" {
             transaction {
-                providers.metadata.createRepository(Repository(name = "repo", properties = mapOf()))
+                services.metadata.createRepository(Repository(name = "repo", properties = mapOf()))
             }
             with(engine.handleRequest(HttpMethod.Post, "/v1/repositories/repo/remotes") {
                 addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
@@ -107,8 +107,8 @@ class RemotesApiTest : StringSpec() {
 
         "add duplicate remote fails" {
             transaction {
-                providers.metadata.createRepository(Repository(name = "repo", properties = mapOf()))
-                providers.metadata.addRemote("repo", Remote("nop", "a"))
+                services.metadata.createRepository(Repository(name = "repo", properties = mapOf()))
+                services.metadata.addRemote("repo", Remote("nop", "a"))
             }
             with(engine.handleRequest(HttpMethod.Post, "/v1/repositories/repo/remotes") {
                 addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
@@ -120,7 +120,7 @@ class RemotesApiTest : StringSpec() {
 
         "update non-existent remote fails" {
             transaction {
-                providers.metadata.createRepository(Repository(name = "repo", properties = mapOf()))
+                services.metadata.createRepository(Repository(name = "repo", properties = mapOf()))
             }
             with(engine.handleRequest(HttpMethod.Post, "/v1/repositories/repo/remotes/foo") {
                 addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
@@ -132,9 +132,9 @@ class RemotesApiTest : StringSpec() {
 
         "update remote succeeds" {
             transaction {
-                providers.metadata.createRepository(Repository(name = "repo", properties = mapOf()))
-                providers.metadata.addRemote("repo", Remote("nop", "foo"))
-                providers.metadata.addRemote("repo", Remote("engine", "bar", mapOf("address" to "a", "username" to "u", "password" to "p", "repository" to "r")))
+                services.metadata.createRepository(Repository(name = "repo", properties = mapOf()))
+                services.metadata.addRemote("repo", Remote("nop", "foo"))
+                services.metadata.addRemote("repo", Remote("engine", "bar", mapOf("address" to "a", "username" to "u", "password" to "p", "repository" to "r")))
             }
             with(engine.handleRequest(HttpMethod.Post, "/v1/repositories/repo/remotes/bar") {
                 addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
@@ -149,9 +149,9 @@ class RemotesApiTest : StringSpec() {
 
         "rename remote succeeds" {
             transaction {
-                providers.metadata.createRepository(Repository(name = "repo", properties = mapOf()))
-                providers.metadata.addRemote("repo", Remote("nop", "foo"))
-                providers.metadata.addRemote("repo", Remote("nop", "bar"))
+                services.metadata.createRepository(Repository(name = "repo", properties = mapOf()))
+                services.metadata.addRemote("repo", Remote("nop", "foo"))
+                services.metadata.addRemote("repo", Remote("nop", "bar"))
             }
             with(engine.handleRequest(HttpMethod.Post, "/v1/repositories/repo/remotes/bar") {
                 addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
@@ -163,9 +163,9 @@ class RemotesApiTest : StringSpec() {
 
         "rename remote to existing name fails" {
             transaction {
-                providers.metadata.createRepository(Repository(name = "repo", properties = mapOf()))
-                providers.metadata.addRemote("repo", Remote("nop", "foo"))
-                providers.metadata.addRemote("repo", Remote("nop", "bar"))
+                services.metadata.createRepository(Repository(name = "repo", properties = mapOf()))
+                services.metadata.addRemote("repo", Remote("nop", "foo"))
+                services.metadata.addRemote("repo", Remote("nop", "bar"))
             }
             with(engine.handleRequest(HttpMethod.Post, "/v1/repositories/repo/remotes/bar") {
                 addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
@@ -177,9 +177,9 @@ class RemotesApiTest : StringSpec() {
 
         "delete remote succeeds" {
             transaction {
-                providers.metadata.createRepository(Repository(name = "repo", properties = mapOf()))
-                providers.metadata.addRemote("repo", Remote("nop", "foo"))
-                providers.metadata.addRemote("repo", Remote("nop", "bar"))
+                services.metadata.createRepository(Repository(name = "repo", properties = mapOf()))
+                services.metadata.addRemote("repo", Remote("nop", "foo"))
+                services.metadata.addRemote("repo", Remote("nop", "bar"))
             }
             with(engine.handleRequest(HttpMethod.Delete, "/v1/repositories/repo/remotes/bar")) {
                 response.status() shouldBe HttpStatusCode.NoContent
@@ -188,8 +188,8 @@ class RemotesApiTest : StringSpec() {
 
         "list remote commits succeeds" {
             transaction {
-                providers.metadata.createRepository(Repository(name = "repo", properties = mapOf()))
-                providers.metadata.addRemote("repo", Remote("nop", "foo"))
+                services.metadata.createRepository(Repository(name = "repo", properties = mapOf()))
+                services.metadata.addRemote("repo", Remote("nop", "foo"))
             }
             with(engine.handleRequest(HttpMethod.Get, "/v1/repositories/repo/remotes/foo/commits") {
                 addHeader("titan-remote-parameters", "{\"provider\":\"nop\",\"properties\":{}}")
@@ -202,8 +202,8 @@ class RemotesApiTest : StringSpec() {
 
         "get remote commit succeeds" {
             transaction {
-                providers.metadata.createRepository(Repository(name = "repo", properties = mapOf()))
-                providers.metadata.addRemote("repo", Remote("nop", "foo"))
+                services.metadata.createRepository(Repository(name = "repo", properties = mapOf()))
+                services.metadata.addRemote("repo", Remote("nop", "foo"))
             }
             with(engine.handleRequest(HttpMethod.Get, "/v1/repositories/repo/remotes/foo/commits/c") {
                 addHeader("titan-remote-parameters", "{\"provider\":\"nop\",\"properties\":{}}")

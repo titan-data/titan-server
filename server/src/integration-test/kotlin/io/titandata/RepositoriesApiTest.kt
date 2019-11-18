@@ -45,15 +45,15 @@ class RepositoriesApiTest : StringSpec() {
 
     @InjectMockKs
     @OverrideMockKs
-    var providers = ProviderModule("test")
+    var services = ServiceLocator("test")
 
     var engine = TestApplicationEngine(createTestEnvironment())
 
     override fun beforeSpec(spec: Spec) {
         with(engine) {
             start()
-            providers.metadata.init()
-            application.mainProvider(providers)
+            services.metadata.init()
+            application.mainProvider(services)
         }
     }
 
@@ -62,7 +62,7 @@ class RepositoriesApiTest : StringSpec() {
     }
 
     override fun beforeTest(testCase: TestCase) {
-        providers.metadata.clear()
+        services.metadata.clear()
         return MockKAnnotations.init(this)
     }
 
@@ -83,8 +83,8 @@ class RepositoriesApiTest : StringSpec() {
 
         "list repositories succeeds" {
             transaction {
-                providers.metadata.createRepository(Repository(name = "repo1", properties = mapOf("a" to "b")))
-                providers.metadata.createRepository(Repository(name = "repo2", properties = mapOf()))
+                services.metadata.createRepository(Repository(name = "repo1", properties = mapOf("a" to "b")))
+                services.metadata.createRepository(Repository(name = "repo2", properties = mapOf()))
             }
             with(engine.handleRequest(HttpMethod.Get, "/v1/repositories")) {
                 response.status() shouldBe HttpStatusCode.OK
@@ -95,7 +95,7 @@ class RepositoriesApiTest : StringSpec() {
 
         "get repository succeeds" {
             transaction {
-                providers.metadata.createRepository(Repository(name = "repo", properties = mapOf("a" to "b")))
+                services.metadata.createRepository(Repository(name = "repo", properties = mapOf("a" to "b")))
             }
             with(engine.handleRequest(HttpMethod.Get, "/v1/repositories/repo")) {
                 response.status() shouldBe HttpStatusCode.OK
@@ -124,9 +124,9 @@ class RepositoriesApiTest : StringSpec() {
 
         "get repository status succeeds" {
             transaction {
-                providers.metadata.createRepository(Repository(name = "foo", properties = emptyMap()))
-                val vs = providers.metadata.createVolumeSet("foo", null, true)
-                providers.metadata.createVolume(vs, Volume(name = "volume", properties = mapOf("path" to "/var/a")))
+                services.metadata.createRepository(Repository(name = "foo", properties = emptyMap()))
+                val vs = services.metadata.createVolumeSet("foo", null, true)
+                services.metadata.createVolume(vs, Volume(name = "volume", properties = mapOf("path" to "/var/a")))
             }
             every { dockerZfsContext.getVolumeStatus(any(), any()) } returns RepositoryVolumeStatus(name = "volume", logicalSize = 5, actualSize = 10)
             with(engine.handleRequest(HttpMethod.Get, "/v1/repositories/foo/status")) {
@@ -138,7 +138,7 @@ class RepositoriesApiTest : StringSpec() {
 
         "delete repository succeeds" {
             transaction {
-                providers.metadata.createRepository(Repository("repo"))
+                services.metadata.createRepository(Repository("repo"))
             }
             with(engine.handleRequest(HttpMethod.Delete, "/v1/repositories/repo")) {
                 response.status() shouldBe HttpStatusCode.NoContent
@@ -192,7 +192,7 @@ class RepositoriesApiTest : StringSpec() {
 
         "update repository succeeds" {
             transaction {
-                providers.metadata.createRepository(Repository(name = "repo1", properties = mapOf("a" to "b")))
+                services.metadata.createRepository(Repository(name = "repo1", properties = mapOf("a" to "b")))
             }
             with(engine.handleRequest(HttpMethod.Post, "/v1/repositories/repo1") {
                 addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())

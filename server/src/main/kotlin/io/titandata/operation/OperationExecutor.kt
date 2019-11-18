@@ -130,25 +130,25 @@ class OperationExecutor(
                 providers.metadata.createVolume(operation.id, Volume("_scratch"))
                 vols
             }
-        val scratchConfig = providers.storage.createVolume(operation.id, "_scratch")
+        val scratchConfig = providers.context.createVolume(operation.id, "_scratch")
         transaction {
             providers.metadata.updateVolumeConfig(operationId, "_scratch", scratchConfig)
         }
         try {
-            providers.storage.activateVolume(operationId, "_scratch", scratchConfig)
+            providers.context.activateVolume(operationId, "_scratch", scratchConfig)
             val scratch = scratchConfig["mountpoint"] as String
             for (volume in volumes) {
-                providers.storage.activateVolume(operationId, volume.name, volume.config)
+                providers.context.activateVolume(operationId, volume.name, volume.config)
                 val mountpoint = volume.config["mountpoint"] as String
                 try {
                     provider.syncVolume(data, volume.name, getVolumeDesc(volume), mountpoint, scratch)
                 } finally {
-                    providers.storage.deactivateVolume(operationId, volume.name, volume.config)
+                    providers.context.deactivateVolume(operationId, volume.name, volume.config)
                 }
             }
         } finally {
-            providers.storage.deactivateVolume(operationId, "_scratch", scratchConfig)
-            providers.storage.deleteVolume(operationId, "_scratch", scratchConfig)
+            providers.context.deactivateVolume(operationId, "_scratch", scratchConfig)
+            providers.context.deleteVolume(operationId, "_scratch", scratchConfig)
             transaction {
                 providers.metadata.deleteVolume(operationId, "_scratch")
             }

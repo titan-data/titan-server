@@ -7,13 +7,13 @@ package io.titandata.orchestrator
 import io.titandata.ProviderModule
 import io.titandata.exception.NoSuchObjectException
 import io.titandata.exception.ObjectExistsException
+import io.titandata.metadata.OperationData
 import io.titandata.models.Operation
 import io.titandata.models.ProgressEntry
 import io.titandata.models.Remote
 import io.titandata.models.RemoteParameters
 import io.titandata.models.Volume
 import io.titandata.operation.OperationExecutor
-import io.titandata.storage.OperationData
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.slf4j.LoggerFactory
 
@@ -151,9 +151,9 @@ class OperationOrchestrator(val providers: ProviderModule) {
                 val vs = providers.metadata.getActiveVolumeSet(repo)
                 providers.metadata.listVolumes(vs)
             }
-            providers.storage.createVolumeSet(volumeSet)
+            providers.context.createVolumeSet(volumeSet)
             for (v in volumes) {
-                val config = providers.storage.createVolume(volumeSet, v.name)
+                val config = providers.context.createVolume(volumeSet, v.name)
                 transaction {
                     providers.metadata.updateVolumeConfig(volumeSet, v.name, config)
                 }
@@ -163,9 +163,9 @@ class OperationOrchestrator(val providers: ProviderModule) {
                 val vs = providers.metadata.getCommit(repo, commit).first
                 Pair(vs, providers.metadata.listVolumes(vs).map { it.name })
             }
-            providers.storage.cloneVolumeSet(sourceVolumeSet, commit, volumeSet)
+            providers.context.cloneVolumeSet(sourceVolumeSet, commit, volumeSet)
             for (v in volumes) {
-                val config = providers.storage.cloneVolume(sourceVolumeSet, commit, volumeSet, v)
+                val config = providers.context.cloneVolume(sourceVolumeSet, commit, volumeSet, v)
                 transaction {
                     providers.metadata.updateVolumeConfig(volumeSet, v, config)
                 }

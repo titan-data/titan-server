@@ -9,7 +9,6 @@ import io.titandata.exception.NoSuchObjectException
 import io.titandata.models.Operation
 import io.titandata.models.RemoteParameters
 import io.titandata.models.Repository
-import io.titandata.storage.OperationData
 import org.jetbrains.exposed.sql.transactions.transaction
 
 class OperationMetadataTest : StringSpec() {

@@ -29,11 +29,11 @@ import io.mockk.impl.annotations.InjectMockKs
 import io.mockk.impl.annotations.MockK
 import io.mockk.impl.annotations.OverrideMockKs
 import io.mockk.just
+import io.titandata.context.docker.DockerZfsContext
 import io.titandata.models.Error
 import io.titandata.models.Repository
 import io.titandata.models.RepositoryVolumeStatus
 import io.titandata.models.Volume
-import io.titandata.storage.zfs.ZfsStorageProvider
 import java.util.concurrent.TimeUnit
 import org.jetbrains.exposed.sql.transactions.transaction
 
@@ -41,7 +41,7 @@ import org.jetbrains.exposed.sql.transactions.transaction
 class RepositoriesApiTest : StringSpec() {
 
     @MockK
-    var zfsStorageProvider = ZfsStorageProvider("test")
+    var dockerZfsContext = DockerZfsContext("test")
 
     @InjectMockKs
     @OverrideMockKs
@@ -128,7 +128,7 @@ class RepositoriesApiTest : StringSpec() {
                 val vs = providers.metadata.createVolumeSet("foo", null, true)
                 providers.metadata.createVolume(vs, Volume(name = "volume", properties = mapOf("path" to "/var/a")))
             }
-            every { zfsStorageProvider.getVolumeStatus(any(), any()) } returns RepositoryVolumeStatus(name = "volume", logicalSize = 5, actualSize = 10)
+            every { dockerZfsContext.getVolumeStatus(any(), any()) } returns RepositoryVolumeStatus(name = "volume", logicalSize = 5, actualSize = 10)
             with(engine.handleRequest(HttpMethod.Get, "/v1/repositories/foo/status")) {
                 response.status() shouldBe HttpStatusCode.OK
                 response.contentType().toString() shouldBe "application/json; charset=UTF-8"
@@ -156,7 +156,7 @@ class RepositoriesApiTest : StringSpec() {
         }
 
         "create repository succeeds" {
-            every { zfsStorageProvider.createVolumeSet(any()) } just Runs
+            every { dockerZfsContext.createVolumeSet(any()) } just Runs
             with(engine.handleRequest(HttpMethod.Post, "/v1/repositories") {
                 addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
                 setBody("{\"name\":\"repo\",\"properties\":{\"a\":\"b\"}}")

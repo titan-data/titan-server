@@ -21,7 +21,6 @@ import io.titandata.models.Remote
 import io.titandata.models.RemoteParameters
 import io.titandata.models.Repository
 import io.titandata.models.Volume
-import io.titandata.storage.OperationData
 import java.util.UUID
 import org.jetbrains.exposed.exceptions.ExposedSQLException
 import org.jetbrains.exposed.sql.Database

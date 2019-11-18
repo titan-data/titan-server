@@ -2,12 +2,12 @@
  * Copyright The Titan Project Contributors.
  */
 
-package io.titandata.storage
+package io.titandata.context
 
 import io.titandata.models.CommitStatus
 import io.titandata.models.RepositoryVolumeStatus
 
-interface StorageProvider {
+interface RuntimeContext {
     fun createVolumeSet(volumeSet: String)
     fun cloneVolumeSet(sourceVolumeSet: String, sourceCommit: String, newVolumeSet: String)
     fun deleteVolumeSet(volumeSet: String)

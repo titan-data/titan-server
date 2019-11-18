@@ -2,7 +2,7 @@
  * Copyright The Titan Project Contributors.
  */
 
-package io.titandata.storage
+package io.titandata.metadata
 
 import io.titandata.models.Operation
 import io.titandata.models.RemoteParameters

@@ -25,16 +25,14 @@ found at:
 
   * `io.titandata.apis.*` - Entry points for the remote APIs. Very thin layer that translates
     from JSON into native models and then invokes the appropriate backend model.
-  * `io.titandata.storage.*` - Provider for storage and metadata persistence. While there is
-    an abstraction layer, there is only one provider for ZFS. See `ZfsStorageProvider` for more
-    information.
+  * `io.titandata.metadata.*` - Metadata persistence layer. We run a PostgreSQL database within
+    the server container.
+  * `io.titandata.context.*` - Provider for context-specific operations, such as managing storage
+    and running operations that requires access to storage.
   * `io.titandata.operation.*` - Handlers for asynchronous push and pull operations. The actual
     operations are run through the remote providers, but the generic operations framework handles
     starting and stopping operations, reporting back to the APIs, etc. For more information,
     see `OperationProvider`
-  * `io.titandata.remote.*` - Per-remote handlers for push and pull operations. These handle the
-    work of pushing and pulling, within the context set up by the operations provider.
-  * `io.titandata.sync.*` - Common mechanisms for syncing data between hosts, such as `rsync`.
   
 The titan client is built from `client/src`, and creates a separate JAR that is then published
 to an artifact repository for the CLI to use. It is not much more than a framework to marshall

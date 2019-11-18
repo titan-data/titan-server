@@ -34,6 +34,8 @@ import io.titandata.apis.OperationsApi
 import io.titandata.apis.RemotesApi
 import io.titandata.apis.RepositoriesApi
 import io.titandata.apis.VolumesApi
+import io.titandata.context.RuntimeContext
+import io.titandata.context.docker.DockerZfsContext
 import io.titandata.exception.NoSuchObjectException
 import io.titandata.exception.ObjectExistsException
 import io.titandata.metadata.MetadataProvider
@@ -46,8 +48,6 @@ import io.titandata.orchestrator.RemoteOrchestrator
 import io.titandata.orchestrator.RepositoryOrchestrator
 import io.titandata.orchestrator.VolumeOrchestrator
 import io.titandata.remote.RemoteServer
-import io.titandata.storage.StorageProvider
-import io.titandata.storage.zfs.ZfsStorageProvider
 import java.io.PrintWriter
 import java.io.StringWriter
 import java.util.ServiceLoader
@@ -81,7 +81,7 @@ class ProviderModule(pool: String, inMemory: Boolean = true) {
         remoteProviders = providers
     }
 
-    private val zfsStorageProvider = ZfsStorageProvider(pool)
+    private val dockerZfsContext = DockerZfsContext(pool)
 
     val metadata = MetadataProvider(inMemory)
     val commits = CommitOrchestrator(this)
@@ -93,17 +93,9 @@ class ProviderModule(pool: String, inMemory: Boolean = true) {
 
     val gson = GsonBuilder().create()
 
-    // Return the default storage provider
-    val storage: StorageProvider
-        get() = zfsStorageProvider
-
-    // Get a storage provider by name (only ZFS is supported)
-    fun storage(type: String): StorageProvider {
-        if (type != "zfs") {
-            throw IllegalArgumentException("unknown storage provider '$type'")
-        }
-        return zfsStorageProvider
-    }
+    // Return the default runtime context
+    val context: RuntimeContext
+        get() = dockerZfsContext
 
     // Get a remote provider by name
     fun remoteProvider(type: String): RemoteServer {

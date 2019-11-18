@@ -1,0 +1,23 @@
+#
+# Copyright The Titan Project Contributors.
+#
+
+#
+# We use release drafter to keep the in-progress release notes up to date:
+#
+#   https://github.com/marketplace/actions/release-drafter
+#
+name: Draft Release
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  update_draft_release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: toolmantim/release-drafter@v5.2.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

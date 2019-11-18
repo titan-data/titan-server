@@ -18,6 +18,7 @@ import io.mockk.every
 import io.mockk.impl.annotations.InjectMockKs
 import io.mockk.impl.annotations.OverrideMockKs
 import io.mockk.impl.annotations.SpyK
+import io.mockk.mockk
 import io.mockk.slot
 import io.titandata.ServiceLocator
 import io.titandata.exception.NoSuchObjectException
@@ -41,7 +42,7 @@ class RemoteOrchestratorTest : StringSpec() {
 
     @InjectMockKs
     @OverrideMockKs
-    var services = ServiceLocator("test")
+    var services = ServiceLocator(mockk())
 
     override fun beforeSpec(spec: Spec) {
         services.metadata.init()

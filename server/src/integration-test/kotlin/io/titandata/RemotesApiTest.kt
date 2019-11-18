@@ -22,8 +22,7 @@ import io.ktor.server.testing.setBody
 import io.ktor.util.KtorExperimentalAPI
 import io.mockk.MockKAnnotations
 import io.mockk.clearAllMocks
-import io.mockk.impl.annotations.InjectMockKs
-import io.mockk.impl.annotations.OverrideMockKs
+import io.mockk.mockk
 import io.titandata.models.Remote
 import io.titandata.models.Repository
 import java.util.concurrent.TimeUnit
@@ -32,9 +31,7 @@ import org.jetbrains.exposed.sql.transactions.transaction
 @UseExperimental(KtorExperimentalAPI::class)
 class RemotesApiTest : StringSpec() {
 
-    @InjectMockKs
-    @OverrideMockKs
-    var services = ServiceLocator("test")
+    var services = ServiceLocator(mockk())
 
     var engine = TestApplicationEngine(createTestEnvironment())
 

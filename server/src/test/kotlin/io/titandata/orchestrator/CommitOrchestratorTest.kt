@@ -21,6 +21,7 @@ import io.mockk.impl.annotations.InjectMockKs
 import io.mockk.impl.annotations.MockK
 import io.mockk.impl.annotations.OverrideMockKs
 import io.mockk.just
+import io.mockk.mockk
 import io.mockk.verify
 import io.titandata.ServiceLocator
 import io.titandata.context.docker.DockerZfsContext
@@ -34,7 +35,7 @@ import org.jetbrains.exposed.sql.transactions.transaction
 class CommitOrchestratorTest : StringSpec() {
 
     @MockK
-    lateinit var dockerZfsContext: DockerZfsContext
+    lateinit var context: DockerZfsContext
 
     @MockK
     lateinit var reaper: Reaper
@@ -43,7 +44,7 @@ class CommitOrchestratorTest : StringSpec() {
 
     @InjectMockKs
     @OverrideMockKs
-    var services = ServiceLocator("test")
+    var services = ServiceLocator(mockk())
 
     override fun beforeSpec(spec: Spec) {
         services.metadata.init()
@@ -58,7 +59,7 @@ class CommitOrchestratorTest : StringSpec() {
             services.metadata.createVolume(vs, Volume("vol2"))
         }
         val ret = MockKAnnotations.init(this)
-        every { dockerZfsContext.createCommit(any(), any(), any()) } just Runs
+        every { context.createCommit(any(), any(), any()) } just Runs
         return ret
     }
 
@@ -102,7 +103,7 @@ class CommitOrchestratorTest : StringSpec() {
             volumeSet shouldBe vs
             commit.id shouldBe "id"
             verify {
-                dockerZfsContext.createCommit(vs, "id", listOf("vol1", "vol2"))
+                context.createCommit(vs, "id", listOf("vol1", "vol2"))
             }
         }
 
@@ -112,7 +113,7 @@ class CommitOrchestratorTest : StringSpec() {
             }
             services.commits.createCommit("foo", Commit(id = "id", properties = mapOf("a" to "b")), vs2)
             verify {
-                dockerZfsContext.createCommit(vs2, "id", listOf())
+                context.createCommit(vs2, "id", listOf())
             }
         }
 
@@ -235,9 +236,9 @@ class CommitOrchestratorTest : StringSpec() {
         }
 
         "checkout commit succeeds" {
-            every { dockerZfsContext.cloneVolumeSet(any(), any(), any()) } just Runs
-            every { dockerZfsContext.cloneVolume(any(), any(), any(), any()) } returns emptyMap()
-            every { dockerZfsContext.createVolume(any(), any()) } returns emptyMap()
+            every { context.cloneVolumeSet(any(), any(), any()) } just Runs
+            every { context.cloneVolume(any(), any(), any(), any()) } returns emptyMap()
+            every { context.createVolume(any(), any()) } returns emptyMap()
             every { reaper.signal() } just Runs
             services.commits.createCommit("foo", Commit("id"))
             services.commits.checkoutCommit("foo", "id")
@@ -254,9 +255,9 @@ class CommitOrchestratorTest : StringSpec() {
 
             verify {
                 reaper.signal()
-                dockerZfsContext.cloneVolumeSet(vs, "id", vs2)
-                dockerZfsContext.cloneVolume(vs, "id", vs2, "vol1")
-                dockerZfsContext.cloneVolume(vs, "id", vs2, "vol2")
+                context.cloneVolumeSet(vs, "id", vs2)
+                context.cloneVolume(vs, "id", vs2, "vol1")
+                context.cloneVolume(vs, "id", vs2, "vol2")
             }
         }
 

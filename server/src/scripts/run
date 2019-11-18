@@ -1,58 +1,74 @@
 #!/bin/bash
 
 #
-# Main entry point for the titan server.
+# Main entry point for the titan server. This server can be run in different contexts, such as managing local
+# docker containers or kubernetes pods. The behavior is controlled via the TITAN_CONTEXT environemnt variable.
+# Currently, we only support a single context, "docker-zfs".
 #
-
-DB_DIR=/var/lib/$TITAN_POOL/mnt/_db
 
 #
 # Mount the database filesystem for the titan server. We only do this if the pool is configured, so that titan-server
 # can run without ZFS if needed.
 #
 function mount_database() {
+  local db_dir=$1
   zfs list $TITAN_POOL >/dev/null 2>&1
   if [[ $? == 0 ]]; then
     mount | grep ^$TITAN_POOL/db > /dev/null
     if [[ $? != 0 ]]; then
-      echo "Mounting $TITAN_POOL/db at $DB_DIR"
-      mkdir -p $DB_DIR
-      mount -t zfs $TITAN_POOL/db $DB_DIR || log_error "failed to mount database directory"
+      echo "Mounting $TITAN_POOL/db at $db_dir"
+      mkdir -p $db_dir
+      mount -t zfs $TITAN_POOL/db $db_dir || log_error "failed to mount database directory"
     fi
   fi
 }
-
 
 #
 # Initialize the database
 #
 function start_database() {
-  CREATE_DB=false
-  mkdir -p $DB_DIR
-  if [[ ! -f $DB_DIR/postgresql.conf ]]; then
-    echo "Initializing database at $DB_DIR"
-    chown postgres $DB_DIR
-    su - postgres -c "/usr/lib/postgresql/12/bin/pg_ctl -D $DB_DIR initdb" || exit 1
-    CREATE_DB=true
+  local db_dir=$1
+  local create_db=false
+  mkdir -p $db_dir
+  if [[ ! -f $db_dir/postgresql.conf ]]; then
+    echo "Initializing database at $db_dir"
+    chown postgres $db_dir
+    su - postgres -c "/usr/lib/postgresql/12/bin/pg_ctl -D $db_dir initdb" || exit 1
+    create_db=true
   fi
 
   # Start postgres
   echo "Starting postgres"
-  rm -f $DB_DIR/postmaster.pid
-  su - postgres -c "/usr/lib/postgresql/12/bin/pg_ctl -D $DB_DIR -l /var/log/postgresql/logfile start"
+  rm -f $db_dir/postmaster.pid
+  su - postgres -c "/usr/lib/postgresql/12/bin/pg_ctl -D $db_dir -l /var/log/postgresql/logfile start"
   if [[ $? == 1 ]]; then
     cat /var/log/postgresql/logfile
     exit 1
   fi
-  [[ $CREATE_DB == "true" ]] && su - postgres -c "/usr/lib/postgresql/12/bin/createdb titan"
+  [[ $create_db == "true" ]] && su - postgres -c "/usr/lib/postgresql/12/bin/createdb titan"
   echo "Postgres started"
-}
+}}
 
-mount_database
-start_database
+#
+# Check that our context is configured correctly
+#
+[[ -z $TITAN_CONTEXT ]] && log_error "TITAN_CONTEXT must be set"
 
-# Run socat to pipe from unix socket to server port
-socat -v -d -lf /var/log/socat.log UNIX-LISTEN:/run/docker/plugins/titan.sock,reuseaddr,fork TCP:localhost:5001 2>/var/log/socat.trace &
+#
+# Check or configure any context-specific configuration.
+#
+if [[ $TITAN_CONTEXT = "docker-zfs" ]]; then
+  [[ -z $TITAN_POOL ]] && log_error "TITAN_POOL must be set"
+  local db_dir=/var/lib/$TITAN_POOL/mnt/_db
 
-# Run the main titan server
-exec java -jar /titan/titan-server.jar
+  mount_database $db_dir
+  start_database $db_dir
+
+  # Run socat to pipe from unix socket to server port
+  socat -v -d -lf /var/log/socat.log UNIX-LISTEN:/run/docker/plugins/titan.sock,reuseaddr,fork TCP:localhost:5001 2>/var/log/socat.trace &
+
+  # Run the main titan server
+  exec java -jar /titan/titan-server.jar -Dtitan.context=$TITAN_CONTEXT -Dtitan.pool=$TITAN_POOL
+else
+  log_error "Unknown context $TITAN_CONTEXT"
+fi

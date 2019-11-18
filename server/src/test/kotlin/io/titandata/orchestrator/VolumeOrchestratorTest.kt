@@ -19,6 +19,7 @@ import io.mockk.impl.annotations.InjectMockKs
 import io.mockk.impl.annotations.MockK
 import io.mockk.impl.annotations.OverrideMockKs
 import io.mockk.just
+import io.mockk.mockk
 import io.mockk.verify
 import io.mockk.verifyAll
 import io.titandata.ServiceLocator
@@ -31,7 +32,7 @@ import org.jetbrains.exposed.sql.transactions.transaction
 class VolumeOrchestratorTest : StringSpec() {
 
     @MockK
-    lateinit var dockerZfsContext: DockerZfsContext
+    lateinit var context: DockerZfsContext
 
     @MockK
     lateinit var reaper: Reaper
@@ -40,7 +41,7 @@ class VolumeOrchestratorTest : StringSpec() {
 
     @InjectMockKs
     @OverrideMockKs
-    var services = ServiceLocator("test")
+    var services = ServiceLocator(mockk())
 
     override fun beforeSpec(spec: Spec) {
         services.metadata.init()
@@ -62,7 +63,7 @@ class VolumeOrchestratorTest : StringSpec() {
     override fun testCaseOrder() = TestCaseOrder.Random
 
     fun createVolume(): Volume {
-        every { dockerZfsContext.createVolume(any(), any()) } returns mapOf("mountpoint" to "/mountpoint")
+        every { context.createVolume(any(), any()) } returns mapOf("mountpoint" to "/mountpoint")
         return services.volumes.createVolume("foo", Volume("vol", mapOf("a" to "b")))
     }
 
@@ -73,7 +74,7 @@ class VolumeOrchestratorTest : StringSpec() {
             vol.config["mountpoint"] shouldBe "/mountpoint"
             vol.properties["a"] shouldBe "b"
             verifyAll {
-                dockerZfsContext.createVolume(vs, "vol")
+                context.createVolume(vs, "vol")
             }
         }
 
@@ -162,11 +163,11 @@ class VolumeOrchestratorTest : StringSpec() {
         }
 
         "activate volume succeeds" {
-            every { dockerZfsContext.activateVolume(any(), any(), any()) } just Runs
+            every { context.activateVolume(any(), any(), any()) } just Runs
             createVolume()
             services.volumes.activateVolume("foo", "vol")
             verify {
-                dockerZfsContext.activateVolume(vs, "vol", mapOf("mountpoint" to "/mountpoint"))
+                context.activateVolume(vs, "vol", mapOf("mountpoint" to "/mountpoint"))
             }
         }
 
@@ -195,11 +196,11 @@ class VolumeOrchestratorTest : StringSpec() {
         }
 
         "inactivate volume succeeds" {
-            every { dockerZfsContext.deactivateVolume(any(), any(), any()) } just Runs
+            every { context.deactivateVolume(any(), any(), any()) } just Runs
             createVolume()
             services.volumes.deactivateVolume("foo", "vol")
             verify {
-                dockerZfsContext.deactivateVolume(vs, "vol", mapOf("mountpoint" to "/mountpoint"))
+                context.deactivateVolume(vs, "vol", mapOf("mountpoint" to "/mountpoint"))
             }
         }
 

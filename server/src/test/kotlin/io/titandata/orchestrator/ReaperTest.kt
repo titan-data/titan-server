@@ -21,6 +21,7 @@ import io.mockk.impl.annotations.InjectMockKs
 import io.mockk.impl.annotations.MockK
 import io.mockk.impl.annotations.OverrideMockKs
 import io.mockk.just
+import io.mockk.mockk
 import io.mockk.verify
 import io.titandata.ServiceLocator
 import io.titandata.context.docker.DockerZfsContext
@@ -36,11 +37,11 @@ import org.jetbrains.exposed.sql.transactions.transaction
 class ReaperTest : StringSpec() {
 
     @MockK
-    lateinit var dockerZfsContext: DockerZfsContext
+    lateinit var context: DockerZfsContext
 
     @InjectMockKs
     @OverrideMockKs
-    var services = ServiceLocator("test")
+    var services = ServiceLocator(mockk())
 
     override fun beforeSpec(spec: Spec) {
         services.metadata.init()
@@ -83,10 +84,10 @@ class ReaperTest : StringSpec() {
                 services.metadata.markVolumeDeleting(vs, "volume")
                 vs
             }
-            every { dockerZfsContext.deleteVolume(any(), any(), any()) } just Runs
+            every { context.deleteVolume(any(), any(), any()) } just Runs
             services.reaper.reapVolumes() shouldBe true
             verify {
-                dockerZfsContext.deleteVolume(vs, "volume", emptyMap())
+                context.deleteVolume(vs, "volume", emptyMap())
             }
             shouldThrow<NoSuchObjectException> {
                 transaction {
@@ -125,14 +126,14 @@ class ReaperTest : StringSpec() {
                 services.metadata.markVolumeSetDeleting(vs)
                 vs
             }
-            every { dockerZfsContext.deleteVolume(any(), any(), any()) } just Runs
-            every { dockerZfsContext.deleteVolumeSet(any()) } just Runs
+            every { context.deleteVolume(any(), any(), any()) } just Runs
+            every { context.deleteVolumeSet(any()) } just Runs
 
             services.reaper.reapVolumeSets() shouldBe true
 
             verify {
-                dockerZfsContext.deleteVolume(vs, "volume", emptyMap())
-                dockerZfsContext.deleteVolumeSet(vs)
+                context.deleteVolume(vs, "volume", emptyMap())
+                context.deleteVolumeSet(vs)
             }
 
             transaction {
@@ -235,10 +236,10 @@ class ReaperTest : StringSpec() {
                 services.metadata.markCommitDeleting("foo", "id")
                 vs
             }
-            every { dockerZfsContext.deleteCommit(any(), any(), any()) } just Runs
+            every { context.deleteCommit(any(), any(), any()) } just Runs
             services.reaper.reapCommits() shouldBe true
             verify {
-                dockerZfsContext.deleteCommit(vs, "id", listOf("volume"))
+                context.deleteCommit(vs, "id", listOf("volume"))
             }
             transaction {
                 services.metadata.listDeletingCommits().shouldBeEmpty()

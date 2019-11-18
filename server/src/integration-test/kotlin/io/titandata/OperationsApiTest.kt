@@ -31,6 +31,7 @@ import io.mockk.impl.annotations.InjectMockKs
 import io.mockk.impl.annotations.MockK
 import io.mockk.impl.annotations.OverrideMockKs
 import io.mockk.just
+import io.mockk.mockk
 import io.titandata.context.docker.DockerZfsContext
 import io.titandata.metadata.OperationData
 import io.titandata.models.Commit
@@ -50,14 +51,14 @@ import org.jetbrains.exposed.sql.transactions.transaction
 class OperationsApiTest : StringSpec() {
 
     @MockK
-    var dockerZfsContext = DockerZfsContext("test")
+    var context = DockerZfsContext("test")
 
     lateinit var vs1: String
     lateinit var vs2: String
 
     @InjectMockKs
     @OverrideMockKs
-    var services = ServiceLocator("test")
+    var services = ServiceLocator(mockk())
 
     var engine = TestApplicationEngine(createTestEnvironment())
 
@@ -224,8 +225,8 @@ class OperationsApiTest : StringSpec() {
                 services.metadata.createCommit("foo", vs1, Commit("commit"))
             }
 
-            every { dockerZfsContext.cloneVolumeSet(any(), any(), any()) } just Runs
-            every { dockerZfsContext.cloneVolume(any(), any(), any(), any()) } returns emptyMap()
+            every { context.cloneVolumeSet(any(), any(), any()) } just Runs
+            every { context.cloneVolume(any(), any(), any(), any()) } returns emptyMap()
 
             val result = engine.handleRequest(HttpMethod.Post, "/v1/repositories/foo/remotes/remote/commits/commit/push") {
                 addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
@@ -243,7 +244,7 @@ class OperationsApiTest : StringSpec() {
         }
 
         "pull starts operation" {
-            every { dockerZfsContext.createVolumeSet(any()) } just Runs
+            every { context.createVolumeSet(any()) } just Runs
 
             val result = engine.handleRequest(HttpMethod.Post, "/v1/repositories/foo/remotes/remote/commits/commit/pull") {
                 addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())

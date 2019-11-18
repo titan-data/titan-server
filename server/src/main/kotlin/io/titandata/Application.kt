@@ -69,7 +69,7 @@ fun exceptionToError(request: ApplicationRequest, t: Throwable): Any {
 
 class ProviderModule(pool: String, inMemory: Boolean = true) {
     private val loader = ServiceLoader.load(RemoteServer::class.java)
-    private val dynamicRemotes: MutableMap<String, RemoteServer>
+    private val remoteProviders: MutableMap<String, RemoteServer>
 
     init {
         val providers = mutableMapOf<String, RemoteServer>()
@@ -78,7 +78,7 @@ class ProviderModule(pool: String, inMemory: Boolean = true) {
                 providers[it.getProvider()] = it
             }
         }
-        dynamicRemotes = providers
+        remoteProviders = providers
     }
 
     private val zfsStorageProvider = ZfsStorageProvider(pool)
@@ -105,15 +105,15 @@ class ProviderModule(pool: String, inMemory: Boolean = true) {
         return zfsStorageProvider
     }
 
-    // Get a new-style remote provider by name
-    fun dynamicRemote(type: String): RemoteServer {
-        return dynamicRemotes[type]
+    // Get a remote provider by name
+    fun remoteProvider(type: String): RemoteServer {
+        return remoteProviders[type]
                 ?: throw IllegalArgumentException("unknown remote provider '$type'")
     }
 
     // For testing purposes
-    fun setDynamicRemote(type: String, server: RemoteServer) {
-        dynamicRemotes[type] = server
+    fun setRemoteProvider(type: String, server: RemoteServer) {
+        remoteProviders[type] = server
     }
 }
 

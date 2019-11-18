@@ -28,14 +28,14 @@ class RemoteOrchestrator(val providers: ProviderModule) {
         return Remote(
                 provider = remote.provider,
                 name = remote.name,
-                properties = providers.dynamicRemote(remote.provider).validateRemote(remote.properties)
+                properties = providers.remoteProvider(remote.provider).validateRemote(remote.properties)
         )
     }
 
     fun validateParameters(parameters: RemoteParameters): RemoteParameters {
         return RemoteParameters(
                 provider = parameters.provider,
-                properties = providers.dynamicRemote(parameters.provider).validateParameters(parameters.properties)
+                properties = providers.remoteProvider(parameters.provider).validateParameters(parameters.properties)
         )
     }
 
@@ -84,7 +84,7 @@ class RemoteOrchestrator(val providers: ProviderModule) {
         if (params.provider != remote.provider) {
             throw IllegalArgumentException("invalid remote parameter type '${params.provider}' for remote type '${remote.provider}")
         }
-        val commits = providers.dynamicRemote(remote.provider).listCommits(remote.properties,
+        val commits = providers.remoteProvider(remote.provider).listCommits(remote.properties,
                 validateParameters(params).properties, getTags(tags))
         return commits.map { Commit(id = it.first, properties = it.second) }
     }
@@ -94,7 +94,7 @@ class RemoteOrchestrator(val providers: ProviderModule) {
         if (params.provider != remote.provider) {
             throw IllegalArgumentException("invalid remote parameter type '${params.provider}' for remote type '${remote.provider}")
         }
-        val commit = providers.dynamicRemote(remote.provider).getCommit(remote.properties,
+        val commit = providers.remoteProvider(remote.provider).getCommit(remote.properties,
                 validateParameters(params).properties, commitId)
         if (commit == null) {
             throw NoSuchObjectException("no such commit '$commitId' in remote '$remoteName'")

@@ -68,8 +68,8 @@ class OperationOrchestratorTest : StringSpec() {
             vs
         }
         MockKAnnotations.init(this)
-        providers.setDynamicRemote("nop", nopProvider)
-        providers.setDynamicRemote("s3", s3Provider)
+        providers.setRemoteProvider("nop", nopProvider)
+        providers.setRemoteProvider("s3", s3Provider)
     }
 
     override fun afterTest(testCase: TestCase, result: TestResult) {

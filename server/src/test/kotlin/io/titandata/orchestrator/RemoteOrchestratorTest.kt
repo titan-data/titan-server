@@ -58,8 +58,8 @@ class RemoteOrchestratorTest : StringSpec() {
             providers.metadata.createRepository(Repository(name = "foo"))
         }
         MockKAnnotations.init(this)
-        providers.setDynamicRemote("nop", nopProvider)
-        providers.setDynamicRemote("ssh", sshProvider)
+        providers.setRemoteProvider("nop", nopProvider)
+        providers.setRemoteProvider("ssh", sshProvider)
     }
 
     override fun afterTest(testCase: TestCase, result: TestResult) {

@@ -51,7 +51,7 @@ class OperationExecutor(
     }
 
     override fun run() {
-        val provider = providers.dynamicRemote(remote.provider)
+        val provider = providers.remoteProvider(remote.provider)
 
         var success = false
         var operationData: RemoteOperation? = null

@@ -80,7 +80,7 @@ class OperationOrchestrator(val providers: ProviderModule) {
             return commitId
         } else {
             var localCommit: String? = null
-            val provider = providers.dynamicRemote(remote.provider)
+            val provider = providers.remoteProvider(remote.provider)
             var remoteCommit = provider.getCommit(remote.properties, params.properties, commitId)
             while (localCommit == null && remoteCommit != null && remoteCommit.containsKey("tags")) {
                 @Suppress("UNCHECKED_CAST")
@@ -336,7 +336,7 @@ class OperationOrchestrator(val providers: ProviderModule) {
             throw IllegalArgumentException("operation parameters type (${params.provider}) doesn't match type of remote '$remote' (${r.provider})")
         }
         providers.commits.getCommit(repository, commitId) // check commit exists
-        val remoteProvider = providers.dynamicRemote(r.provider)
+        val remoteProvider = providers.remoteProvider(r.provider)
         val remoteCommit = remoteProvider.getCommit(r.properties, params.properties, commitId)
         if (metadataOnly && remoteCommit == null) {
             throw NoSuchObjectException("no such commit '$commitId' in remote '$remote")

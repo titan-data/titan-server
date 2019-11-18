@@ -65,7 +65,7 @@ class OperationExecutorTest : StringSpec() {
             providers.metadata.addRemote("foo", Remote("nop", "origin"))
         }
         val ret = MockKAnnotations.init(this)
-        providers.setDynamicRemote("nop", nopProvider)
+        providers.setRemoteProvider("nop", nopProvider)
         every { zfsStorageProvider.createCommit(any(), any(), any()) } just Runs
         return ret
     }

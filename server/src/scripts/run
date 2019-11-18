@@ -1,58 +1,86 @@
 #!/bin/bash
 
 #
-# Main entry point for the titan server.
+# Main entry point for the titan server. This server can be run in different contexts, such as managing local
+# docker containers or kubernetes pods. The behavior is controlled via the TITAN_CONTEXT environemnt variable.
+# We currently support two contexts:
+#
+#   docker-zfs      Controls local containers on your laptops, backing storage via ZFS. The TITAN_POOL
+#                   environment variable must be set, and the container must be run via the 'launch' script
+#                   to ensure that ZFS is properly configured.
+#
+#   kubernetes-csi  Controls remote containers running in a kubernetes cluster, backing storage via a CSI
+#                   driver. The TITAN_DATA variable must be set to determine where to place the persistent
+#                   database in /var/lib/$TITAN_DATA, which should be backed by a persistent volume. Unlike
+#                   the docker-zfs context, the server doesn't need to be run via 'launch', and can operate
+#                   in any docker environment even if kernel ZFS support isn't present.
 #
 
-DB_DIR=/var/lib/$TITAN_POOL/mnt/_db
-
 #
-# Mount the database filesystem for the titan server. We only do this if the pool is configured, so that titan-server
-# can run without ZFS if needed.
+# Mount the database filesystem for the titan server.
 #
 function mount_database() {
-  zfs list $TITAN_POOL >/dev/null 2>&1
-  if [[ $? == 0 ]]; then
-    mount | grep ^$TITAN_POOL/db > /dev/null
-    if [[ $? != 0 ]]; then
-      echo "Mounting $TITAN_POOL/db at $DB_DIR"
-      mkdir -p $DB_DIR
-      mount -t zfs $TITAN_POOL/db $DB_DIR || log_error "failed to mount database directory"
-    fi
+  local db_dir=$1
+  mount | grep ^$TITAN_POOL/db > /dev/null
+  if [[ $? != 0 ]]; then
+    echo "Mounting $TITAN_POOL/db at $db_dir"
+    mkdir -p $db_dir
+    mount -t zfs $TITAN_POOL/db $db_dir || log_error "failed to mount database directory"
   fi
 }
-
 
 #
 # Initialize the database
 #
 function start_database() {
-  CREATE_DB=false
-  mkdir -p $DB_DIR
-  if [[ ! -f $DB_DIR/postgresql.conf ]]; then
-    echo "Initializing database at $DB_DIR"
-    chown postgres $DB_DIR
-    su - postgres -c "/usr/lib/postgresql/12/bin/pg_ctl -D $DB_DIR initdb" || exit 1
-    CREATE_DB=true
+  local db_dir=$1
+  local create_db=false
+  mkdir -p $db_dir
+  if [[ ! -f $db_dir/postgresql.conf ]]; then
+    echo "Initializing database at $db_dir"
+    chown postgres $db_dir
+    su - postgres -c "/usr/lib/postgresql/12/bin/pg_ctl -D $db_dir initdb" || exit 1
+    create_db=true
   fi
 
   # Start postgres
   echo "Starting postgres"
-  rm -f $DB_DIR/postmaster.pid
-  su - postgres -c "/usr/lib/postgresql/12/bin/pg_ctl -D $DB_DIR -l /var/log/postgresql/logfile start"
+  rm -f $db_dir/postmaster.pid
+  su - postgres -c "/usr/lib/postgresql/12/bin/pg_ctl -D $db_dir -l /var/log/postgresql/logfile start"
   if [[ $? == 1 ]]; then
     cat /var/log/postgresql/logfile
     exit 1
   fi
-  [[ $CREATE_DB == "true" ]] && su - postgres -c "/usr/lib/postgresql/12/bin/createdb titan"
+  [[ $create_db == "true" ]] && su - postgres -c "/usr/lib/postgresql/12/bin/createdb titan"
   echo "Postgres started"
 }
 
-mount_database
-start_database
+#
+# Check that our context is configured correctly
+#
+[[ -z $TITAN_CONTEXT ]] && log_error "TITAN_CONTEXT must be set"
 
-# Run socat to pipe from unix socket to server port
-socat -v -d -lf /var/log/socat.log UNIX-LISTEN:/run/docker/plugins/titan.sock,reuseaddr,fork TCP:localhost:5001 2>/var/log/socat.trace &
+#
+# Check or configure any context-specific configuration.
+#
+if [[ $TITAN_CONTEXT = "docker-zfs" ]]; then
+  [[ -z $TITAN_POOL ]] && log_error "TITAN_POOL must be set"
+  DB_DIR=/var/lib/$TITAN_POOL/mnt/_db
 
-# Run the main titan server
-exec java -jar /titan/titan-server.jar
+  mount_database $DB_DIR
+  start_database $DB_DIR
+
+  # Run socat to pipe from unix socket to server port
+  socat -v -d -lf /var/log/socat.log UNIX-LISTEN:/run/docker/plugins/titan.sock,reuseaddr,fork TCP:localhost:5001 2>/var/log/socat.trace &
+
+  exec java -Dtitan.context=$TITAN_CONTEXT -Dtitan.pool=$TITAN_POOL -jar /titan/titan-server.jar
+elif [[ $TITAN_CONTEXT = "kubernetes-csi" ]]; then
+  [[ -z $TITAN_DATA ]] && log_error "TITAN_DATA must be set"
+  DB_DIR=/var/lib/$TITAN_DATA/mnt/_db
+
+  start_database $DB_DIR
+
+  exec java -Dtitan.context=$TITAN_CONTEXT -jar /titan/titan-server.jar
+else
+  log_error "Unknown context $TITAN_CONTEXT"
+fi

@@ -27,6 +27,7 @@ import io.mockk.impl.annotations.InjectMockKs
 import io.mockk.impl.annotations.MockK
 import io.mockk.impl.annotations.OverrideMockKs
 import io.mockk.just
+import io.mockk.mockk
 import io.mockk.verify
 import io.titandata.context.docker.DockerZfsContext
 import io.titandata.models.Repository
@@ -41,11 +42,11 @@ class DockerVolumesApiTest : StringSpec() {
     lateinit var vs: String
 
     @MockK
-    var dockerZfsContext = DockerZfsContext("test")
+    var context = DockerZfsContext("test")
 
     @InjectMockKs
     @OverrideMockKs
-    var services = ServiceLocator("test")
+    var services = ServiceLocator(mockk())
 
     var engine = TestApplicationEngine(createTestEnvironment())
 
@@ -82,7 +83,7 @@ class DockerVolumesApiTest : StringSpec() {
      */
     init {
         "create volume succeeds" {
-            every { dockerZfsContext.createVolume(any(), any()) } returns emptyMap()
+            every { context.createVolume(any(), any()) } returns emptyMap()
             with(engine.handleRequest(HttpMethod.Post, "/VolumeDriver.Create") {
                 setBody("{\"Name\":\"foo/vol\",\"Opts\":{\"a\":\"b\"}}")
             }) {
@@ -91,7 +92,7 @@ class DockerVolumesApiTest : StringSpec() {
                 response.content shouldBe "{\"Err\":\"\"}"
 
                 verify {
-                    dockerZfsContext.createVolume(vs, "vol")
+                    context.createVolume(vs, "vol")
                 }
             }
         }
@@ -147,7 +148,7 @@ class DockerVolumesApiTest : StringSpec() {
             transaction {
                 services.metadata.createVolume(vs, Volume(name = "vol", config = mapOf("mountpoint" to "/mountpoint")))
             }
-            every { dockerZfsContext.activateVolume(any(), any(), any()) } just Runs
+            every { context.activateVolume(any(), any(), any()) } just Runs
             with(engine.handleRequest(HttpMethod.Post, "/VolumeDriver.Mount") {
                 setBody("{\"Name\":\"foo/vol\"}")
             }) {
@@ -156,7 +157,7 @@ class DockerVolumesApiTest : StringSpec() {
                 response.content shouldBe "{\"Err\":\"\",\"Mountpoint\":\"/mountpoint\"}"
 
                 verify {
-                    dockerZfsContext.activateVolume(vs, "vol", mapOf("mountpoint" to "/mountpoint"))
+                    context.activateVolume(vs, "vol", mapOf("mountpoint" to "/mountpoint"))
                 }
             }
         }
@@ -165,7 +166,7 @@ class DockerVolumesApiTest : StringSpec() {
             transaction {
                 services.metadata.createVolume(vs, Volume("vol"))
             }
-            every { dockerZfsContext.deactivateVolume(any(), any(), any()) } just Runs
+            every { context.deactivateVolume(any(), any(), any()) } just Runs
             with(engine.handleRequest(HttpMethod.Post, "/VolumeDriver.Unmount") {
                 setBody("{\"Name\":\"foo/vol\"}")
             }) {
@@ -174,7 +175,7 @@ class DockerVolumesApiTest : StringSpec() {
                 response.content shouldBe "{\"Err\":\"\"}"
 
                 verify {
-                    dockerZfsContext.deactivateVolume(vs, "vol", emptyMap())
+                    context.deactivateVolume(vs, "vol", emptyMap())
                 }
             }
         }

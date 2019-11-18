@@ -31,6 +31,7 @@ import io.mockk.impl.annotations.InjectMockKs
 import io.mockk.impl.annotations.MockK
 import io.mockk.impl.annotations.OverrideMockKs
 import io.mockk.just
+import io.mockk.mockk
 import io.mockk.verify
 import io.titandata.context.docker.DockerZfsContext
 import io.titandata.exception.NoSuchObjectException
@@ -47,11 +48,11 @@ class CommitsApiTest : StringSpec() {
     lateinit var vs: String
 
     @MockK
-    lateinit var dockerZfsContext: DockerZfsContext
+    lateinit var context: DockerZfsContext
 
     @InjectMockKs
     @OverrideMockKs
-    var services = ServiceLocator("test")
+    var services = ServiceLocator(mockk())
 
     var engine = TestApplicationEngine(createTestEnvironment())
 
@@ -157,7 +158,7 @@ class CommitsApiTest : StringSpec() {
             transaction {
                 services.metadata.createCommit("foo", vs, Commit("hash"))
             }
-            every { dockerZfsContext.getCommitStatus(any(), any(), any()) } returns CommitStatus(logicalSize = 3, actualSize = 6, uniqueSize = 9)
+            every { context.getCommitStatus(any(), any(), any()) } returns CommitStatus(logicalSize = 3, actualSize = 6, uniqueSize = 9)
             with(engine.handleRequest(HttpMethod.Get, "/v1/repositories/foo/commits/hash/status")) {
                 response.status() shouldBe HttpStatusCode.OK
                 response.content shouldBe "{\"logicalSize\":3,\"actualSize\":6,\"uniqueSize\":9}"
@@ -240,7 +241,7 @@ class CommitsApiTest : StringSpec() {
         }
 
         "create commit succeeds" {
-            every { dockerZfsContext.createCommit(any(), any(), any()) } just Runs
+            every { context.createCommit(any(), any(), any()) } just Runs
             with(engine.handleRequest(HttpMethod.Post, "/v1/repositories/foo/commits") {
                 addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
                 setBody("{\"id\":\"hash\",\"properties\":{\"a\":\"b\",\"timestamp\":\"2019-04-28T23:04:06Z\"}}")
@@ -249,7 +250,7 @@ class CommitsApiTest : StringSpec() {
                 response.contentType().toString() shouldBe "application/json; charset=UTF-8"
                 response.content shouldBe "{\"id\":\"hash\",\"properties\":{\"a\":\"b\",\"timestamp\":\"2019-04-28T23:04:06Z\"}}"
                 verify {
-                    dockerZfsContext.createCommit(vs, "hash", emptyList())
+                    context.createCommit(vs, "hash", emptyList())
                 }
             }
         }
@@ -271,8 +272,8 @@ class CommitsApiTest : StringSpec() {
                 services.metadata.createCommit("foo", vs, Commit("hash"))
             }
 
-            every { dockerZfsContext.cloneVolumeSet(any(), any(), any()) } just Runs
-            every { dockerZfsContext.cloneVolume(any(), any(), any(), any()) } returns emptyMap()
+            every { context.cloneVolumeSet(any(), any(), any()) } just Runs
+            every { context.cloneVolume(any(), any(), any(), any()) } returns emptyMap()
 
             with(engine.handleRequest(HttpMethod.Post, "/v1/repositories/foo/commits/hash/checkout")) {
                 response.status() shouldBe HttpStatusCode.NoContent
@@ -281,7 +282,7 @@ class CommitsApiTest : StringSpec() {
                 }
                 activeVs shouldNotBe vs
                 verify {
-                    dockerZfsContext.cloneVolumeSet(vs, "hash", activeVs)
+                    context.cloneVolumeSet(vs, "hash", activeVs)
                 }
             }
         }

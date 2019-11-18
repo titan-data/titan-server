@@ -19,6 +19,7 @@ import org.slf4j.LoggerFactory
 abstract class EndToEndTest : StringSpec() {
 
     val dockerUtil = DockerUtil()
+    val kubernetesUtil = DockerUtil("kubernetes-csi")
     val remoteUtil = RemoteUtil()
     val url = "http://localhost:${dockerUtil.port}"
     val repoApi = RepositoriesApi(url)

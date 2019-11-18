@@ -20,6 +20,7 @@ import org.slf4j.LoggerFactory
  * over SSH.
  */
 class DockerUtil(
+    val context: String = "docker-zfs",
     val identity: String = "test",
     val port: Int = 6001,
     val image: String = "titan:latest",
@@ -41,7 +42,7 @@ class DockerUtil(
         val log = LoggerFactory.getLogger(DockerUtil::class.java)
     }
 
-    fun startTitan(entryPoint: String, daemon: Boolean): String {
+    fun runTitanDocker(entryPoint: String, daemon: Boolean): String {
         val args = mutableListOf("docker", "run", "--privileged", "--pid=host", "--network=host",
                 "-v", "/var/lib:/var/lib", "-v", "/run/docker:/run/docker")
         if (daemon) {
@@ -60,10 +61,23 @@ class DockerUtil(
         return executor.exec(*args.toTypedArray()).trim()
     }
 
+    fun runTitanKubernetes(entryPoint: String): String {
+        val home = System.getProperty("user.home")
+        val args = arrayOf("docker", "run",
+                "-d", "--restart", "always", "--name", "$identity-server",
+                "-v", "$home/.kube:/root/.kube", "-v", "$identity-data:/var/lib/$identity",
+                "-e", "TITAN_CONTEXT=kubernetes-csi", "-e", "TITAN_DATA=$identity",
+                "-p", "$port:5001", image, "/bin/bash", "/titan/$entryPoint")
+        return executor.exec(*args).trim()
+    }
+
     fun startServer() {
         executor.exec("docker", "volume", "create", "$identity-data")
-
-        startTitan("launch", true)
+        if (context == "docker-zfs") {
+            runTitanDocker("launch", true)
+        } else {
+            runTitanKubernetes("run")
+        }
     }
 
     private fun testGet(): Int {
@@ -98,13 +112,16 @@ class DockerUtil(
     }
 
     fun stopServer(ignoreExceptions: Boolean = true) {
-        try {
-            executor.exec("docker", "rm", "-f", "$identity-launch")
-        } catch (e: CommandException) {
-            if (!ignoreExceptions) {
-                throw e
+        if (context == "docker-zfs") {
+            try {
+                executor.exec("docker", "rm", "-f", "$identity-launch")
+            } catch (e: CommandException) {
+                if (!ignoreExceptions) {
+                    throw e
+                }
             }
         }
+
         try {
             executor.exec("docker", "rm", "-f", "$identity-server")
         } catch (e: CommandException) {
@@ -113,11 +130,13 @@ class DockerUtil(
             }
         }
 
-        try {
-            startTitan("teardown", false)
-        } catch (e: CommandException) {
-            if (!ignoreExceptions) {
-                throw e
+        if (context == "docker-zfs") {
+            try {
+                runTitanDocker("teardown", false)
+            } catch (e: CommandException) {
+                if (!ignoreExceptions) {
+                    throw e
+                }
             }
         }
 
@@ -132,6 +151,10 @@ class DockerUtil(
 
     fun getVolumePath(repo: String, volume: String): String {
         return volumeApi.getVolume(repo, volume).config["mountpoint"] as String
+    }
+
+    fun execServer(vararg args: String): String {
+        return executor.exec("docker", "exec", "$identity-server", *args)
     }
 
     fun writeFile(repo: String, volume: String, filename: String, content: String) {

@@ -316,13 +316,10 @@ class LocalWorkflowTest : EndToEndTest() {
             val result = operationApi.getOperation("foo", currentOp.id)
             result.state shouldBe Operation.State.COMPLETE
             val progress = operationApi.getProgress("foo", currentOp.id)
-            progress.size shouldBe 4
+            progress.size shouldBe 2
             progress[0].type shouldBe ProgressEntry.Type.MESSAGE
             progress[0].message shouldBe "Pushing id to 'b'"
-            progress[1].type shouldBe ProgressEntry.Type.START
-            progress[1].message shouldBe "Running operation"
-            progress[2].type shouldBe ProgressEntry.Type.END
-            progress[3].type shouldBe ProgressEntry.Type.COMPLETE
+            progress[1].type shouldBe ProgressEntry.Type.COMPLETE
         }
 
         "push operation no longer exists" {
@@ -363,13 +360,10 @@ class LocalWorkflowTest : EndToEndTest() {
             val result = operationApi.getOperation("foo", currentOp.id)
             result.state shouldBe Operation.State.COMPLETE
             val progress = operationApi.getProgress("foo", currentOp.id)
-            progress.size shouldBe 4
+            progress.size shouldBe 2
             progress[0].type shouldBe ProgressEntry.Type.MESSAGE
             progress[0].message shouldBe "Pulling id2 from 'b'"
-            progress[1].type shouldBe ProgressEntry.Type.START
-            progress[1].message shouldBe "Running operation"
-            progress[2].type shouldBe ProgressEntry.Type.END
-            progress[3].type shouldBe ProgressEntry.Type.COMPLETE
+            progress[1].type shouldBe ProgressEntry.Type.COMPLETE
         }
 
         "pull operation no longer exists" {
@@ -413,12 +407,10 @@ class LocalWorkflowTest : EndToEndTest() {
             val result = operationApi.getOperation("foo", currentOp.id)
             result.state shouldBe Operation.State.ABORTED
             val progress = operationApi.getProgress("foo", currentOp.id)
-            progress.size shouldBe 3
+            progress.size shouldBe 2
             progress[0].type shouldBe ProgressEntry.Type.MESSAGE
             progress[0].message shouldBe "Pushing id to 'b'"
-            progress[1].type shouldBe ProgressEntry.Type.START
-            progress[1].message shouldBe "Running operation"
-            progress[2].type shouldBe ProgressEntry.Type.ABORT
+            progress[1].type shouldBe ProgressEntry.Type.ABORT
         }
 
         "delete commit succeeds" {

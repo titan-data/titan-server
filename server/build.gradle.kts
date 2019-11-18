@@ -44,7 +44,7 @@ dependencies {
     compile("io.titandata:ssh-remote-server:0.0.7")
     compile("io.titandata:s3-remote-server:0.0.8")
     compile("io.titandata:s3web-remote-server:0.0.8")
-    compile("io.titandata:delphix-remote-server:0.0.5")
+    compile("io.titandata:delphix-remote-server:0.0.8")
 
     testCompile("com.h2database:h2:1.4.200")
     testCompile("io.ktor:ktor-server-test-host:$ktorVersion")

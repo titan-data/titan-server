@@ -61,5 +61,5 @@ dependencies {
     compile("io.titandata:ssh-remote-client:0.0.7")
     compile("io.titandata:s3-remote-client:0.0.8")
     compile("io.titandata:s3web-remote-client:0.0.8")
-    compile("io.titandata:delphix-remote-client:0.0.5")
+    compile("io.titandata:delphix-remote-client:0.0.8")
 }

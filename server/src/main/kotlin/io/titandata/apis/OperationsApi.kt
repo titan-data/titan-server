@@ -13,15 +13,15 @@ import io.ktor.routing.delete
 import io.ktor.routing.get
 import io.ktor.routing.post
 import io.ktor.routing.route
-import io.titandata.ProviderModule
+import io.titandata.ServiceLocator
 import io.titandata.models.RemoteParameters
 
-fun Route.OperationsApi(@Suppress("UNUSED_PARAMETER") providers: ProviderModule) {
+fun Route.OperationsApi(services: ServiceLocator) {
 
     route("/v1/repositories/{repositoryName}/operations") {
         get {
             val repo = call.parameters["repositoryName"] ?: throw IllegalArgumentException("missing repository name parameter")
-            call.respond(providers.operations.listOperations(repo))
+            call.respond(services.operations.listOperations(repo))
         }
     }
 
@@ -29,14 +29,14 @@ fun Route.OperationsApi(@Suppress("UNUSED_PARAMETER") providers: ProviderModule)
         delete {
             val repo = call.parameters["repositoryName"] ?: throw IllegalArgumentException("missing repository name parameter")
             val operation = call.parameters["operationId"] ?: throw IllegalArgumentException("missing operation id parameter")
-            providers.operations.abortOperation(repo, operation)
+            services.operations.abortOperation(repo, operation)
             call.respond(HttpStatusCode.NoContent)
         }
 
         get {
             val repo = call.parameters["repositoryName"] ?: throw IllegalArgumentException("missing repository name parameter")
             val operation = call.parameters["operationId"] ?: throw IllegalArgumentException("missing operation id parameter")
-            call.respond(providers.operations.getOperation(repo, operation))
+            call.respond(services.operations.getOperation(repo, operation))
         }
     }
 
@@ -44,7 +44,7 @@ fun Route.OperationsApi(@Suppress("UNUSED_PARAMETER") providers: ProviderModule)
         get {
             val repo = call.parameters["repositoryName"] ?: throw IllegalArgumentException("missing repository name parameter")
             val operation = call.parameters["operationId"] ?: throw IllegalArgumentException("missing operation id parameter")
-            call.respond(providers.operations.getProgress(repo, operation))
+            call.respond(services.operations.getProgress(repo, operation))
         }
     }
 
@@ -59,7 +59,7 @@ fun Route.OperationsApi(@Suppress("UNUSED_PARAMETER") providers: ProviderModule)
             } else {
                 false
             }
-            call.respond(providers.operations.startPull(repo, remote, commitId, params, metadataOnly))
+            call.respond(services.operations.startPull(repo, remote, commitId, params, metadataOnly))
         }
     }
 
@@ -74,7 +74,7 @@ fun Route.OperationsApi(@Suppress("UNUSED_PARAMETER") providers: ProviderModule)
             } else {
                 false
             }
-            call.respond(providers.operations.startPush(repo, remote, commitId, params, metadataOnly))
+            call.respond(services.operations.startPush(repo, remote, commitId, params, metadataOnly))
         }
     }
 }

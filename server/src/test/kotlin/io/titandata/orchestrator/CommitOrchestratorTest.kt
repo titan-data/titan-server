@@ -22,7 +22,7 @@ import io.mockk.impl.annotations.MockK
 import io.mockk.impl.annotations.OverrideMockKs
 import io.mockk.just
 import io.mockk.verify
-import io.titandata.ProviderModule
+import io.titandata.ServiceLocator
 import io.titandata.context.docker.DockerZfsContext
 import io.titandata.exception.NoSuchObjectException
 import io.titandata.exception.ObjectExistsException
@@ -43,19 +43,19 @@ class CommitOrchestratorTest : StringSpec() {
 
     @InjectMockKs
     @OverrideMockKs
-    var providers = ProviderModule("test")
+    var services = ServiceLocator("test")
 
     override fun beforeSpec(spec: Spec) {
-        providers.metadata.init()
+        services.metadata.init()
     }
 
     override fun beforeTest(testCase: TestCase) {
-        providers.metadata.clear()
+        services.metadata.clear()
         transaction {
-            providers.metadata.createRepository(Repository("foo"))
-            vs = providers.metadata.createVolumeSet("foo", null, true)
-            providers.metadata.createVolume(vs, Volume("vol1"))
-            providers.metadata.createVolume(vs, Volume("vol2"))
+            services.metadata.createRepository(Repository("foo"))
+            vs = services.metadata.createVolumeSet("foo", null, true)
+            services.metadata.createVolume(vs, Volume("vol1"))
+            services.metadata.createVolume(vs, Volume("vol2"))
         }
         val ret = MockKAnnotations.init(this)
         every { dockerZfsContext.createCommit(any(), any(), any()) } just Runs
@@ -71,33 +71,33 @@ class CommitOrchestratorTest : StringSpec() {
     init {
         "create commit with invalid name fails" {
             shouldThrow<IllegalArgumentException> {
-                providers.commits.createCommit("foo", Commit(id = "bad/commit"))
+                services.commits.createCommit("foo", Commit(id = "bad/commit"))
             }
         }
 
         "create commit with invalid repo name fails" {
             shouldThrow<IllegalArgumentException> {
-                providers.commits.createCommit("bad/repo", Commit(id = "id"))
+                services.commits.createCommit("bad/repo", Commit(id = "id"))
             }
         }
 
         "create commit with non-existent repo fails" {
             shouldThrow<NoSuchObjectException> {
-                providers.commits.createCommit("bar", Commit(id = "id"))
+                services.commits.createCommit("bar", Commit(id = "id"))
             }
         }
 
         "create duplicate commit fails" {
-            providers.commits.createCommit("foo", Commit(id = "id"))
+            services.commits.createCommit("foo", Commit(id = "id"))
             shouldThrow<ObjectExistsException> {
-                providers.commits.createCommit("foo", Commit(id = "id"))
+                services.commits.createCommit("foo", Commit(id = "id"))
             }
         }
 
         "create commit uses current active volume set" {
-            providers.commits.createCommit("foo", Commit(id = "id", properties = mapOf("a" to "b")))
+            services.commits.createCommit("foo", Commit(id = "id", properties = mapOf("a" to "b")))
             val (volumeSet, commit) = transaction {
-                providers.metadata.getCommit("foo", "id")
+                services.metadata.getCommit("foo", "id")
             }
             volumeSet shouldBe vs
             commit.id shouldBe "id"
@@ -108,59 +108,59 @@ class CommitOrchestratorTest : StringSpec() {
 
         "create commit on explicit volume set succeeds" {
             val vs2 = transaction {
-                providers.metadata.createVolumeSet("foo")
+                services.metadata.createVolumeSet("foo")
             }
-            providers.commits.createCommit("foo", Commit(id = "id", properties = mapOf("a" to "b")), vs2)
+            services.commits.createCommit("foo", Commit(id = "id", properties = mapOf("a" to "b")), vs2)
             verify {
                 dockerZfsContext.createCommit(vs2, "id", listOf())
             }
         }
 
         "create commit adds timestamp if not set" {
-            providers.commits.createCommit("foo", Commit(id = "id", properties = mapOf("a" to "b")))
+            services.commits.createCommit("foo", Commit(id = "id", properties = mapOf("a" to "b")))
             val commit = transaction {
-                providers.metadata.getCommit("foo", "id").second
+                services.metadata.getCommit("foo", "id").second
             }
             commit.properties shouldContainKey "timestamp"
         }
 
         "create commit leaves timestamp intact if specified" {
-            providers.commits.createCommit("foo", Commit(id = "id", properties = mapOf("timestamp" to "2019-09-20T13:45:38Z")))
+            services.commits.createCommit("foo", Commit(id = "id", properties = mapOf("timestamp" to "2019-09-20T13:45:38Z")))
             val commit = transaction {
-                providers.metadata.getCommit("foo", "id").second
+                services.metadata.getCommit("foo", "id").second
             }
             commit.properties["timestamp"] shouldBe "2019-09-20T13:45:38Z"
         }
 
         "get commit fails with invalid repo name" {
             shouldThrow<IllegalArgumentException> {
-                providers.commits.getCommit("bad/repo", "id")
+                services.commits.getCommit("bad/repo", "id")
             }
         }
 
         "get commit fails with invalid commit id" {
             shouldThrow<IllegalArgumentException> {
-                providers.commits.getCommit("foo", "bad/id")
+                services.commits.getCommit("foo", "bad/id")
             }
         }
 
         "get commit fails with non-existent repo" {
             shouldThrow<NoSuchObjectException> {
-                providers.commits.getCommit("bar", "id")
+                services.commits.getCommit("bar", "id")
             }
         }
 
         "get commit fails with non-existent commit" {
             shouldThrow<NoSuchObjectException> {
-                providers.commits.getCommit("foo", "nosuchid")
+                services.commits.getCommit("foo", "nosuchid")
             }
         }
 
         "list commits succeeds" {
-            providers.commits.createCommit("foo", Commit(id = "one", properties = mapOf("timestamp" to "2019-09-20T13:45:36Z")))
-            providers.commits.createCommit("foo", Commit(id = "three", properties = mapOf("timestamp" to "2019-09-20T13:45:38Z")))
-            providers.commits.createCommit("foo", Commit(id = "two", properties = mapOf("timestamp" to "2019-09-20T13:45:37Z")))
-            val commits = providers.commits.listCommits("foo")
+            services.commits.createCommit("foo", Commit(id = "one", properties = mapOf("timestamp" to "2019-09-20T13:45:36Z")))
+            services.commits.createCommit("foo", Commit(id = "three", properties = mapOf("timestamp" to "2019-09-20T13:45:38Z")))
+            services.commits.createCommit("foo", Commit(id = "two", properties = mapOf("timestamp" to "2019-09-20T13:45:37Z")))
+            val commits = services.commits.listCommits("foo")
             commits.size shouldBe 3
             commits[0].id shouldBe "three"
             commits[1].id shouldBe "two"
@@ -168,41 +168,41 @@ class CommitOrchestratorTest : StringSpec() {
         }
 
         "list commits filters via tags" {
-            providers.commits.createCommit("foo", Commit(id = "one", properties = mapOf("tags" to mapOf(
+            services.commits.createCommit("foo", Commit(id = "one", properties = mapOf("tags" to mapOf(
                     "a" to "b"
             ))))
-            providers.commits.createCommit("foo", Commit(id = "two", properties = mapOf("tags" to mapOf(
+            services.commits.createCommit("foo", Commit(id = "two", properties = mapOf("tags" to mapOf(
                     "a" to "b",
                     "c" to "d"
             ))))
-            providers.commits.createCommit("foo", Commit(id = "three", properties = mapOf("tags" to mapOf(
+            services.commits.createCommit("foo", Commit(id = "three", properties = mapOf("tags" to mapOf(
                     "a" to "c",
                     "c" to ""
             ))))
-            val commits = providers.commits.listCommits("foo", listOf("a=b", "c"))
+            val commits = services.commits.listCommits("foo", listOf("a=b", "c"))
             commits.size shouldBe 1
             commits[0].id shouldBe "two"
         }
 
         "list commits fails with invalid repo name" {
             shouldThrow<IllegalArgumentException> {
-                providers.commits.listCommits("bad/repo")
+                services.commits.listCommits("bad/repo")
             }
         }
 
         "list commits fails with non-existent repo" {
             shouldThrow<NoSuchObjectException> {
-                providers.commits.listCommits("bar")
+                services.commits.listCommits("bar")
             }
         }
 
         "delete commits succeeds" {
             every { reaper.signal() } just Runs
-            providers.commits.createCommit("foo", Commit(id = "id"))
-            providers.commits.deleteCommit("foo", "id")
+            services.commits.createCommit("foo", Commit(id = "id"))
+            services.commits.deleteCommit("foo", "id")
 
             shouldThrow<NoSuchObjectException> {
-                providers.commits.getCommit("foo", "id")
+                services.commits.getCommit("foo", "id")
             }
 
             verify {
@@ -212,25 +212,25 @@ class CommitOrchestratorTest : StringSpec() {
 
         "delete commit fails with invalid repo name" {
             shouldThrow<IllegalArgumentException> {
-                providers.commits.deleteCommit("bad/repo", "id")
+                services.commits.deleteCommit("bad/repo", "id")
             }
         }
 
         "delete commit fails with invalid commit id" {
             shouldThrow<IllegalArgumentException> {
-                providers.commits.deleteCommit("foo", "bad/id")
+                services.commits.deleteCommit("foo", "bad/id")
             }
         }
 
         "delete commit fails with non-existent repo" {
             shouldThrow<NoSuchObjectException> {
-                providers.commits.deleteCommit("bar", "id")
+                services.commits.deleteCommit("bar", "id")
             }
         }
 
         "delete commit fails with non-existent commit" {
             shouldThrow<NoSuchObjectException> {
-                providers.commits.getCommit("foo", "nosuchid")
+                services.commits.getCommit("foo", "nosuchid")
             }
         }
 
@@ -239,16 +239,16 @@ class CommitOrchestratorTest : StringSpec() {
             every { dockerZfsContext.cloneVolume(any(), any(), any(), any()) } returns emptyMap()
             every { dockerZfsContext.createVolume(any(), any()) } returns emptyMap()
             every { reaper.signal() } just Runs
-            providers.commits.createCommit("foo", Commit("id"))
-            providers.commits.checkoutCommit("foo", "id")
+            services.commits.createCommit("foo", Commit("id"))
+            services.commits.checkoutCommit("foo", "id")
 
             val vs2 = transaction {
-                providers.metadata.getActiveVolumeSet("foo")
+                services.metadata.getActiveVolumeSet("foo")
             }
             vs2 shouldNotBe vs
 
             val volumes = transaction {
-                providers.metadata.listVolumes(vs2)
+                services.metadata.listVolumes(vs2)
             }
             volumes.size shouldBe 2
 
@@ -262,57 +262,57 @@ class CommitOrchestratorTest : StringSpec() {
 
         "checkout commit fails with invalid repo name" {
             shouldThrow<IllegalArgumentException> {
-                providers.commits.checkoutCommit("bad/repo", "id")
+                services.commits.checkoutCommit("bad/repo", "id")
             }
         }
 
         "checkout commit fails with invalid commit id" {
             shouldThrow<IllegalArgumentException> {
-                providers.commits.checkoutCommit("foo", "bad/id")
+                services.commits.checkoutCommit("foo", "bad/id")
             }
         }
 
         "checkout commit fails with non-existent repo" {
             shouldThrow<NoSuchObjectException> {
-                providers.commits.checkoutCommit("bar", "id")
+                services.commits.checkoutCommit("bar", "id")
             }
         }
 
         "checkout commit fails with non-existent commit" {
             shouldThrow<NoSuchObjectException> {
-                providers.commits.checkoutCommit("foo", "nosuchid")
+                services.commits.checkoutCommit("foo", "nosuchid")
             }
         }
 
         "update commit succeeds" {
-            val orig = providers.commits.createCommit("foo", Commit(id = "id", properties = mapOf("a" to "b")))
-            providers.commits.updateCommit("foo", Commit(id = "id", properties = mapOf("timestamp" to orig.properties["timestamp"] as String,
+            val orig = services.commits.createCommit("foo", Commit(id = "id", properties = mapOf("a" to "b")))
+            services.commits.updateCommit("foo", Commit(id = "id", properties = mapOf("timestamp" to orig.properties["timestamp"] as String,
                     "a" to "c")))
-            val commit = providers.commits.getCommit("foo", "id")
+            val commit = services.commits.getCommit("foo", "id")
             commit.properties["a"] shouldBe "c"
         }
 
         "update commit fails with invalid repo name" {
             shouldThrow<IllegalArgumentException> {
-                providers.commits.updateCommit("bad/repo", Commit(id = "id"))
+                services.commits.updateCommit("bad/repo", Commit(id = "id"))
             }
         }
 
         "update commit fails with invalid commit id" {
             shouldThrow<IllegalArgumentException> {
-                providers.commits.updateCommit("foo", Commit(id = "bad/id"))
+                services.commits.updateCommit("foo", Commit(id = "bad/id"))
             }
         }
 
         "update commit fails with non-existent repo" {
             shouldThrow<NoSuchObjectException> {
-                providers.commits.updateCommit("bar", Commit(id = "id"))
+                services.commits.updateCommit("bar", Commit(id = "id"))
             }
         }
 
         "update commit fails with non-existent commit" {
             shouldThrow<NoSuchObjectException> {
-                providers.commits.updateCommit("foo", Commit(id = "nosuchid"))
+                services.commits.updateCommit("foo", Commit(id = "nosuchid"))
             }
         }
     }

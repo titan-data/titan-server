@@ -45,15 +45,15 @@ class DockerVolumesApiTest : StringSpec() {
 
     @InjectMockKs
     @OverrideMockKs
-    var providers = ProviderModule("test")
+    var services = ServiceLocator("test")
 
     var engine = TestApplicationEngine(createTestEnvironment())
 
     override fun beforeSpec(spec: Spec) {
         with(engine) {
             start()
-            providers.metadata.init()
-            application.mainProvider(providers)
+            services.metadata.init()
+            application.mainProvider(services)
         }
     }
 
@@ -62,10 +62,10 @@ class DockerVolumesApiTest : StringSpec() {
     }
 
     override fun beforeTest(testCase: TestCase) {
-        providers.metadata.clear()
+        services.metadata.clear()
         vs = transaction {
-            providers.metadata.createRepository(Repository(name = "foo", properties = emptyMap()))
-            providers.metadata.createVolumeSet("foo", null, true)
+            services.metadata.createRepository(Repository(name = "foo", properties = emptyMap()))
+            services.metadata.createVolumeSet("foo", null, true)
         }
         return MockKAnnotations.init(this)
     }
@@ -132,7 +132,7 @@ class DockerVolumesApiTest : StringSpec() {
 
         "remove volume succeeds" {
             transaction {
-                providers.metadata.createVolume(vs, Volume("vol"))
+                services.metadata.createVolume(vs, Volume("vol"))
             }
             with(engine.handleRequest(HttpMethod.Post, "/VolumeDriver.Remove") {
                 setBody("{\"Name\":\"foo/vol\"}")
@@ -145,7 +145,7 @@ class DockerVolumesApiTest : StringSpec() {
 
         "mount volume succeeds" {
             transaction {
-                providers.metadata.createVolume(vs, Volume(name = "vol", config = mapOf("mountpoint" to "/mountpoint")))
+                services.metadata.createVolume(vs, Volume(name = "vol", config = mapOf("mountpoint" to "/mountpoint")))
             }
             every { dockerZfsContext.activateVolume(any(), any(), any()) } just Runs
             with(engine.handleRequest(HttpMethod.Post, "/VolumeDriver.Mount") {
@@ -163,7 +163,7 @@ class DockerVolumesApiTest : StringSpec() {
 
         "unmount volume succeeds" {
             transaction {
-                providers.metadata.createVolume(vs, Volume("vol"))
+                services.metadata.createVolume(vs, Volume("vol"))
             }
             every { dockerZfsContext.deactivateVolume(any(), any(), any()) } just Runs
             with(engine.handleRequest(HttpMethod.Post, "/VolumeDriver.Unmount") {
@@ -181,7 +181,7 @@ class DockerVolumesApiTest : StringSpec() {
 
         "get path succeeds" {
             transaction {
-                providers.metadata.createVolume(vs, Volume(name = "vol", config = mapOf("mountpoint" to "/mountpoint")))
+                services.metadata.createVolume(vs, Volume(name = "vol", config = mapOf("mountpoint" to "/mountpoint")))
             }
             with(engine.handleRequest(HttpMethod.Post, "/VolumeDriver.Path") {
                 setBody("{\"Name\":\"foo/vol\"}")
@@ -194,7 +194,7 @@ class DockerVolumesApiTest : StringSpec() {
 
         "get volume succeeds" {
             transaction {
-                providers.metadata.createVolume(vs, Volume(name = "vol", properties = mapOf("a" to "b"), config = mapOf("mountpoint" to "/mountpoint")))
+                services.metadata.createVolume(vs, Volume(name = "vol", properties = mapOf("a" to "b"), config = mapOf("mountpoint" to "/mountpoint")))
             }
             with(engine.handleRequest(HttpMethod.Post, "/VolumeDriver.Get") {
                 setBody("{\"Name\":\"foo/vol\"}")
@@ -213,8 +213,8 @@ class DockerVolumesApiTest : StringSpec() {
 
         "list volumes succeeds" {
             transaction {
-                providers.metadata.createVolume(vs, Volume(name = "one", properties = mapOf("a" to "b"), config = mapOf("mountpoint" to "/mountpoint")))
-                providers.metadata.createVolume(vs, Volume(name = "two", properties = mapOf("c" to "d"), config = mapOf("mountpoint" to "/mountpoint")))
+                services.metadata.createVolume(vs, Volume(name = "one", properties = mapOf("a" to "b"), config = mapOf("mountpoint" to "/mountpoint")))
+                services.metadata.createVolume(vs, Volume(name = "two", properties = mapOf("c" to "d"), config = mapOf("mountpoint" to "/mountpoint")))
             }
 
             with(engine.handleRequest(HttpMethod.Post, "/VolumeDriver.List")) {

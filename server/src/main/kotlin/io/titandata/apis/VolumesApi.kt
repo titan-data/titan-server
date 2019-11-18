@@ -14,10 +14,10 @@ import io.ktor.routing.delete
 import io.ktor.routing.get
 import io.ktor.routing.post
 import io.ktor.routing.route
-import io.titandata.ProviderModule
+import io.titandata.ServiceLocator
 import io.titandata.models.Volume
 
-fun Route.VolumesApi(providers: ProviderModule) {
+fun Route.VolumesApi(services: ServiceLocator) {
 
     fun getRepoName(call: ApplicationCall): String {
         return call.parameters["repositoryName"] ?: throw IllegalArgumentException("missing repositoryName parameter")
@@ -29,13 +29,13 @@ fun Route.VolumesApi(providers: ProviderModule) {
 
     route("/v1/repositories/{repositoryName}/volumes") {
         get {
-            call.respond(providers.volumes.listVolumes(getRepoName(call)))
+            call.respond(services.volumes.listVolumes(getRepoName(call)))
         }
 
         post {
             val repo = getRepoName(call)
             val volume = call.receive(Volume::class)
-            val result = providers.volumes.createVolume(repo, volume)
+            val result = services.volumes.createVolume(repo, volume)
             call.respond(HttpStatusCode.Created, result)
         }
     }
@@ -44,13 +44,13 @@ fun Route.VolumesApi(providers: ProviderModule) {
         get {
             val repo = getRepoName(call)
             val volumeName = getVolumeName(call)
-            call.respond(providers.volumes.getVolume(repo, volumeName))
+            call.respond(services.volumes.getVolume(repo, volumeName))
         }
 
         delete {
             val repo = getRepoName(call)
             val volumeName = getVolumeName(call)
-            providers.volumes.deleteVolume(repo, volumeName)
+            services.volumes.deleteVolume(repo, volumeName)
             call.respond(HttpStatusCode.NoContent)
         }
     }
@@ -59,7 +59,7 @@ fun Route.VolumesApi(providers: ProviderModule) {
         post {
             val repo = getRepoName(call)
             val volumeName = getVolumeName(call)
-            providers.volumes.activateVolume(repo, volumeName)
+            services.volumes.activateVolume(repo, volumeName)
             call.respond(HttpStatusCode.OK)
         }
     }
@@ -68,7 +68,7 @@ fun Route.VolumesApi(providers: ProviderModule) {
         post {
             val repo = getRepoName(call)
             val volumeName = getVolumeName(call)
-            providers.volumes.deactivateVolume(repo, volumeName)
+            services.volumes.deactivateVolume(repo, volumeName)
             call.respond(HttpStatusCode.OK)
         }
     }

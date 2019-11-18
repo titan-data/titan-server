@@ -14,7 +14,7 @@ import io.ktor.routing.delete
 import io.ktor.routing.get
 import io.ktor.routing.post
 import io.ktor.routing.route
-import io.titandata.ProviderModule
+import io.titandata.ServiceLocator
 import io.titandata.models.Remote
 import io.titandata.models.RemoteParameters
 
@@ -25,7 +25,7 @@ import io.titandata.models.RemoteParameters
  * complexity of managing different remotes by name down to the storage provider is not really
  * worth it.
  */
-fun Route.RemotesApi(providers: ProviderModule) {
+fun Route.RemotesApi(services: ServiceLocator) {
 
     fun getRepoName(call: ApplicationCall): String {
         return call.parameters["repositoryName"] ?: throw IllegalArgumentException("missing repositoryName parameter")
@@ -41,13 +41,13 @@ fun Route.RemotesApi(providers: ProviderModule) {
 
     route("/v1/repositories/{repositoryName}/remotes") {
         get {
-            call.respond(providers.remotes.listRemotes(getRepoName(call)))
+            call.respond(services.remotes.listRemotes(getRepoName(call)))
         }
 
         post {
             val repo = getRepoName(call)
             val remote = call.receive(Remote::class)
-            providers.remotes.addRemote(repo, remote)
+            services.remotes.addRemote(repo, remote)
             call.respond(HttpStatusCode.Created, remote)
         }
     }
@@ -56,13 +56,13 @@ fun Route.RemotesApi(providers: ProviderModule) {
         get {
             val repo = getRepoName(call)
             val remoteName = getRemoteName(call)
-            call.respond(providers.remotes.getRemote(repo, remoteName))
+            call.respond(services.remotes.getRemote(repo, remoteName))
         }
 
         delete {
             val repo = getRepoName(call)
             val remoteName = getRemoteName(call)
-            providers.remotes.removeRemote(repo, remoteName)
+            services.remotes.removeRemote(repo, remoteName)
             call.respond(HttpStatusCode.NoContent)
         }
 
@@ -70,7 +70,7 @@ fun Route.RemotesApi(providers: ProviderModule) {
             val repo = getRepoName(call)
             val remoteName = getRemoteName(call)
             val remote = call.receive(Remote::class)
-            providers.remotes.updateRemote(repo, remoteName, remote)
+            services.remotes.updateRemote(repo, remoteName, remote)
             call.respond(remote)
         }
     }
@@ -79,10 +79,10 @@ fun Route.RemotesApi(providers: ProviderModule) {
         get {
             val repo = getRepoName(call)
             val remoteName = getRemoteName(call)
-            val params = providers.gson.fromJson(call.request.headers["titan-remote-parameters"],
+            val params = services.gson.fromJson(call.request.headers["titan-remote-parameters"],
                     RemoteParameters::class.java)
             val tags = call.request.queryParameters.getAll("tag")
-            call.respond(providers.remotes.listRemoteCommits(repo, remoteName, params, tags))
+            call.respond(services.remotes.listRemoteCommits(repo, remoteName, params, tags))
         }
     }
 
@@ -91,9 +91,9 @@ fun Route.RemotesApi(providers: ProviderModule) {
             val repo = getRepoName(call)
             val remoteName = getRemoteName(call)
             val commitId = getCommitId(call)
-            val params = providers.gson.fromJson(call.request.headers["titan-remote-parameters"],
+            val params = services.gson.fromJson(call.request.headers["titan-remote-parameters"],
                     RemoteParameters::class.java)
-            call.respond(providers.remotes.getRemoteCommit(repo, remoteName, params, commitId))
+            call.respond(services.remotes.getRemoteCommit(repo, remoteName, params, commitId))
         }
     }
 }

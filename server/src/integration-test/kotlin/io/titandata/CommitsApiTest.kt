@@ -51,15 +51,15 @@ class CommitsApiTest : StringSpec() {
 
     @InjectMockKs
     @OverrideMockKs
-    var providers = ProviderModule("test")
+    var services = ServiceLocator("test")
 
     var engine = TestApplicationEngine(createTestEnvironment())
 
     override fun beforeSpec(spec: Spec) {
         with(engine) {
             start()
-            providers.metadata.init()
-            application.mainProvider(providers)
+            services.metadata.init()
+            application.mainProvider(services)
         }
     }
 
@@ -68,10 +68,10 @@ class CommitsApiTest : StringSpec() {
     }
 
     override fun beforeTest(testCase: TestCase) {
-        providers.metadata.clear()
+        services.metadata.clear()
         vs = transaction {
-            providers.metadata.createRepository(Repository("foo"))
-            providers.metadata.createVolumeSet("foo", null, true)
+            services.metadata.createRepository(Repository("foo"))
+            services.metadata.createVolumeSet("foo", null, true)
         }
         return MockKAnnotations.init(this)
     }
@@ -93,8 +93,8 @@ class CommitsApiTest : StringSpec() {
 
         "list commits succeeds" {
             transaction {
-                providers.metadata.createCommit("foo", vs, Commit(id = "hash1", properties = mapOf("a" to "b", "timestamp" to "2019-09-20T13:45:38Z")))
-                providers.metadata.createCommit("foo", vs, Commit(id = "hash2", properties = mapOf("c" to "d", "timestamp" to "2019-09-20T13:45:37Z")))
+                services.metadata.createCommit("foo", vs, Commit(id = "hash1", properties = mapOf("a" to "b", "timestamp" to "2019-09-20T13:45:38Z")))
+                services.metadata.createCommit("foo", vs, Commit(id = "hash2", properties = mapOf("c" to "d", "timestamp" to "2019-09-20T13:45:37Z")))
             }
             with(engine.handleRequest(HttpMethod.Get, "/v1/repositories/foo/commits")) {
                 response.status() shouldBe HttpStatusCode.OK
@@ -103,8 +103,8 @@ class CommitsApiTest : StringSpec() {
         }
         "list commits filters result with exact match" {
             transaction {
-                providers.metadata.createCommit("foo", vs, Commit(id = "hash1", properties = mapOf("tags" to mapOf("a" to "b"))))
-                providers.metadata.createCommit("foo", vs, Commit(id = "hash2", properties = mapOf("tags" to mapOf("c" to "d"))))
+                services.metadata.createCommit("foo", vs, Commit(id = "hash1", properties = mapOf("tags" to mapOf("a" to "b"))))
+                services.metadata.createCommit("foo", vs, Commit(id = "hash2", properties = mapOf("tags" to mapOf("c" to "d"))))
             }
             with(engine.handleRequest(HttpMethod.Get, "/v1/repositories/foo/commits?tag=a=b")) {
                 response.status() shouldBe HttpStatusCode.OK
@@ -114,8 +114,8 @@ class CommitsApiTest : StringSpec() {
 
         "list commits filters result with exists match" {
             transaction {
-                providers.metadata.createCommit("foo", vs, Commit(id = "hash1", properties = mapOf("tags" to mapOf("a" to "b"))))
-                providers.metadata.createCommit("foo", vs, Commit(id = "hash2", properties = mapOf("tags" to mapOf("c" to "d"))))
+                services.metadata.createCommit("foo", vs, Commit(id = "hash1", properties = mapOf("tags" to mapOf("a" to "b"))))
+                services.metadata.createCommit("foo", vs, Commit(id = "hash2", properties = mapOf("tags" to mapOf("c" to "d"))))
             }
             with(engine.handleRequest(HttpMethod.Get, "/v1/repositories/foo/commits?tag=a")) {
                 response.status() shouldBe HttpStatusCode.OK
@@ -125,8 +125,8 @@ class CommitsApiTest : StringSpec() {
 
         "list commits filters result with compound match" {
             transaction {
-                providers.metadata.createCommit("foo", vs, Commit(id = "hash1", properties = mapOf("tags" to mapOf("a" to "b", "c" to "d"))))
-                providers.metadata.createCommit("foo", vs, Commit(id = "hash2", properties = mapOf("tags" to mapOf("c" to "d"))))
+                services.metadata.createCommit("foo", vs, Commit(id = "hash1", properties = mapOf("tags" to mapOf("a" to "b", "c" to "d"))))
+                services.metadata.createCommit("foo", vs, Commit(id = "hash2", properties = mapOf("tags" to mapOf("c" to "d"))))
             }
             with(engine.handleRequest(HttpMethod.Get, "/v1/repositories/foo/commits?tag=a=b&tag=c=d")) {
                 response.status() shouldBe HttpStatusCode.OK
@@ -145,7 +145,7 @@ class CommitsApiTest : StringSpec() {
 
         "get commit succeeds" {
             transaction {
-                providers.metadata.createCommit("foo", vs, Commit(id = "hash", properties = mapOf("a" to "b")))
+                services.metadata.createCommit("foo", vs, Commit(id = "hash", properties = mapOf("a" to "b")))
             }
             with(engine.handleRequest(HttpMethod.Get, "/v1/repositories/foo/commits/hash")) {
                 response.status() shouldBe HttpStatusCode.OK
@@ -155,7 +155,7 @@ class CommitsApiTest : StringSpec() {
 
         "get commit status succeeds" {
             transaction {
-                providers.metadata.createCommit("foo", vs, Commit("hash"))
+                services.metadata.createCommit("foo", vs, Commit("hash"))
             }
             every { dockerZfsContext.getCommitStatus(any(), any(), any()) } returns CommitStatus(logicalSize = 3, actualSize = 6, uniqueSize = 9)
             with(engine.handleRequest(HttpMethod.Get, "/v1/repositories/foo/commits/hash/status")) {
@@ -193,7 +193,7 @@ class CommitsApiTest : StringSpec() {
 
         "update commit succeeds" {
             transaction {
-                providers.metadata.createCommit("foo", vs, Commit("hash"))
+                services.metadata.createCommit("foo", vs, Commit("hash"))
             }
             with(engine.handleRequest(HttpMethod.Post, "/v1/repositories/foo/commits/hash") {
                 addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
@@ -201,7 +201,7 @@ class CommitsApiTest : StringSpec() {
             }) {
                 response.status() shouldBe HttpStatusCode.OK
                 transaction {
-                    val commit = providers.metadata.getCommit("foo", "hash").second
+                    val commit = services.metadata.getCommit("foo", "hash").second
                     commit.properties["a"] shouldBe "b"
                 }
             }
@@ -209,13 +209,13 @@ class CommitsApiTest : StringSpec() {
 
         "delete commit succeeds" {
             transaction {
-                providers.metadata.createCommit("foo", vs, Commit("hash"))
+                services.metadata.createCommit("foo", vs, Commit("hash"))
             }
             with(engine.handleRequest(HttpMethod.Delete, "/v1/repositories/foo/commits/hash")) {
                 response.status() shouldBe HttpStatusCode.NoContent
                 shouldThrow<NoSuchObjectException> {
                     transaction {
-                        providers.metadata.getCommit("foo", "hash")
+                        services.metadata.getCommit("foo", "hash")
                     }
                 }
             }
@@ -268,7 +268,7 @@ class CommitsApiTest : StringSpec() {
 
         "checkout commit succeeds" {
             transaction {
-                providers.metadata.createCommit("foo", vs, Commit("hash"))
+                services.metadata.createCommit("foo", vs, Commit("hash"))
             }
 
             every { dockerZfsContext.cloneVolumeSet(any(), any(), any()) } just Runs
@@ -277,7 +277,7 @@ class CommitsApiTest : StringSpec() {
             with(engine.handleRequest(HttpMethod.Post, "/v1/repositories/foo/commits/hash/checkout")) {
                 response.status() shouldBe HttpStatusCode.NoContent
                 val activeVs = transaction {
-                    providers.metadata.getActiveVolumeSet("foo")
+                    services.metadata.getActiveVolumeSet("foo")
                 }
                 activeVs shouldNotBe vs
                 verify {

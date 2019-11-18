@@ -1,73 +1,73 @@
 package io.titandata.orchestrator
 
-import io.titandata.ProviderModule
+import io.titandata.ServiceLocator
 import io.titandata.models.Volume
 import org.jetbrains.exposed.sql.transactions.transaction
 
-class VolumeOrchestrator(val providers: ProviderModule) {
+class VolumeOrchestrator(val services: ServiceLocator) {
 
     fun createVolume(repo: String, volume: Volume): Volume {
         NameUtil.validateVolumeName(volume.name)
-        providers.repositories.getRepository(repo)
+        services.repositories.getRepository(repo)
 
         val vs = transaction {
-            val vs = providers.metadata.getActiveVolumeSet(repo)
-            providers.metadata.createVolume(vs, volume)
+            val vs = services.metadata.getActiveVolumeSet(repo)
+            services.metadata.createVolume(vs, volume)
             vs
         }
-        val config = providers.context.createVolume(vs, volume.name)
+        val config = services.context.createVolume(vs, volume.name)
         return transaction {
-            providers.metadata.updateVolumeConfig(vs, volume.name, config)
-            providers.metadata.getVolume(vs, volume.name)
+            services.metadata.updateVolumeConfig(vs, volume.name, config)
+            services.metadata.getVolume(vs, volume.name)
         }
     }
 
     fun deleteVolume(repo: String, name: String) {
         NameUtil.validateVolumeName(name)
-        providers.repositories.getRepository(repo)
+        services.repositories.getRepository(repo)
 
         transaction {
-            val vs = providers.metadata.getActiveVolumeSet(repo)
-            providers.metadata.markVolumeDeleting(vs, name)
+            val vs = services.metadata.getActiveVolumeSet(repo)
+            services.metadata.markVolumeDeleting(vs, name)
         }
-        providers.reaper.signal()
+        services.reaper.signal()
     }
 
     fun getVolume(repo: String, name: String): Volume {
         NameUtil.validateVolumeName(name)
-        providers.repositories.getRepository(repo)
+        services.repositories.getRepository(repo)
 
         return transaction {
-            val vs = providers.metadata.getActiveVolumeSet(repo)
-            providers.metadata.getVolume(vs, name)
+            val vs = services.metadata.getActiveVolumeSet(repo)
+            services.metadata.getVolume(vs, name)
         }
     }
 
     fun activateVolume(repo: String, name: String) {
         NameUtil.validateVolumeName(name)
-        providers.repositories.getRepository(repo)
+        services.repositories.getRepository(repo)
 
         val (vs, volume) = transaction {
-            val vs = providers.metadata.getActiveVolumeSet(repo)
-            Pair(vs, providers.metadata.getVolume(vs, name))
+            val vs = services.metadata.getActiveVolumeSet(repo)
+            Pair(vs, services.metadata.getVolume(vs, name))
         }
-        providers.context.activateVolume(vs, name, volume.config)
+        services.context.activateVolume(vs, name, volume.config)
     }
 
     fun deactivateVolume(repo: String, name: String) {
         NameUtil.validateVolumeName(name)
-        providers.repositories.getRepository(repo)
+        services.repositories.getRepository(repo)
         val (vs, volume) = transaction {
-            val vs = providers.metadata.getActiveVolumeSet(repo)
-            Pair(vs, providers.metadata.getVolume(vs, name))
+            val vs = services.metadata.getActiveVolumeSet(repo)
+            Pair(vs, services.metadata.getVolume(vs, name))
         }
-        providers.context.deactivateVolume(vs, name, volume.config)
+        services.context.deactivateVolume(vs, name, volume.config)
     }
 
     fun listVolumes(repo: String): List<Volume> {
         return transaction {
-            val vs = providers.metadata.getActiveVolumeSet(repo)
-            providers.metadata.listVolumes(vs)
+            val vs = services.metadata.getActiveVolumeSet(repo)
+            services.metadata.listVolumes(vs)
         }
     }
 }

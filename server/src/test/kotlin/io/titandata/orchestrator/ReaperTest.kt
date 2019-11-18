@@ -22,7 +22,7 @@ import io.mockk.impl.annotations.MockK
 import io.mockk.impl.annotations.OverrideMockKs
 import io.mockk.just
 import io.mockk.verify
-import io.titandata.ProviderModule
+import io.titandata.ServiceLocator
 import io.titandata.context.docker.DockerZfsContext
 import io.titandata.exception.NoSuchObjectException
 import io.titandata.metadata.OperationData
@@ -40,14 +40,14 @@ class ReaperTest : StringSpec() {
 
     @InjectMockKs
     @OverrideMockKs
-    var providers = ProviderModule("test")
+    var services = ServiceLocator("test")
 
     override fun beforeSpec(spec: Spec) {
-        providers.metadata.init()
+        services.metadata.init()
     }
 
     override fun beforeTest(testCase: TestCase) {
-        providers.metadata.clear()
+        services.metadata.clear()
         return MockKAnnotations.init(this)
     }
 
@@ -59,76 +59,76 @@ class ReaperTest : StringSpec() {
 
     init {
         "delete volumes does nothing with no volumes" {
-            providers.reaper.reapVolumes() shouldBe false
+            services.reaper.reapVolumes() shouldBe false
         }
 
         "delete volumes does nothing with no deleting volumes" {
             val vs = transaction {
-                providers.metadata.createRepository(Repository("foo"))
-                val vs = providers.metadata.createVolumeSet("foo")
-                providers.metadata.createVolume(vs, Volume("volume"))
+                services.metadata.createRepository(Repository("foo"))
+                val vs = services.metadata.createVolumeSet("foo")
+                services.metadata.createVolume(vs, Volume("volume"))
                 vs
             }
-            providers.reaper.reapVolumes() shouldBe false
+            services.reaper.reapVolumes() shouldBe false
             transaction {
-                providers.metadata.getVolume(vs, "volume")
+                services.metadata.getVolume(vs, "volume")
             }
         }
 
         "delete volumes deletes marked volumes" {
             val vs = transaction {
-                providers.metadata.createRepository(Repository("foo"))
-                val vs = providers.metadata.createVolumeSet("foo")
-                providers.metadata.createVolume(vs, Volume("volume"))
-                providers.metadata.markVolumeDeleting(vs, "volume")
+                services.metadata.createRepository(Repository("foo"))
+                val vs = services.metadata.createVolumeSet("foo")
+                services.metadata.createVolume(vs, Volume("volume"))
+                services.metadata.markVolumeDeleting(vs, "volume")
                 vs
             }
             every { dockerZfsContext.deleteVolume(any(), any(), any()) } just Runs
-            providers.reaper.reapVolumes() shouldBe true
+            services.reaper.reapVolumes() shouldBe true
             verify {
                 dockerZfsContext.deleteVolume(vs, "volume", emptyMap())
             }
             shouldThrow<NoSuchObjectException> {
                 transaction {
-                    providers.metadata.getVolume(vs, "volume")
+                    services.metadata.getVolume(vs, "volume")
                 }
             }
         }
 
         "delete empty volume sets does nothing with no volume sets" {
-            providers.reaper.reapVolumeSets() shouldBe false
+            services.reaper.reapVolumeSets() shouldBe false
         }
 
         "delete empty volume sets does nothing with inactive volume sets" {
             transaction {
-                providers.metadata.createRepository(Repository("foo"))
-                providers.metadata.createVolumeSet("foo")
+                services.metadata.createRepository(Repository("foo"))
+                services.metadata.createVolumeSet("foo")
             }
-            providers.reaper.reapVolumeSets() shouldBe false
+            services.reaper.reapVolumeSets() shouldBe false
         }
 
         "delete empty volume set does nothing while commits still exist" {
             transaction {
-                providers.metadata.createRepository(Repository("foo"))
-                val vs = providers.metadata.createVolumeSet("foo")
-                providers.metadata.createCommit("foo", vs, Commit("id"))
-                providers.metadata.markVolumeSetDeleting(vs)
+                services.metadata.createRepository(Repository("foo"))
+                val vs = services.metadata.createVolumeSet("foo")
+                services.metadata.createCommit("foo", vs, Commit("id"))
+                services.metadata.markVolumeSetDeleting(vs)
             }
-            providers.reaper.reapVolumeSets() shouldBe false
+            services.reaper.reapVolumeSets() shouldBe false
         }
 
         "delete empty volume succeeds with no commits" {
             val vs = transaction {
-                providers.metadata.createRepository(Repository("foo"))
-                val vs = providers.metadata.createVolumeSet("foo")
-                providers.metadata.createVolume(vs, Volume("volume"))
-                providers.metadata.markVolumeSetDeleting(vs)
+                services.metadata.createRepository(Repository("foo"))
+                val vs = services.metadata.createVolumeSet("foo")
+                services.metadata.createVolume(vs, Volume("volume"))
+                services.metadata.markVolumeSetDeleting(vs)
                 vs
             }
             every { dockerZfsContext.deleteVolume(any(), any(), any()) } just Runs
             every { dockerZfsContext.deleteVolumeSet(any()) } just Runs
 
-            providers.reaper.reapVolumeSets() shouldBe true
+            services.reaper.reapVolumeSets() shouldBe true
 
             verify {
                 dockerZfsContext.deleteVolume(vs, "volume", emptyMap())
@@ -136,28 +136,28 @@ class ReaperTest : StringSpec() {
             }
 
             transaction {
-                providers.metadata.listDeletingVolumes().shouldBeEmpty()
-                providers.metadata.listDeletingVolumeSets().shouldBeEmpty()
+                services.metadata.listDeletingVolumes().shouldBeEmpty()
+                services.metadata.listDeletingVolumeSets().shouldBeEmpty()
             }
         }
 
         "mark empty volume sets ignores volume sets with commits" {
             transaction {
-                providers.metadata.createRepository(Repository("foo"))
-                val vs = providers.metadata.createVolumeSet("foo")
-                providers.metadata.createCommit("foo", vs, Commit("id"))
+                services.metadata.createRepository(Repository("foo"))
+                val vs = services.metadata.createVolumeSet("foo")
+                services.metadata.createCommit("foo", vs, Commit("id"))
             }
-            providers.reaper.markEmptyVolumeSets()
+            services.reaper.markEmptyVolumeSets()
             transaction {
-                providers.metadata.listDeletingVolumeSets().shouldBeEmpty()
+                services.metadata.listDeletingVolumeSets().shouldBeEmpty()
             }
         }
 
         "mark empty volume sets ignores volume sets with operations" {
             transaction {
-                providers.metadata.createRepository(Repository("foo"))
-                val vs = providers.metadata.createVolumeSet("foo")
-                providers.metadata.createOperation("foo", vs, OperationData(
+                services.metadata.createRepository(Repository("foo"))
+                val vs = services.metadata.createVolumeSet("foo")
+                services.metadata.createOperation("foo", vs, OperationData(
                         operation = Operation(
                                 id = vs,
                                 type = Operation.Type.PUSH,
@@ -169,79 +169,79 @@ class ReaperTest : StringSpec() {
                         metadataOnly = false
                 ))
             }
-            providers.reaper.markEmptyVolumeSets()
+            services.reaper.markEmptyVolumeSets()
             transaction {
-                providers.metadata.listDeletingVolumeSets().shouldBeEmpty()
+                services.metadata.listDeletingVolumeSets().shouldBeEmpty()
             }
         }
 
         "mark empty volume sets ignores active volume sets" {
             transaction {
-                providers.metadata.createRepository(Repository("foo"))
-                providers.metadata.createVolumeSet("foo", null, true)
+                services.metadata.createRepository(Repository("foo"))
+                services.metadata.createVolumeSet("foo", null, true)
             }
-            providers.reaper.markEmptyVolumeSets()
+            services.reaper.markEmptyVolumeSets()
             transaction {
-                providers.metadata.listDeletingVolumeSets().shouldBeEmpty()
+                services.metadata.listDeletingVolumeSets().shouldBeEmpty()
             }
         }
 
         "mark empty volume sets succeeds" {
             val vs = transaction {
-                providers.metadata.createRepository(Repository("foo"))
-                providers.metadata.createVolumeSet("foo")
+                services.metadata.createRepository(Repository("foo"))
+                services.metadata.createVolumeSet("foo")
             }
-            providers.reaper.markEmptyVolumeSets()
+            services.reaper.markEmptyVolumeSets()
             transaction {
-                val volumeSets = providers.metadata.listDeletingVolumeSets()
+                val volumeSets = services.metadata.listDeletingVolumeSets()
                 volumeSets.size shouldBe 1
                 volumeSets[0] shouldBe vs
             }
         }
 
         "reap commits does nothing with no commits" {
-            providers.reaper.reapCommits() shouldBe false
+            services.reaper.reapCommits() shouldBe false
         }
 
         "reap commits does nothing with no deleting commits" {
             transaction {
-                providers.metadata.createRepository(Repository("foo"))
-                val vs = providers.metadata.createVolumeSet("foo")
-                providers.metadata.createCommit("foo", vs, Commit("id"))
+                services.metadata.createRepository(Repository("foo"))
+                val vs = services.metadata.createVolumeSet("foo")
+                services.metadata.createCommit("foo", vs, Commit("id"))
             }
-            providers.reaper.reapCommits() shouldBe false
+            services.reaper.reapCommits() shouldBe false
         }
 
         "reap commits ignores commits with clones" {
             transaction {
-                providers.metadata.createRepository(Repository("foo"))
-                val vs = providers.metadata.createVolumeSet("foo")
-                providers.metadata.createCommit("foo", vs, Commit("src"))
-                providers.metadata.createVolumeSet("foo", "src")
-                providers.metadata.markCommitDeleting("foo", "src")
+                services.metadata.createRepository(Repository("foo"))
+                val vs = services.metadata.createVolumeSet("foo")
+                services.metadata.createCommit("foo", vs, Commit("src"))
+                services.metadata.createVolumeSet("foo", "src")
+                services.metadata.markCommitDeleting("foo", "src")
             }
-            providers.reaper.reapCommits() shouldBe false
+            services.reaper.reapCommits() shouldBe false
             transaction {
-                providers.metadata.listDeletingCommits().shouldNotBeEmpty()
+                services.metadata.listDeletingCommits().shouldNotBeEmpty()
             }
         }
 
         "reap commits succeeds" {
             val vs = transaction {
-                providers.metadata.createRepository(Repository("foo"))
-                val vs = providers.metadata.createVolumeSet("foo")
-                providers.metadata.createVolume(vs, Volume("volume"))
-                providers.metadata.createCommit("foo", vs, Commit("id"))
-                providers.metadata.markCommitDeleting("foo", "id")
+                services.metadata.createRepository(Repository("foo"))
+                val vs = services.metadata.createVolumeSet("foo")
+                services.metadata.createVolume(vs, Volume("volume"))
+                services.metadata.createCommit("foo", vs, Commit("id"))
+                services.metadata.markCommitDeleting("foo", "id")
                 vs
             }
             every { dockerZfsContext.deleteCommit(any(), any(), any()) } just Runs
-            providers.reaper.reapCommits() shouldBe true
+            services.reaper.reapCommits() shouldBe true
             verify {
                 dockerZfsContext.deleteCommit(vs, "id", listOf("volume"))
             }
             transaction {
-                providers.metadata.listDeletingCommits().shouldBeEmpty()
+                services.metadata.listDeletingCommits().shouldBeEmpty()
             }
         }
     }

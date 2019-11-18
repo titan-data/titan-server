@@ -57,7 +57,7 @@ class OperationsApiTest : StringSpec() {
 
     @InjectMockKs
     @OverrideMockKs
-    var providers = ProviderModule("test")
+    var services = ServiceLocator("test")
 
     var engine = TestApplicationEngine(createTestEnvironment())
 
@@ -66,8 +66,8 @@ class OperationsApiTest : StringSpec() {
     override fun beforeSpec(spec: Spec) {
         with(engine) {
             start()
-            providers.metadata.init()
-            application.mainProvider(providers)
+            services.metadata.init()
+            application.mainProvider(services)
         }
     }
 
@@ -76,13 +76,13 @@ class OperationsApiTest : StringSpec() {
     }
 
     override fun beforeTest(testCase: TestCase) {
-        providers.operations.clearState()
-        providers.metadata.clear()
+        services.operations.clearState()
+        services.metadata.clear()
         transaction {
-            providers.metadata.createRepository(Repository(name = "foo", properties = mapOf()))
-            providers.metadata.addRemote("foo", Remote("nop", "remote"))
-            vs1 = providers.metadata.createVolumeSet("foo", null, true)
-            vs2 = providers.metadata.createVolumeSet("foo")
+            services.metadata.createRepository(Repository(name = "foo", properties = mapOf()))
+            services.metadata.addRemote("foo", Remote("nop", "remote"))
+            vs1 = services.metadata.createVolumeSet("foo", null, true)
+            vs2 = services.metadata.createVolumeSet("foo")
         }
         return MockKAnnotations.init(this)
     }
@@ -95,7 +95,7 @@ class OperationsApiTest : StringSpec() {
 
     fun loadOperation(data: OperationData) {
         transaction {
-            providers.metadata.createOperation("foo", data.operation.id, data)
+            services.metadata.createOperation("foo", data.operation.id, data)
         }
     }
 
@@ -153,13 +153,13 @@ class OperationsApiTest : StringSpec() {
 
         "abort in-progress operation results in aborted state" {
             transaction {
-                providers.metadata.createCommit("foo", vs1, Commit("commit"))
+                services.metadata.createCommit("foo", vs1, Commit("commit"))
             }
             loadOperation(OperationData(Operation(id = vs2,
                     type = Operation.Type.PUSH, commitId = "commit",
                     state = Operation.State.RUNNING, remote = "remote"),
                     params = RemoteParameters("nop", mapOf("delay" to 10))))
-            providers.operations.loadState()
+            services.operations.loadState()
             with(engine.handleRequest(HttpMethod.Delete, "/v1/repositories/foo/operations/$vs2")) {
                 response.status() shouldBe HttpStatusCode.NoContent
             }
@@ -175,7 +175,7 @@ class OperationsApiTest : StringSpec() {
 
         "abort completed operation doesn't alter operation" {
             loadTestOperations()
-            providers.operations.loadState()
+            services.operations.loadState()
             with(engine.handleRequest(HttpMethod.Delete, "/v1/repositories/foo/operations/$vs1")) {
                 response.status() shouldBe HttpStatusCode.NoContent
             }
@@ -189,13 +189,13 @@ class OperationsApiTest : StringSpec() {
 
         "get resumed progress returns correct state" {
             transaction {
-                providers.metadata.createCommit("foo", vs1, Commit("commit"))
+                services.metadata.createCommit("foo", vs1, Commit("commit"))
             }
             loadOperation(OperationData(Operation(id = vs2,
                     type = Operation.Type.PUSH, commitId = "commit",
                     state = Operation.State.RUNNING, remote = "remote"),
                     params = RemoteParameters("nop", mapOf("delay" to 10))))
-            providers.operations.loadState()
+            services.operations.loadState()
             delay(Duration.ofMillis(500))
             with(engine.handleRequest(HttpMethod.Get, "/v1/repositories/foo/operations/$vs2/progress")) {
                 response.status() shouldBe HttpStatusCode.OK
@@ -208,7 +208,7 @@ class OperationsApiTest : StringSpec() {
 
         "get progress of completed operation removes operation" {
             loadTestOperations()
-            providers.operations.loadState()
+            services.operations.loadState()
             with(engine.handleRequest(HttpMethod.Get, "/v1/repositories/foo/operations/$vs1/progress")) {
                 response.status() shouldBe HttpStatusCode.OK
                 response.content shouldBe "[]"
@@ -221,7 +221,7 @@ class OperationsApiTest : StringSpec() {
 
         "push starts operation" {
             transaction {
-                providers.metadata.createCommit("foo", vs1, Commit("commit"))
+                services.metadata.createCommit("foo", vs1, Commit("commit"))
             }
 
             every { dockerZfsContext.cloneVolumeSet(any(), any(), any()) } just Runs

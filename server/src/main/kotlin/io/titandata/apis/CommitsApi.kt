@@ -13,26 +13,26 @@ import io.ktor.routing.delete
 import io.ktor.routing.get
 import io.ktor.routing.post
 import io.ktor.routing.route
-import io.titandata.ProviderModule
+import io.titandata.ServiceLocator
 import io.titandata.models.Commit
 
 /**
  * Handler for all commit related APIs. These are simplistic wrappers around the underlying storage
  * provider.
  */
-fun Route.CommitsApi(providers: ProviderModule) {
+fun Route.CommitsApi(services: ServiceLocator) {
     route("/v1/repositories/{repositoryName}/commits") {
         post {
             val repo = call.parameters["repositoryName"] ?: throw IllegalArgumentException("missing repository name parameter")
             val commit = call.receive(Commit::class)
-            val created = providers.commits.createCommit(repo, commit)
+            val created = services.commits.createCommit(repo, commit)
             call.respond(HttpStatusCode.Created, created)
         }
 
         get {
             val repo = call.parameters["repositoryName"] ?: throw IllegalArgumentException("missing repository name parameter")
             val tags = call.request.queryParameters.getAll("tag")
-            call.respond(providers.commits.listCommits(repo, tags))
+            call.respond(services.commits.listCommits(repo, tags))
         }
     }
 
@@ -40,14 +40,14 @@ fun Route.CommitsApi(providers: ProviderModule) {
         delete {
             val repo = call.parameters["repositoryName"] ?: throw IllegalArgumentException("missing repository name parameter")
             val commit = call.parameters["commitId"] ?: throw IllegalArgumentException("missing commit id parameter")
-            providers.commits.deleteCommit(repo, commit)
+            services.commits.deleteCommit(repo, commit)
             call.respond(HttpStatusCode.NoContent)
         }
 
         get {
             val repo = call.parameters["repositoryName"] ?: throw IllegalArgumentException("missing repository name parameter")
             val commit = call.parameters["commitId"] ?: throw IllegalArgumentException("missing commit id parameter")
-            call.respond(providers.commits.getCommit(repo, commit))
+            call.respond(services.commits.getCommit(repo, commit))
         }
 
         post {
@@ -55,7 +55,7 @@ fun Route.CommitsApi(providers: ProviderModule) {
             val commitId = call.parameters["commitId"] ?: throw IllegalArgumentException("missing commit id parameter")
             val commit = call.receive(Commit::class)
             commit.id = commitId
-            providers.commits.updateCommit(repo, commit)
+            services.commits.updateCommit(repo, commit)
             call.respond(commit)
         }
     }
@@ -64,7 +64,7 @@ fun Route.CommitsApi(providers: ProviderModule) {
         get {
             val repo = call.parameters["repositoryName"] ?: throw IllegalArgumentException("missing repository name parameter")
             val commit = call.parameters["commitId"] ?: throw IllegalArgumentException("missing commit id parameter")
-            call.respond(providers.commits.getCommitStatus(repo, commit))
+            call.respond(services.commits.getCommitStatus(repo, commit))
         }
     }
 
@@ -72,7 +72,7 @@ fun Route.CommitsApi(providers: ProviderModule) {
         post {
             val repo = call.parameters["repositoryName"] ?: throw IllegalArgumentException("missing repository name parameter")
             val commit = call.parameters["commitId"] ?: throw IllegalArgumentException("missing commit id parameter")
-            providers.commits.checkoutCommit(repo, commit)
+            services.commits.checkoutCommit(repo, commit)
             call.respond(HttpStatusCode.NoContent)
         }
     }

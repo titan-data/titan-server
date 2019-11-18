@@ -21,7 +21,7 @@ import io.mockk.impl.annotations.OverrideMockKs
 import io.mockk.just
 import io.mockk.verify
 import io.mockk.verifyAll
-import io.titandata.ProviderModule
+import io.titandata.ServiceLocator
 import io.titandata.context.docker.DockerZfsContext
 import io.titandata.exception.NoSuchObjectException
 import io.titandata.models.Repository
@@ -40,17 +40,17 @@ class VolumeOrchestratorTest : StringSpec() {
 
     @InjectMockKs
     @OverrideMockKs
-    var providers = ProviderModule("test")
+    var services = ServiceLocator("test")
 
     override fun beforeSpec(spec: Spec) {
-        providers.metadata.init()
+        services.metadata.init()
     }
 
     override fun beforeTest(testCase: TestCase) {
-        providers.metadata.clear()
+        services.metadata.clear()
         transaction {
-            providers.metadata.createRepository(Repository(name = "foo"))
-            vs = providers.metadata.createVolumeSet("foo", null, true)
+            services.metadata.createRepository(Repository(name = "foo"))
+            vs = services.metadata.createVolumeSet("foo", null, true)
         }
         return MockKAnnotations.init(this)
     }
@@ -63,7 +63,7 @@ class VolumeOrchestratorTest : StringSpec() {
 
     fun createVolume(): Volume {
         every { dockerZfsContext.createVolume(any(), any()) } returns mapOf("mountpoint" to "/mountpoint")
-        return providers.volumes.createVolume("foo", Volume("vol", mapOf("a" to "b")))
+        return services.volumes.createVolume("foo", Volume("vol", mapOf("a" to "b")))
     }
 
     init {
@@ -79,19 +79,19 @@ class VolumeOrchestratorTest : StringSpec() {
 
         "create volume with invalid repo name fails" {
             shouldThrow<IllegalArgumentException> {
-                providers.volumes.createVolume("bad/repo", Volume("vol"))
+                services.volumes.createVolume("bad/repo", Volume("vol"))
             }
         }
 
         "create volume with invalid volume name fails" {
             shouldThrow<IllegalArgumentException> {
-                providers.volumes.createVolume("repo", Volume("bad/vol"))
+                services.volumes.createVolume("repo", Volume("bad/vol"))
             }
         }
 
         "create volume with non-existent repo fails" {
             shouldThrow<NoSuchObjectException> {
-                providers.volumes.createVolume("bar", Volume("vol"))
+                services.volumes.createVolume("bar", Volume("vol"))
             }
         }
 
@@ -100,10 +100,10 @@ class VolumeOrchestratorTest : StringSpec() {
 
             createVolume()
 
-            providers.volumes.deleteVolume("foo", "vol")
+            services.volumes.deleteVolume("foo", "vol")
 
             shouldThrow<NoSuchObjectException> {
-                providers.volumes.getVolume("foo", "vol")
+                services.volumes.getVolume("foo", "vol")
             }
 
             verifyAll {
@@ -113,31 +113,31 @@ class VolumeOrchestratorTest : StringSpec() {
 
         "delete volume with invalid repo name fails" {
             shouldThrow<IllegalArgumentException> {
-                providers.volumes.deleteVolume("bad/repo", "vol")
+                services.volumes.deleteVolume("bad/repo", "vol")
             }
         }
 
         "delete volume with invalid volume name fails" {
             shouldThrow<IllegalArgumentException> {
-                providers.volumes.deleteVolume("repo", "bad/vol")
+                services.volumes.deleteVolume("repo", "bad/vol")
             }
         }
 
         "delete volume with non-existent repository fails" {
             shouldThrow<NoSuchObjectException> {
-                providers.volumes.deleteVolume("bar", "vol")
+                services.volumes.deleteVolume("bar", "vol")
             }
         }
 
         "delete non-existent volume fails" {
             shouldThrow<NoSuchObjectException> {
-                providers.volumes.deleteVolume("foo", "vol")
+                services.volumes.deleteVolume("foo", "vol")
             }
         }
 
         "get volume succeeds" {
             createVolume()
-            val vol = providers.volumes.getVolume("foo", "vol")
+            val vol = services.volumes.getVolume("foo", "vol")
             vol.name shouldBe "vol"
             vol.config["mountpoint"] shouldBe "/mountpoint"
             vol.properties["a"] shouldBe "b"
@@ -145,26 +145,26 @@ class VolumeOrchestratorTest : StringSpec() {
 
         "get volume with invalid repo name fails" {
             shouldThrow<IllegalArgumentException> {
-                providers.volumes.getVolume("bad/repo", "vol")
+                services.volumes.getVolume("bad/repo", "vol")
             }
         }
 
         "get volume with invalid volume name fails" {
             shouldThrow<IllegalArgumentException> {
-                providers.volumes.getVolume("repo", "bad/vol")
+                services.volumes.getVolume("repo", "bad/vol")
             }
         }
 
         "get volume for non-existing repo fails" {
             shouldThrow<NoSuchObjectException> {
-                providers.volumes.getVolume("bar", "vol")
+                services.volumes.getVolume("bar", "vol")
             }
         }
 
         "activate volume succeeds" {
             every { dockerZfsContext.activateVolume(any(), any(), any()) } just Runs
             createVolume()
-            providers.volumes.activateVolume("foo", "vol")
+            services.volumes.activateVolume("foo", "vol")
             verify {
                 dockerZfsContext.activateVolume(vs, "vol", mapOf("mountpoint" to "/mountpoint"))
             }
@@ -172,32 +172,32 @@ class VolumeOrchestratorTest : StringSpec() {
 
         "activate volume with invalid repo name fails" {
             shouldThrow<IllegalArgumentException> {
-                providers.volumes.activateVolume("bad/repo", "vol")
+                services.volumes.activateVolume("bad/repo", "vol")
             }
         }
 
         "activate volume with invalid volume name fails" {
             shouldThrow<IllegalArgumentException> {
-                providers.volumes.activateVolume("repo", "bad/vol")
+                services.volumes.activateVolume("repo", "bad/vol")
             }
         }
 
         "activate volume for non-existing repo fails" {
             shouldThrow<NoSuchObjectException> {
-                providers.volumes.activateVolume("bar", "vol")
+                services.volumes.activateVolume("bar", "vol")
             }
         }
 
         "activate volume for non-existing volume fails" {
             shouldThrow<NoSuchObjectException> {
-                providers.volumes.activateVolume("foo", "vol")
+                services.volumes.activateVolume("foo", "vol")
             }
         }
 
         "inactivate volume succeeds" {
             every { dockerZfsContext.deactivateVolume(any(), any(), any()) } just Runs
             createVolume()
-            providers.volumes.deactivateVolume("foo", "vol")
+            services.volumes.deactivateVolume("foo", "vol")
             verify {
                 dockerZfsContext.deactivateVolume(vs, "vol", mapOf("mountpoint" to "/mountpoint"))
             }
@@ -205,25 +205,25 @@ class VolumeOrchestratorTest : StringSpec() {
 
         "inactivate volume with invalid repo name fails" {
             shouldThrow<IllegalArgumentException> {
-                providers.volumes.deactivateVolume("bad/repo", "vol")
+                services.volumes.deactivateVolume("bad/repo", "vol")
             }
         }
 
         "inactivate volume with invalid volume name fails" {
             shouldThrow<IllegalArgumentException> {
-                providers.volumes.deactivateVolume("repo", "bad/vol")
+                services.volumes.deactivateVolume("repo", "bad/vol")
             }
         }
 
         "inactivate volume for non-existing repo fails" {
             shouldThrow<NoSuchObjectException> {
-                providers.volumes.deactivateVolume("bar", "vol")
+                services.volumes.deactivateVolume("bar", "vol")
             }
         }
 
         "inactivate volume for non-existing volume fails" {
             shouldThrow<NoSuchObjectException> {
-                providers.volumes.deactivateVolume("foo", "vol")
+                services.volumes.deactivateVolume("foo", "vol")
             }
         }
 
@@ -231,12 +231,12 @@ class VolumeOrchestratorTest : StringSpec() {
             createVolume()
 
             transaction {
-                providers.metadata.createRepository(Repository(name = "bar"))
-                providers.metadata.createVolumeSet("bar", null, true)
-                providers.volumes.createVolume("bar", Volume("vol2"))
+                services.metadata.createRepository(Repository(name = "bar"))
+                services.metadata.createVolumeSet("bar", null, true)
+                services.volumes.createVolume("bar", Volume("vol2"))
             }
 
-            val volumes = providers.volumes.listVolumes("foo")
+            val volumes = services.volumes.listVolumes("foo")
             volumes.size shouldBe 1
             volumes[0].name shouldBe "vol"
         }

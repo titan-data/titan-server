@@ -98,7 +98,7 @@ class OperationExecutorTest : StringSpec() {
                 commit = null,
                 remote = emptyMap(),
                 parameters = emptyMap(),
-                type = RemoteOperationType.PULL,
+                type = type,
                 data = null
         )
     }

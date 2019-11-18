@@ -31,6 +31,9 @@ import io.titandata.models.Remote
 import io.titandata.models.RemoteParameters
 import io.titandata.models.Repository
 import io.titandata.models.Volume
+import io.titandata.remote.RemoteOperation
+import io.titandata.remote.RemoteOperationType
+import io.titandata.remote.RemoteProgress
 import io.titandata.remote.nop.server.NopRemoteServer
 import io.titandata.remote.s3.server.S3RemoteServer
 import io.titandata.storage.OperationData
@@ -449,7 +452,7 @@ class OperationOrchestratorTest : StringSpec() {
             every { zfsStorageProvider.deleteVolume(any(), any(), any()) } just Runs
             every { zfsStorageProvider.createCommit(any(), any(), any()) } just Runs
             every { zfsStorageProvider.createVolumeSet(any()) } just Runs
-            every { nopRemoteProvider.pullVolume(any(), any(), any(), any(), any()) } just Runs
+            every { nopProvider.syncVolume(any(), any(), any(), any(), any()) } just Runs
 
             var op = providers.operations.startPull("foo", "remote", "commit", params)
             op.commitId shouldBe "commit"
@@ -479,7 +482,7 @@ class OperationOrchestratorTest : StringSpec() {
             }
             every { zfsStorageProvider.createVolumeSet(any()) } just Runs
             every { zfsStorageProvider.createVolume(any(), any()) } returns mapOf("mountpoint" to "/mountpoint")
-            every { nopRemoteProvider.startOperation(any()) } throws Exception("error")
+            every { nopProvider.startOperation(any()) } throws Exception("error")
 
             var op = providers.operations.startPull("foo", "remote", "commit", params)
             providers.operations.getExecutor("foo", op.id).join()
@@ -501,8 +504,7 @@ class OperationOrchestratorTest : StringSpec() {
             }
             every { zfsStorageProvider.createVolumeSet(any()) } just Runs
             every { zfsStorageProvider.createVolume(any(), any()) } returns mapOf("mountpoint" to "/mountpoint")
-            every { nopRemoteProvider.startOperation(any()) } throws InterruptedException()
-            every { nopRemoteProvider.pullVolume(any(), any(), any(), any(), any()) } just Runs
+            every { nopProvider.startOperation(any()) } throws InterruptedException()
 
             var op = providers.operations.startPull("foo", "remote", "commit", params)
             providers.operations.getExecutor("foo", op.id).join()
@@ -587,7 +589,7 @@ class OperationOrchestratorTest : StringSpec() {
             }
             every { zfsStorageProvider.cloneVolumeSet(any(), any(), any()) } just Runs
             every { zfsStorageProvider.cloneVolume(any(), any(), any(), any()) } returns mapOf("mountpoint" to "/mountpoint")
-            every { nopRemoteProvider.startOperation(any()) } throws Exception("error")
+            every { nopProvider.startOperation(any()) } throws Exception("error")
 
             var op = providers.operations.startPush("foo", "remote", "id", params)
             providers.operations.getExecutor("foo", op.id).join()
@@ -610,7 +612,7 @@ class OperationOrchestratorTest : StringSpec() {
             }
             every { zfsStorageProvider.cloneVolumeSet(any(), any(), any()) } just Runs
             every { zfsStorageProvider.cloneVolume(any(), any(), any(), any()) } returns mapOf("mountpoint" to "/mountpoint")
-            every { nopRemoteProvider.startOperation(any()) } throws InterruptedException()
+            every { nopProvider.startOperation(any()) } throws InterruptedException()
 
             var op = providers.operations.startPush("foo", "remote", "id", params)
             providers.operations.getExecutor("foo", op.id).join()

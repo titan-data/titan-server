@@ -138,7 +138,7 @@ fun Application.mainProvider(services: ServiceLocator) {
 
 @KtorExperimentalAPI
 fun main(args: Array<String>) {
-    val server = embeddedServer(CIO, (System.getenv("TITAN_PORT") ?: "5001").toInt(),
+    val server = embeddedServer(CIO, (System.getProperty("titan.port") ?: "5001").toInt(),
             module = Application::main)
     server.start(wait = true)
 }

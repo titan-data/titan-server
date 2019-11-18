@@ -3,23 +3,29 @@
 #
 # Main entry point for the titan server. This server can be run in different contexts, such as managing local
 # docker containers or kubernetes pods. The behavior is controlled via the TITAN_CONTEXT environemnt variable.
-# Currently, we only support a single context, "docker-zfs".
+# We currently support two contexts:
+#
+#   docker-zfs      Controls local containers on your laptops, backing storage via ZFS. The TITAN_POOL
+#                   environment variable must be set, and the container must be run via the 'launch' script
+#                   to ensure that ZFS is properly configured.
+#
+#   kubernetes-csi  Controls remote containers running in a kubernetes cluster, backing storage via a CSI
+#                   driver. The TITAN_DATA variable must be set to determine where to place the persistent
+#                   database in /var/lib/$TITAN_DATA, which should be backed by a persistent volume. Unlike
+#                   the docker-zfs context, the server doesn't need to be run via 'launch', and can operate
+#                   in any docker environment even if kernel ZFS support isn't present.
 #
 
 #
-# Mount the database filesystem for the titan server. We only do this if the pool is configured, so that titan-server
-# can run without ZFS if needed.
+# Mount the database filesystem for the titan server.
 #
 function mount_database() {
   local db_dir=$1
-  zfs list $TITAN_POOL >/dev/null 2>&1
-  if [[ $? == 0 ]]; then
-    mount | grep ^$TITAN_POOL/db > /dev/null
-    if [[ $? != 0 ]]; then
-      echo "Mounting $TITAN_POOL/db at $db_dir"
-      mkdir -p $db_dir
-      mount -t zfs $TITAN_POOL/db $db_dir || log_error "failed to mount database directory"
-    fi
+  mount | grep ^$TITAN_POOL/db > /dev/null
+  if [[ $? != 0 ]]; then
+    echo "Mounting $TITAN_POOL/db at $db_dir"
+    mkdir -p $db_dir
+    mount -t zfs $TITAN_POOL/db $db_dir || log_error "failed to mount database directory"
   fi
 }
 
@@ -47,7 +53,7 @@ function start_database() {
   fi
   [[ $create_db == "true" ]] && su - postgres -c "/usr/lib/postgresql/12/bin/createdb titan"
   echo "Postgres started"
-}}
+}
 
 #
 # Check that our context is configured correctly
@@ -59,16 +65,22 @@ function start_database() {
 #
 if [[ $TITAN_CONTEXT = "docker-zfs" ]]; then
   [[ -z $TITAN_POOL ]] && log_error "TITAN_POOL must be set"
-  local db_dir=/var/lib/$TITAN_POOL/mnt/_db
+  DB_DIR=/var/lib/$TITAN_POOL/mnt/_db
 
-  mount_database $db_dir
-  start_database $db_dir
+  mount_database $DB_DIR
+  start_database $DB_DIR
 
   # Run socat to pipe from unix socket to server port
   socat -v -d -lf /var/log/socat.log UNIX-LISTEN:/run/docker/plugins/titan.sock,reuseaddr,fork TCP:localhost:5001 2>/var/log/socat.trace &
 
-  # Run the main titan server
-  exec java -jar /titan/titan-server.jar -Dtitan.context=$TITAN_CONTEXT -Dtitan.pool=$TITAN_POOL
+  exec java -Dtitan.context=$TITAN_CONTEXT -Dtitan.pool=$TITAN_POOL -jar /titan/titan-server.jar
+elif [[ $TITAN_CONTEXT = "kubernetes-csi" ]]; then
+  [[ -z $TITAN_DATA ]] && log_error "TITAN_DATA must be set"
+  DB_DIR=/var/lib/$TITAN_DATA/mnt/_db
+
+  start_database $DB_DIR
+
+  exec java -Dtitan.context=$TITAN_CONTEXT -jar /titan/titan-server.jar
 else
   log_error "Unknown context $TITAN_CONTEXT"
 fi

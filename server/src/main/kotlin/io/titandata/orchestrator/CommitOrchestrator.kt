@@ -42,7 +42,7 @@ class CommitOrchestrator(val providers: ProviderModule) {
             providers.metadata.listVolumes(volumeSet)
         }
 
-        providers.storage.createCommit(volumeSet, newCommit.id, volumes.map { it.name })
+        providers.context.createCommit(volumeSet, newCommit.id, volumes.map { it.name })
         return newCommit
     }
 
@@ -61,7 +61,7 @@ class CommitOrchestrator(val providers: ProviderModule) {
             val vs = providers.metadata.getCommit(repo, id).first
             Pair(vs, providers.metadata.listVolumes(vs).map { it.name })
         }
-        return providers.storage.getCommitStatus(vs, id, volumes)
+        return providers.context.getCommitStatus(vs, id, volumes)
     }
 
     fun listCommits(repo: String, tags: List<String>? = null): List<Commit> {
@@ -98,9 +98,9 @@ class CommitOrchestrator(val providers: ProviderModule) {
             providers.metadata.listVolumes(newVolumeSet).map { it.name }
         }
 
-        providers.storage.cloneVolumeSet(sourceVolumeSet, commit, newVolumeSet)
+        providers.context.cloneVolumeSet(sourceVolumeSet, commit, newVolumeSet)
         for (v in volumes) {
-            val config = providers.storage.cloneVolume(sourceVolumeSet, commit, newVolumeSet, v)
+            val config = providers.context.cloneVolume(sourceVolumeSet, commit, newVolumeSet, v)
             transaction {
                 providers.metadata.updateVolumeConfig(newVolumeSet, v, config)
             }

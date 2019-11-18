@@ -15,7 +15,7 @@ class VolumeOrchestrator(val providers: ProviderModule) {
             providers.metadata.createVolume(vs, volume)
             vs
         }
-        val config = providers.storage.createVolume(vs, volume.name)
+        val config = providers.context.createVolume(vs, volume.name)
         return transaction {
             providers.metadata.updateVolumeConfig(vs, volume.name, config)
             providers.metadata.getVolume(vs, volume.name)
@@ -51,7 +51,7 @@ class VolumeOrchestrator(val providers: ProviderModule) {
             val vs = providers.metadata.getActiveVolumeSet(repo)
             Pair(vs, providers.metadata.getVolume(vs, name))
         }
-        providers.storage.activateVolume(vs, name, volume.config)
+        providers.context.activateVolume(vs, name, volume.config)
     }
 
     fun deactivateVolume(repo: String, name: String) {
@@ -61,7 +61,7 @@ class VolumeOrchestrator(val providers: ProviderModule) {
             val vs = providers.metadata.getActiveVolumeSet(repo)
             Pair(vs, providers.metadata.getVolume(vs, name))
         }
-        providers.storage.deactivateVolume(vs, name, volume.config)
+        providers.context.deactivateVolume(vs, name, volume.config)
     }
 
     fun listVolumes(repo: String): List<Volume> {

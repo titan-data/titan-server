@@ -19,7 +19,9 @@ import io.mockk.just
 import io.mockk.mockk
 import io.mockk.verify
 import io.titandata.ProviderModule
+import io.titandata.context.docker.DockerZfsContext
 import io.titandata.exception.NoSuchObjectException
+import io.titandata.metadata.OperationData
 import io.titandata.models.Commit
 import io.titandata.models.Operation
 import io.titandata.models.ProgressEntry
@@ -32,13 +34,11 @@ import io.titandata.remote.RemoteOperation
 import io.titandata.remote.RemoteOperationType
 import io.titandata.remote.RemoteProgress
 import io.titandata.remote.nop.server.NopRemoteServer
-import io.titandata.storage.OperationData
-import io.titandata.storage.zfs.ZfsStorageProvider
 import org.jetbrains.exposed.sql.transactions.transaction
 
 class OperationExecutorTest : StringSpec() {
     @MockK
-    lateinit var zfsStorageProvider: ZfsStorageProvider
+    lateinit var dockerZfsContext: DockerZfsContext
 
     @MockK
     lateinit var reaper: Reaper
@@ -66,7 +66,7 @@ class OperationExecutorTest : StringSpec() {
         }
         val ret = MockKAnnotations.init(this)
         providers.setRemoteProvider("nop", nopProvider)
-        every { zfsStorageProvider.createCommit(any(), any(), any()) } just Runs
+        every { dockerZfsContext.createCommit(any(), any(), any()) } just Runs
         return ret
     }
 
@@ -193,11 +193,11 @@ class OperationExecutorTest : StringSpec() {
         }
 
         "sync data for pull succeeds" {
-            every { zfsStorageProvider.activateVolume(any(), any(), any()) } just Runs
-            every { zfsStorageProvider.deactivateVolume(any(), any(), any()) } just Runs
-            every { zfsStorageProvider.createVolume(any(), any()) } returns mapOf("mountpoint" to "/mountpoint")
-            every { zfsStorageProvider.createVolume(any(), "_scratch") } returns mapOf("mountpoint" to "/scratch")
-            every { zfsStorageProvider.deleteVolume(any(), any(), any()) } just Runs
+            every { dockerZfsContext.activateVolume(any(), any(), any()) } just Runs
+            every { dockerZfsContext.deactivateVolume(any(), any(), any()) } just Runs
+            every { dockerZfsContext.createVolume(any(), any()) } returns mapOf("mountpoint" to "/mountpoint")
+            every { dockerZfsContext.createVolume(any(), "_scratch") } returns mapOf("mountpoint" to "/scratch")
+            every { dockerZfsContext.deleteVolume(any(), any(), any()) } just Runs
 
             val data = createOperation()
             val executor = getExecutor(data)
@@ -205,22 +205,22 @@ class OperationExecutorTest : StringSpec() {
             executor.syncData(nopProvider, remoteOperation)
 
             verify {
-                zfsStorageProvider.activateVolume(data.operation.id, "_scratch", mapOf("mountpoint" to "/scratch"))
-                zfsStorageProvider.activateVolume(data.operation.id, "volume", mapOf("mountpoint" to "/mountpoint"))
-                zfsStorageProvider.deactivateVolume(data.operation.id, "_scratch", mapOf("mountpoint" to "/scratch"))
-                zfsStorageProvider.deactivateVolume(data.operation.id, "volume", mapOf("mountpoint" to "/mountpoint"))
-                zfsStorageProvider.createVolume(data.operation.id, "_scratch")
-                zfsStorageProvider.deleteVolume(data.operation.id, "_scratch", mapOf("mountpoint" to "/scratch"))
+                dockerZfsContext.activateVolume(data.operation.id, "_scratch", mapOf("mountpoint" to "/scratch"))
+                dockerZfsContext.activateVolume(data.operation.id, "volume", mapOf("mountpoint" to "/mountpoint"))
+                dockerZfsContext.deactivateVolume(data.operation.id, "_scratch", mapOf("mountpoint" to "/scratch"))
+                dockerZfsContext.deactivateVolume(data.operation.id, "volume", mapOf("mountpoint" to "/mountpoint"))
+                dockerZfsContext.createVolume(data.operation.id, "_scratch")
+                dockerZfsContext.deleteVolume(data.operation.id, "_scratch", mapOf("mountpoint" to "/scratch"))
                 nopProvider.syncVolume(remoteOperation, "volume", "volume", "/mountpoint", "/scratch")
             }
         }
 
         "sync data for push succeeds" {
-            every { zfsStorageProvider.activateVolume(any(), any(), any()) } just Runs
-            every { zfsStorageProvider.deactivateVolume(any(), any(), any()) } just Runs
-            every { zfsStorageProvider.createVolume(any(), any()) } returns mapOf("mountpoint" to "/mountpoint")
-            every { zfsStorageProvider.createVolume(any(), "_scratch") } returns mapOf("mountpoint" to "/scratch")
-            every { zfsStorageProvider.deleteVolume(any(), any(), any()) } just Runs
+            every { dockerZfsContext.activateVolume(any(), any(), any()) } just Runs
+            every { dockerZfsContext.deactivateVolume(any(), any(), any()) } just Runs
+            every { dockerZfsContext.createVolume(any(), any()) } returns mapOf("mountpoint" to "/mountpoint")
+            every { dockerZfsContext.createVolume(any(), "_scratch") } returns mapOf("mountpoint" to "/scratch")
+            every { dockerZfsContext.deleteVolume(any(), any(), any()) } just Runs
 
             val data = createOperation(Operation.Type.PUSH)
             val executor = getExecutor(data)
@@ -228,22 +228,22 @@ class OperationExecutorTest : StringSpec() {
             executor.syncData(nopProvider, remoteOperation)
 
             verify {
-                zfsStorageProvider.activateVolume(data.operation.id, "_scratch", mapOf("mountpoint" to "/scratch"))
-                zfsStorageProvider.activateVolume(data.operation.id, "volume", mapOf("mountpoint" to "/mountpoint"))
-                zfsStorageProvider.deactivateVolume(data.operation.id, "_scratch", mapOf("mountpoint" to "/scratch"))
-                zfsStorageProvider.deactivateVolume(data.operation.id, "volume", mapOf("mountpoint" to "/mountpoint"))
-                zfsStorageProvider.createVolume(data.operation.id, "_scratch")
-                zfsStorageProvider.deleteVolume(data.operation.id, "_scratch", mapOf("mountpoint" to "/scratch"))
+                dockerZfsContext.activateVolume(data.operation.id, "_scratch", mapOf("mountpoint" to "/scratch"))
+                dockerZfsContext.activateVolume(data.operation.id, "volume", mapOf("mountpoint" to "/mountpoint"))
+                dockerZfsContext.deactivateVolume(data.operation.id, "_scratch", mapOf("mountpoint" to "/scratch"))
+                dockerZfsContext.deactivateVolume(data.operation.id, "volume", mapOf("mountpoint" to "/mountpoint"))
+                dockerZfsContext.createVolume(data.operation.id, "_scratch")
+                dockerZfsContext.deleteVolume(data.operation.id, "_scratch", mapOf("mountpoint" to "/scratch"))
                 nopProvider.syncVolume(remoteOperation, "volume", "volume", "/mountpoint", "/scratch")
             }
         }
 
         "pull operation succeeds" {
-            every { zfsStorageProvider.activateVolume(any(), any(), any()) } just Runs
-            every { zfsStorageProvider.deactivateVolume(any(), any(), any()) } just Runs
-            every { zfsStorageProvider.createVolume(any(), any()) } returns mapOf("mountpoint" to "/mountpoint")
-            every { zfsStorageProvider.createVolume(any(), "_scratch") } returns mapOf("mountpoint" to "/scratch")
-            every { zfsStorageProvider.deleteVolume(any(), any(), any()) } just Runs
+            every { dockerZfsContext.activateVolume(any(), any(), any()) } just Runs
+            every { dockerZfsContext.deactivateVolume(any(), any(), any()) } just Runs
+            every { dockerZfsContext.createVolume(any(), any()) } returns mapOf("mountpoint" to "/mountpoint")
+            every { dockerZfsContext.createVolume(any(), "_scratch") } returns mapOf("mountpoint" to "/scratch")
+            every { dockerZfsContext.deleteVolume(any(), any(), any()) } just Runs
 
             val data = createOperation(Operation.Type.PULL)
             val executor = getExecutor(data)
@@ -253,16 +253,16 @@ class OperationExecutorTest : StringSpec() {
 
             verify {
                 nopProvider.syncVolume(any(), "volume", "volume", "/mountpoint", "/scratch")
-                zfsStorageProvider.createCommit(data.operation.id, "id", listOf("volume"))
+                dockerZfsContext.createCommit(data.operation.id, "id", listOf("volume"))
             }
         }
 
         "push operation succeeds" {
-            every { zfsStorageProvider.activateVolume(any(), any(), any()) } just Runs
-            every { zfsStorageProvider.deactivateVolume(any(), any(), any()) } just Runs
-            every { zfsStorageProvider.createVolume(any(), any()) } returns mapOf("mountpoint" to "/mountpoint")
-            every { zfsStorageProvider.createVolume(any(), "_scratch") } returns mapOf("mountpoint" to "/scratch")
-            every { zfsStorageProvider.deleteVolume(any(), any(), any()) } just Runs
+            every { dockerZfsContext.activateVolume(any(), any(), any()) } just Runs
+            every { dockerZfsContext.deactivateVolume(any(), any(), any()) } just Runs
+            every { dockerZfsContext.createVolume(any(), any()) } returns mapOf("mountpoint" to "/mountpoint")
+            every { dockerZfsContext.createVolume(any(), "_scratch") } returns mapOf("mountpoint" to "/scratch")
+            every { dockerZfsContext.deleteVolume(any(), any(), any()) } just Runs
 
             transaction {
                 providers.metadata.createCommit("foo", vs, Commit("id"))
@@ -280,11 +280,11 @@ class OperationExecutorTest : StringSpec() {
         }
 
         "interrupted operation is aborted" {
-            every { zfsStorageProvider.activateVolume(any(), any(), any()) } just Runs
-            every { zfsStorageProvider.deactivateVolume(any(), any(), any()) } just Runs
-            every { zfsStorageProvider.createVolume(any(), any()) } returns mapOf("mountpoint" to "/mountpoint")
-            every { zfsStorageProvider.createVolume(any(), "_scratch") } returns mapOf("mountpoint" to "/scratch")
-            every { zfsStorageProvider.deleteVolume(any(), any(), any()) } just Runs
+            every { dockerZfsContext.activateVolume(any(), any(), any()) } just Runs
+            every { dockerZfsContext.deactivateVolume(any(), any(), any()) } just Runs
+            every { dockerZfsContext.createVolume(any(), any()) } returns mapOf("mountpoint" to "/mountpoint")
+            every { dockerZfsContext.createVolume(any(), "_scratch") } returns mapOf("mountpoint" to "/scratch")
+            every { dockerZfsContext.deleteVolume(any(), any(), any()) } just Runs
             every { nopProvider.syncVolume(any(), any(), any(), any(), any()) } throws InterruptedException()
 
             val data = createOperation(Operation.Type.PULL)
@@ -294,9 +294,9 @@ class OperationExecutorTest : StringSpec() {
             data.operation.state shouldBe Operation.State.ABORTED
 
             verify {
-                zfsStorageProvider.deactivateVolume(data.operation.id, "_scratch", mapOf("mountpoint" to "/scratch"))
-                zfsStorageProvider.deactivateVolume(data.operation.id, "volume", mapOf("mountpoint" to "/mountpoint"))
-                zfsStorageProvider.deleteVolume(data.operation.id, "_scratch", mapOf("mountpoint" to "/scratch"))
+                dockerZfsContext.deactivateVolume(data.operation.id, "_scratch", mapOf("mountpoint" to "/scratch"))
+                dockerZfsContext.deactivateVolume(data.operation.id, "volume", mapOf("mountpoint" to "/mountpoint"))
+                dockerZfsContext.deleteVolume(data.operation.id, "_scratch", mapOf("mountpoint" to "/scratch"))
                 nopProvider.syncVolume(any(), "volume", "volume", "/mountpoint", "/scratch")
             }
 
@@ -306,11 +306,11 @@ class OperationExecutorTest : StringSpec() {
         }
 
         "failed operation is marked failed" {
-            every { zfsStorageProvider.activateVolume(any(), any(), any()) } just Runs
-            every { zfsStorageProvider.deactivateVolume(any(), any(), any()) } just Runs
-            every { zfsStorageProvider.createVolume(any(), any()) } returns mapOf("mountpoint" to "/mountpoint")
-            every { zfsStorageProvider.createVolume(any(), "_scratch") } returns mapOf("mountpoint" to "/scratch")
-            every { zfsStorageProvider.deleteVolume(any(), any(), any()) } just Runs
+            every { dockerZfsContext.activateVolume(any(), any(), any()) } just Runs
+            every { dockerZfsContext.deactivateVolume(any(), any(), any()) } just Runs
+            every { dockerZfsContext.createVolume(any(), any()) } returns mapOf("mountpoint" to "/mountpoint")
+            every { dockerZfsContext.createVolume(any(), "_scratch") } returns mapOf("mountpoint" to "/scratch")
+            every { dockerZfsContext.deleteVolume(any(), any(), any()) } just Runs
             every { nopProvider.syncVolume(any(), any(), any(), any(), any()) } throws Exception()
 
             val data = createOperation(Operation.Type.PULL)
@@ -320,9 +320,9 @@ class OperationExecutorTest : StringSpec() {
             data.operation.state shouldBe Operation.State.FAILED
 
             verify {
-                zfsStorageProvider.deactivateVolume(data.operation.id, "_scratch", mapOf("mountpoint" to "/scratch"))
-                zfsStorageProvider.deactivateVolume(data.operation.id, "volume", mapOf("mountpoint" to "/mountpoint"))
-                zfsStorageProvider.deleteVolume(data.operation.id, "_scratch", mapOf("mountpoint" to "/scratch"))
+                dockerZfsContext.deactivateVolume(data.operation.id, "_scratch", mapOf("mountpoint" to "/scratch"))
+                dockerZfsContext.deactivateVolume(data.operation.id, "volume", mapOf("mountpoint" to "/mountpoint"))
+                dockerZfsContext.deleteVolume(data.operation.id, "_scratch", mapOf("mountpoint" to "/scratch"))
                 nopProvider.syncVolume(any(), "volume", "volume", "/mountpoint", "/scratch")
             }
 
@@ -332,11 +332,11 @@ class OperationExecutorTest : StringSpec() {
         }
 
         "provider fail operation is called" {
-            every { zfsStorageProvider.activateVolume(any(), any(), any()) } just Runs
-            every { zfsStorageProvider.deactivateVolume(any(), any(), any()) } just Runs
-            every { zfsStorageProvider.createVolume(any(), any()) } returns mapOf("mountpoint" to "/mountpoint")
-            every { zfsStorageProvider.createVolume(any(), "_scratch") } returns mapOf("mountpoint" to "/scratch")
-            every { zfsStorageProvider.deleteVolume(any(), any(), any()) } just Runs
+            every { dockerZfsContext.activateVolume(any(), any(), any()) } just Runs
+            every { dockerZfsContext.deactivateVolume(any(), any(), any()) } just Runs
+            every { dockerZfsContext.createVolume(any(), any()) } returns mapOf("mountpoint" to "/mountpoint")
+            every { dockerZfsContext.createVolume(any(), "_scratch") } returns mapOf("mountpoint" to "/scratch")
+            every { dockerZfsContext.deleteVolume(any(), any(), any()) } just Runs
             every { nopProvider.syncVolume(any(), any(), any(), any(), any()) } throws Exception()
 
             val data = createOperation(Operation.Type.PULL)

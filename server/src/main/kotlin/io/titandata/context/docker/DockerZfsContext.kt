@@ -2,13 +2,13 @@
  * Copyright The Titan Project Contributors.
  */
 
-package io.titandata.storage.zfs
+package io.titandata.context.docker
 
+import io.titandata.context.RuntimeContext
 import io.titandata.models.CommitStatus
 import io.titandata.models.RepositoryVolumeStatus
 import io.titandata.shell.CommandException
 import io.titandata.shell.CommandExecutor
-import io.titandata.storage.StorageProvider
 import org.slf4j.LoggerFactory
 
 /**
@@ -21,12 +21,12 @@ import org.slf4j.LoggerFactory
  *      pool/data/volumeSet@commit      Recursive snapshot of a particular commit
  *      pool/data/volumeSet/volume      Volume within a volume set
  */
-class ZfsStorageProvider(
+class DockerZfsContext(
     val poolName: String = "titan"
-) : StorageProvider {
+) : RuntimeContext {
 
     companion object {
-        val log = LoggerFactory.getLogger(ZfsStorageProvider::class.java)
+        val log = LoggerFactory.getLogger(DockerZfsContext::class.java)
     }
 
     internal val executor = CommandExecutor()

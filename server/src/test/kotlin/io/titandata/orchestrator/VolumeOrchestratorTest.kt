@@ -22,16 +22,16 @@ import io.mockk.just
 import io.mockk.verify
 import io.mockk.verifyAll
 import io.titandata.ProviderModule
+import io.titandata.context.docker.DockerZfsContext
 import io.titandata.exception.NoSuchObjectException
 import io.titandata.models.Repository
 import io.titandata.models.Volume
-import io.titandata.storage.zfs.ZfsStorageProvider
 import org.jetbrains.exposed.sql.transactions.transaction
 
 class VolumeOrchestratorTest : StringSpec() {
 
     @MockK
-    lateinit var zfsStorageProvider: ZfsStorageProvider
+    lateinit var dockerZfsContext: DockerZfsContext
 
     @MockK
     lateinit var reaper: Reaper
@@ -62,7 +62,7 @@ class VolumeOrchestratorTest : StringSpec() {
     override fun testCaseOrder() = TestCaseOrder.Random
 
     fun createVolume(): Volume {
-        every { zfsStorageProvider.createVolume(any(), any()) } returns mapOf("mountpoint" to "/mountpoint")
+        every { dockerZfsContext.createVolume(any(), any()) } returns mapOf("mountpoint" to "/mountpoint")
         return providers.volumes.createVolume("foo", Volume("vol", mapOf("a" to "b")))
     }
 
@@ -73,7 +73,7 @@ class VolumeOrchestratorTest : StringSpec() {
             vol.config["mountpoint"] shouldBe "/mountpoint"
             vol.properties["a"] shouldBe "b"
             verifyAll {
-                zfsStorageProvider.createVolume(vs, "vol")
+                dockerZfsContext.createVolume(vs, "vol")
             }
         }
 
@@ -162,11 +162,11 @@ class VolumeOrchestratorTest : StringSpec() {
         }
 
         "activate volume succeeds" {
-            every { zfsStorageProvider.activateVolume(any(), any(), any()) } just Runs
+            every { dockerZfsContext.activateVolume(any(), any(), any()) } just Runs
             createVolume()
             providers.volumes.activateVolume("foo", "vol")
             verify {
-                zfsStorageProvider.activateVolume(vs, "vol", mapOf("mountpoint" to "/mountpoint"))
+                dockerZfsContext.activateVolume(vs, "vol", mapOf("mountpoint" to "/mountpoint"))
             }
         }
 
@@ -195,11 +195,11 @@ class VolumeOrchestratorTest : StringSpec() {
         }
 
         "inactivate volume succeeds" {
-            every { zfsStorageProvider.deactivateVolume(any(), any(), any()) } just Runs
+            every { dockerZfsContext.deactivateVolume(any(), any(), any()) } just Runs
             createVolume()
             providers.volumes.deactivateVolume("foo", "vol")
             verify {
-                zfsStorageProvider.deactivateVolume(vs, "vol", mapOf("mountpoint" to "/mountpoint"))
+                dockerZfsContext.deactivateVolume(vs, "vol", mapOf("mountpoint" to "/mountpoint"))
             }
         }
 

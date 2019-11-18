@@ -31,6 +31,8 @@ import io.mockk.impl.annotations.InjectMockKs
 import io.mockk.impl.annotations.MockK
 import io.mockk.impl.annotations.OverrideMockKs
 import io.mockk.just
+import io.titandata.context.docker.DockerZfsContext
+import io.titandata.metadata.OperationData
 import io.titandata.models.Commit
 import io.titandata.models.Error
 import io.titandata.models.Operation
@@ -38,8 +40,6 @@ import io.titandata.models.ProgressEntry
 import io.titandata.models.Remote
 import io.titandata.models.RemoteParameters
 import io.titandata.models.Repository
-import io.titandata.storage.OperationData
-import io.titandata.storage.zfs.ZfsStorageProvider
 import java.time.Duration
 import java.util.UUID
 import java.util.concurrent.TimeUnit
@@ -50,7 +50,7 @@ import org.jetbrains.exposed.sql.transactions.transaction
 class OperationsApiTest : StringSpec() {
 
     @MockK
-    var zfsStorageProvider = ZfsStorageProvider("test")
+    var dockerZfsContext = DockerZfsContext("test")
 
     lateinit var vs1: String
     lateinit var vs2: String
@@ -224,8 +224,8 @@ class OperationsApiTest : StringSpec() {
                 providers.metadata.createCommit("foo", vs1, Commit("commit"))
             }
 
-            every { zfsStorageProvider.cloneVolumeSet(any(), any(), any()) } just Runs
-            every { zfsStorageProvider.cloneVolume(any(), any(), any(), any()) } returns emptyMap()
+            every { dockerZfsContext.cloneVolumeSet(any(), any(), any()) } just Runs
+            every { dockerZfsContext.cloneVolume(any(), any(), any(), any()) } returns emptyMap()
 
             val result = engine.handleRequest(HttpMethod.Post, "/v1/repositories/foo/remotes/remote/commits/commit/push") {
                 addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
@@ -243,7 +243,7 @@ class OperationsApiTest : StringSpec() {
         }
 
         "pull starts operation" {
-            every { zfsStorageProvider.createVolumeSet(any()) } just Runs
+            every { dockerZfsContext.createVolumeSet(any()) } just Runs
 
             val result = engine.handleRequest(HttpMethod.Post, "/v1/repositories/foo/remotes/remote/commits/commit/pull") {
                 addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())

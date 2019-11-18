@@ -22,19 +22,19 @@ import io.mockk.just
 import io.mockk.verify
 import io.mockk.verifyAll
 import io.titandata.ProviderModule
+import io.titandata.context.docker.DockerZfsContext
 import io.titandata.exception.NoSuchObjectException
 import io.titandata.exception.ObjectExistsException
 import io.titandata.models.Commit
 import io.titandata.models.Repository
 import io.titandata.models.RepositoryVolumeStatus
 import io.titandata.models.Volume
-import io.titandata.storage.zfs.ZfsStorageProvider
 import org.jetbrains.exposed.sql.transactions.transaction
 
 class RepositoryOrchestratorTest : StringSpec() {
 
     @MockK
-    lateinit var zfsStorageProvider: ZfsStorageProvider
+    lateinit var dockerZfsContext: DockerZfsContext
 
     @MockK
     lateinit var reaper: Reaper
@@ -59,7 +59,7 @@ class RepositoryOrchestratorTest : StringSpec() {
     override fun testCaseOrder() = TestCaseOrder.Random
 
     fun createRepository() {
-        every { zfsStorageProvider.createVolumeSet(any()) } just Runs
+        every { dockerZfsContext.createVolumeSet(any()) } just Runs
         providers.repositories.createRepository(Repository(name = "foo", properties = mapOf("a" to "b")))
     }
 
@@ -70,7 +70,7 @@ class RepositoryOrchestratorTest : StringSpec() {
                 providers.metadata.getActiveVolumeSet("foo")
             }
             verifyAll {
-                zfsStorageProvider.createVolumeSet(vs)
+                dockerZfsContext.createVolumeSet(vs)
             }
         }
 
@@ -160,12 +160,12 @@ class RepositoryOrchestratorTest : StringSpec() {
 
         "get repository status succeeds" {
             createRepository()
-            every { zfsStorageProvider.createVolume(any(), any()) } returns emptyMap()
+            every { dockerZfsContext.createVolume(any(), any()) } returns emptyMap()
             providers.volumes.createVolume("foo", Volume("vol1"))
             providers.volumes.createVolume("foo", Volume("vol2"))
-            every { zfsStorageProvider.createCommit(any(), any(), any()) } just Runs
+            every { dockerZfsContext.createCommit(any(), any(), any()) } just Runs
             providers.commits.createCommit("foo", Commit(id = "id"))
-            every { zfsStorageProvider.getVolumeStatus(any(), any()) } returns RepositoryVolumeStatus(
+            every { dockerZfsContext.getVolumeStatus(any(), any()) } returns RepositoryVolumeStatus(
                 name = "vol", logicalSize = 20, actualSize = 10)
             val status = providers.repositories.getRepositoryStatus("foo")
             status.lastCommit shouldBe "id"

@@ -16,7 +16,6 @@ import io.mockk.MockKAnnotations
 import io.mockk.clearAllMocks
 import io.mockk.every
 import io.mockk.impl.annotations.InjectMockKs
-import io.mockk.impl.annotations.MockK
 import io.mockk.impl.annotations.OverrideMockKs
 import io.mockk.impl.annotations.SpyK
 import io.mockk.slot
@@ -28,15 +27,11 @@ import io.titandata.models.RemoteParameters
 import io.titandata.models.Repository
 import io.titandata.remote.nop.server.NopRemoteServer
 import io.titandata.remote.ssh.server.SshRemoteServer
-import io.titandata.storage.zfs.ZfsStorageProvider
 import org.jetbrains.exposed.sql.transactions.transaction
 
 class RemoteOrchestratorTest : StringSpec() {
 
     val params = RemoteParameters("nop")
-
-    @MockK
-    lateinit var zfsStorageProvider: ZfsStorageProvider
 
     @SpyK
     var nopProvider = NopRemoteServer()

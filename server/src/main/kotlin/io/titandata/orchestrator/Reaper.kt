@@ -77,7 +77,7 @@ class Reaper(val providers: ProviderModule) : Runnable {
                 providers.metadata.listVolumes(c.volumeSet).map { it.name }
             }
             try {
-                providers.storage.deleteCommit(c.volumeSet, c.guid, volumes)
+                providers.context.deleteCommit(c.volumeSet, c.guid, volumes)
                 transaction {
                     providers.metadata.deleteCommit(c)
                 }
@@ -119,12 +119,12 @@ class Reaper(val providers: ProviderModule) : Runnable {
                     providers.metadata.listVolumes(vs)
                 }
                 for (vol in volumes) {
-                    providers.storage.deleteVolume(vs, vol.name, vol.config)
+                    providers.context.deleteVolume(vs, vol.name, vol.config)
                     transaction {
                         providers.metadata.deleteVolume(vs, vol.name)
                     }
                 }
-                providers.storage.deleteVolumeSet(vs)
+                providers.context.deleteVolumeSet(vs)
                 transaction {
                     providers.metadata.deleteVolumeSet(vs)
                 }
@@ -145,7 +145,7 @@ class Reaper(val providers: ProviderModule) : Runnable {
         var ret = false
         for ((vs, vol) in volumes) {
             try {
-                providers.storage.deleteVolume(vs, vol.name, vol.config)
+                providers.context.deleteVolume(vs, vol.name, vol.config)
                 transaction {
                     providers.metadata.deleteVolume(vs, vol.name)
                 }

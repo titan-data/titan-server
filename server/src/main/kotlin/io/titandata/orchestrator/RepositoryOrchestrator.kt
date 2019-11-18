@@ -15,7 +15,7 @@ class RepositoryOrchestrator(val providers: ProviderModule) {
             val vs = providers.metadata.createVolumeSet(repo.name, null, true)
             vs
         }
-        providers.storage.createVolumeSet(volumeSet)
+        providers.context.createVolumeSet(volumeSet)
     }
 
     fun listRepositories(): List<Repository> {
@@ -38,7 +38,7 @@ class RepositoryOrchestrator(val providers: ProviderModule) {
             Pair(vs, providers.metadata.listVolumes(vs))
         }
         val volumeStatus = volumes.map {
-            val rawStatus = providers.storage.getVolumeStatus(volumeSet, it.name)
+            val rawStatus = providers.context.getVolumeStatus(volumeSet, it.name)
             RepositoryVolumeStatus(
                     name = it.name,
                     logicalSize = rawStatus.logicalSize,

@@ -2,7 +2,7 @@
  * Copyright The Titan Project Contributors.
  */
 
-package io.titandata.storage.zfs
+package io.titandata.context.docker
 
 import io.kotlintest.TestCase
 import io.kotlintest.TestCaseOrder
@@ -20,14 +20,14 @@ import io.mockk.verifyAll
 import io.titandata.shell.CommandException
 import io.titandata.shell.CommandExecutor
 
-class ZfsStorageProviderTest : StringSpec() {
+class DockerZfsContextTest : StringSpec() {
 
     @MockK
     lateinit var executor: CommandExecutor
 
     @InjectMockKs
     @OverrideMockKs
-    var provider = ZfsStorageProvider("test")
+    var provider = DockerZfsContext("test")
 
     override fun beforeTest(testCase: TestCase) {
         return MockKAnnotations.init(this)
@@ -41,7 +41,7 @@ class ZfsStorageProviderTest : StringSpec() {
 
     init {
         "provider defaults to titan as pool name" {
-            val defaultProvider = ZfsStorageProvider()
+            val defaultProvider = DockerZfsContext()
             defaultProvider.poolName shouldBe "titan"
         }
 

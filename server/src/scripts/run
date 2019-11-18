@@ -16,6 +16,13 @@
 #                   in any docker environment even if kernel ZFS support isn't present.
 #
 
+function log_error {
+  local ts=$(timestamp)
+  local msg=$1
+  echo "$ts $log_delimiter ERROR $msg"
+  exit 1
+}
+
 #
 # Mount the database filesystem for the titan server.
 #

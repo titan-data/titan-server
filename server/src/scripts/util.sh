@@ -71,7 +71,7 @@ function log_begin {
 
 #
 # Log the beginning of a step. This will be picked up by the CLI and displayed while the
-# subsequent code is running, When a TITAN END message is received, then the CLI will display
+# subsequent code is running, when a titan end message is received, then the cli will display
 # the step as completed and move on.
 #
 function log_start {

@@ -28,7 +28,10 @@ import io.titandata.models.RemoteParameters
 import io.titandata.models.Repository
 import io.titandata.models.Volume
 import io.titandata.orchestrator.Reaper
-import io.titandata.remote.nop.NopRemoteProvider
+import io.titandata.remote.RemoteOperation
+import io.titandata.remote.RemoteOperationType
+import io.titandata.remote.RemoteProgress
+import io.titandata.remote.nop.server.NopRemoteServer
 import io.titandata.storage.OperationData
 import io.titandata.storage.zfs.ZfsStorageProvider
 import org.jetbrains.exposed.sql.transactions.transaction
@@ -43,7 +46,7 @@ class OperationExecutorTest : StringSpec() {
     lateinit var vs: String
 
     @SpyK
-    var nopRemoteProvider = NopRemoteProvider()
+    var nopProvider = NopRemoteServer()
 
     @InjectMockKs
     @OverrideMockKs
@@ -62,6 +65,7 @@ class OperationExecutorTest : StringSpec() {
             providers.metadata.addRemote("foo", Remote("nop", "origin"))
         }
         val ret = MockKAnnotations.init(this)
+        providers.setRemoteProvider("nop", nopProvider)
         every { zfsStorageProvider.createCommit(any(), any(), any()) } just Runs
         return ret
     }
@@ -84,6 +88,19 @@ class OperationExecutorTest : StringSpec() {
             providers.metadata.createOperation("foo", vs, data)
         }
         return data
+    }
+
+    fun createRemoteOperation(type: RemoteOperationType = RemoteOperationType.PULL): RemoteOperation {
+        return RemoteOperation(
+                updateProgress = { _: RemoteProgress, _: String?, _: Int? -> Unit },
+                operationId = "operation",
+                commitId = "commit",
+                commit = null,
+                remote = emptyMap(),
+                parameters = emptyMap(),
+                type = type,
+                data = null
+        )
     }
 
     fun getExecutor(data: OperationData): OperationExecutor {
@@ -184,7 +201,8 @@ class OperationExecutorTest : StringSpec() {
 
             val data = createOperation()
             val executor = getExecutor(data)
-            executor.syncData(nopRemoteProvider, null)
+            val remoteOperation = createRemoteOperation()
+            executor.syncData(nopProvider, remoteOperation)
 
             verify {
                 zfsStorageProvider.activateVolume(data.operation.id, "_scratch", mapOf("mountpoint" to "/scratch"))
@@ -193,7 +211,7 @@ class OperationExecutorTest : StringSpec() {
                 zfsStorageProvider.deactivateVolume(data.operation.id, "volume", mapOf("mountpoint" to "/mountpoint"))
                 zfsStorageProvider.createVolume(data.operation.id, "_scratch")
                 zfsStorageProvider.deleteVolume(data.operation.id, "_scratch", mapOf("mountpoint" to "/scratch"))
-                nopRemoteProvider.pullVolume(executor, null, Volume(name = "volume", config = mapOf("mountpoint" to "/mountpoint")), "/mountpoint", "/scratch")
+                nopProvider.syncVolume(remoteOperation, "volume", "volume", "/mountpoint", "/scratch")
             }
         }
 
@@ -206,7 +224,8 @@ class OperationExecutorTest : StringSpec() {
 
             val data = createOperation(Operation.Type.PUSH)
             val executor = getExecutor(data)
-            executor.syncData(nopRemoteProvider, null)
+            val remoteOperation = createRemoteOperation(RemoteOperationType.PUSH)
+            executor.syncData(nopProvider, remoteOperation)
 
             verify {
                 zfsStorageProvider.activateVolume(data.operation.id, "_scratch", mapOf("mountpoint" to "/scratch"))
@@ -215,7 +234,7 @@ class OperationExecutorTest : StringSpec() {
                 zfsStorageProvider.deactivateVolume(data.operation.id, "volume", mapOf("mountpoint" to "/mountpoint"))
                 zfsStorageProvider.createVolume(data.operation.id, "_scratch")
                 zfsStorageProvider.deleteVolume(data.operation.id, "_scratch", mapOf("mountpoint" to "/scratch"))
-                nopRemoteProvider.pushVolume(executor, null, Volume(name = "volume", config = mapOf("mountpoint" to "/mountpoint")), "/mountpoint", "/scratch")
+                nopProvider.syncVolume(remoteOperation, "volume", "volume", "/mountpoint", "/scratch")
             }
         }
 
@@ -233,7 +252,7 @@ class OperationExecutorTest : StringSpec() {
             data.operation.state shouldBe Operation.State.COMPLETE
 
             verify {
-                nopRemoteProvider.pullVolume(executor, null, Volume("volume", config = mapOf("mountpoint" to "/mountpoint")), "/mountpoint", "/scratch")
+                nopProvider.syncVolume(any(), "volume", "volume", "/mountpoint", "/scratch")
                 zfsStorageProvider.createCommit(data.operation.id, "id", listOf("volume"))
             }
         }
@@ -256,7 +275,7 @@ class OperationExecutorTest : StringSpec() {
             data.operation.state shouldBe Operation.State.COMPLETE
 
             verify {
-                nopRemoteProvider.pushVolume(executor, null, Volume("volume", config = mapOf("mountpoint" to "/mountpoint")), "/mountpoint", "/scratch")
+                nopProvider.syncVolume(any(), "volume", "volume", "/mountpoint", "/scratch")
             }
         }
 
@@ -266,7 +285,7 @@ class OperationExecutorTest : StringSpec() {
             every { zfsStorageProvider.createVolume(any(), any()) } returns mapOf("mountpoint" to "/mountpoint")
             every { zfsStorageProvider.createVolume(any(), "_scratch") } returns mapOf("mountpoint" to "/scratch")
             every { zfsStorageProvider.deleteVolume(any(), any(), any()) } just Runs
-            every { nopRemoteProvider.pullVolume(any(), any(), any(), any(), any()) } throws InterruptedException()
+            every { nopProvider.syncVolume(any(), any(), any(), any(), any()) } throws InterruptedException()
 
             val data = createOperation(Operation.Type.PULL)
             val executor = getExecutor(data)
@@ -278,7 +297,7 @@ class OperationExecutorTest : StringSpec() {
                 zfsStorageProvider.deactivateVolume(data.operation.id, "_scratch", mapOf("mountpoint" to "/scratch"))
                 zfsStorageProvider.deactivateVolume(data.operation.id, "volume", mapOf("mountpoint" to "/mountpoint"))
                 zfsStorageProvider.deleteVolume(data.operation.id, "_scratch", mapOf("mountpoint" to "/scratch"))
-                nopRemoteProvider.pullVolume(executor, null, Volume(name = "volume", config = mapOf("mountpoint" to "/mountpoint")), "/mountpoint", "/scratch")
+                nopProvider.syncVolume(any(), "volume", "volume", "/mountpoint", "/scratch")
             }
 
             shouldThrow<NoSuchObjectException> {
@@ -292,7 +311,7 @@ class OperationExecutorTest : StringSpec() {
             every { zfsStorageProvider.createVolume(any(), any()) } returns mapOf("mountpoint" to "/mountpoint")
             every { zfsStorageProvider.createVolume(any(), "_scratch") } returns mapOf("mountpoint" to "/scratch")
             every { zfsStorageProvider.deleteVolume(any(), any(), any()) } just Runs
-            every { nopRemoteProvider.pullVolume(any(), any(), any(), any(), any()) } throws Exception()
+            every { nopProvider.syncVolume(any(), any(), any(), any(), any()) } throws Exception()
 
             val data = createOperation(Operation.Type.PULL)
             val executor = getExecutor(data)
@@ -304,7 +323,7 @@ class OperationExecutorTest : StringSpec() {
                 zfsStorageProvider.deactivateVolume(data.operation.id, "_scratch", mapOf("mountpoint" to "/scratch"))
                 zfsStorageProvider.deactivateVolume(data.operation.id, "volume", mapOf("mountpoint" to "/mountpoint"))
                 zfsStorageProvider.deleteVolume(data.operation.id, "_scratch", mapOf("mountpoint" to "/scratch"))
-                nopRemoteProvider.pullVolume(executor, null, Volume(name = "volume", config = mapOf("mountpoint" to "/mountpoint")), "/mountpoint", "/scratch")
+                nopProvider.syncVolume(any(), "volume", "volume", "/mountpoint", "/scratch")
             }
 
             shouldThrow<NoSuchObjectException> {
@@ -318,8 +337,7 @@ class OperationExecutorTest : StringSpec() {
             every { zfsStorageProvider.createVolume(any(), any()) } returns mapOf("mountpoint" to "/mountpoint")
             every { zfsStorageProvider.createVolume(any(), "_scratch") } returns mapOf("mountpoint" to "/scratch")
             every { zfsStorageProvider.deleteVolume(any(), any(), any()) } just Runs
-            every { nopRemoteProvider.pullVolume(any(), any(), any(), any(), any()) } throws Exception()
-            every { nopRemoteProvider.startOperation(any()) } returns 1
+            every { nopProvider.syncVolume(any(), any(), any(), any(), any()) } throws Exception()
 
             val data = createOperation(Operation.Type.PULL)
             val executor = getExecutor(data)
@@ -328,7 +346,7 @@ class OperationExecutorTest : StringSpec() {
             data.operation.state shouldBe Operation.State.FAILED
 
             verify {
-                nopRemoteProvider.failOperation(executor, 1)
+                nopProvider.endOperation(any(), false)
             }
         }
     }

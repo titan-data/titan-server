@@ -31,8 +31,8 @@ import io.titandata.models.Remote
 import io.titandata.models.RemoteParameters
 import io.titandata.models.Repository
 import io.titandata.models.Volume
-import io.titandata.remote.nop.NopRemoteProvider
-import io.titandata.remote.s3.S3RemoteProvider
+import io.titandata.remote.nop.server.NopRemoteServer
+import io.titandata.remote.s3.server.S3RemoteServer
 import io.titandata.storage.OperationData
 import io.titandata.storage.zfs.ZfsStorageProvider
 import java.util.UUID
@@ -43,11 +43,11 @@ class OperationOrchestratorTest : StringSpec() {
     @MockK
     lateinit var zfsStorageProvider: ZfsStorageProvider
 
-    @MockK
-    lateinit var s3Provider: S3RemoteProvider
+    @SpyK
+    var s3Provider = S3RemoteServer()
 
     @SpyK
-    var nopRemoteProvider = NopRemoteProvider()
+    var nopProvider = NopRemoteServer()
 
     lateinit var vs: String
 
@@ -67,7 +67,9 @@ class OperationOrchestratorTest : StringSpec() {
             providers.metadata.createVolume(vs, Volume("volume", config = mapOf("mountpoint" to "/mountpoint")))
             vs
         }
-        return MockKAnnotations.init(this)
+        MockKAnnotations.init(this)
+        providers.setRemoteProvider("nop", nopProvider)
+        providers.setRemoteProvider("s3", s3Provider)
     }
 
     override fun afterTest(testCase: TestCase, result: TestResult) {
@@ -285,7 +287,7 @@ class OperationOrchestratorTest : StringSpec() {
             transaction {
                 providers.metadata.createCommit("foo", providers.metadata.getActiveVolumeSet("foo"), Commit(id = "id"))
             }
-            every { s3Provider.getCommit(any(), any(), any()) } returns Commit("id")
+            every { s3Provider.getCommit(any(), any(), any()) } returns emptyMap()
             shouldThrow<ObjectExistsException> {
                 providers.operations.startPush("foo", "remote", "id", RemoteParameters("s3", mapOf("accessKey" to "key", "secretKey" to "key")))
             }
@@ -395,7 +397,7 @@ class OperationOrchestratorTest : StringSpec() {
         }
 
         "find local commit returns null if no remote commits exist" {
-            every { nopRemoteProvider.getCommit(any(), any(), any()) } throws NoSuchObjectException("")
+            every { nopProvider.getCommit(any(), any(), any()) } returns null
             val commit = providers.operations.findLocalCommit(Operation.Type.PULL, "foo", Remote("nop", "remote"),
                     params, "id")
             commit shouldBe null
@@ -406,13 +408,11 @@ class OperationOrchestratorTest : StringSpec() {
                 providers.metadata.createCommit("foo", vs, Commit(id = "one"))
                 providers.metadata.createCommit("foo", vs, Commit(id = "two"))
             }
-            every { nopRemoteProvider.getCommit(any(), "three", any()) } returns Commit(id = "three", properties = mapOf("tags" to mapOf(
-                    "source" to "two"
-            )))
-            every { nopRemoteProvider.getCommit(any(), "two", any()) } returns Commit(id = "three", properties = mapOf("tags" to mapOf(
-                    "source" to "one"
-            )))
-            every { nopRemoteProvider.getCommit(any(), "one", any()) } throws NoSuchObjectException("")
+            every { nopProvider.getCommit(any(), any(), "three") } returns mapOf("tags" to mapOf(
+                    "source" to "two"))
+            every { nopProvider.getCommit(any(), any(), "two") } returns mapOf("tags" to mapOf(
+                    "source" to "one"))
+            every { nopProvider.getCommit(any(), any(), "one") } returns null
             val commit = providers.operations.findLocalCommit(Operation.Type.PULL, "foo", Remote("nop", "remote"),
                     params, "three")
             commit shouldBe "two"
@@ -422,20 +422,18 @@ class OperationOrchestratorTest : StringSpec() {
             transaction {
                 providers.metadata.createCommit("foo", vs, Commit(id = "one"))
             }
-            every { nopRemoteProvider.getCommit(any(), "three", any()) } returns Commit(id = "three", properties = mapOf("tags" to mapOf(
-                    "source" to "two"
-            )))
-            every { nopRemoteProvider.getCommit(any(), "two", any()) } returns Commit(id = "three", properties = mapOf("tags" to mapOf(
-                    "source" to "one"
-            )))
-            every { nopRemoteProvider.getCommit(any(), "one", any()) } throws NoSuchObjectException("")
+            every { nopProvider.getCommit(any(), any(), "three") } returns mapOf("tags" to mapOf(
+                    "source" to "two"))
+            every { nopProvider.getCommit(any(), any(), "two") } returns mapOf("tags" to mapOf(
+                    "source" to "one"))
+            every { nopProvider.getCommit(any(), any(), "one") } returns null
             val commit = providers.operations.findLocalCommit(Operation.Type.PULL, "foo", Remote("nop", "remote"),
                     params, "three")
             commit shouldBe "one"
         }
 
         "find local commit returns null if remote commit doesn't have source tag" {
-            every { nopRemoteProvider.getCommit(any(), "three", any()) } returns Commit(id = "three")
+            every { nopProvider.getCommit(any(), any(), "three") } returns emptyMap()
             val commit = providers.operations.findLocalCommit(Operation.Type.PULL, "foo", Remote("nop", "remote"),
                     params, "three")
             commit shouldBe null
@@ -451,7 +449,7 @@ class OperationOrchestratorTest : StringSpec() {
             every { zfsStorageProvider.deleteVolume(any(), any(), any()) } just Runs
             every { zfsStorageProvider.createCommit(any(), any(), any()) } just Runs
             every { zfsStorageProvider.createVolumeSet(any()) } just Runs
-            every { nopRemoteProvider.pullVolume(any(), any(), any(), any(), any()) } just Runs
+            every { nopProvider.syncVolume(any(), any(), any(), any(), any()) } just Runs
 
             var op = providers.operations.startPull("foo", "remote", "commit", params)
             op.commitId shouldBe "commit"
@@ -463,12 +461,9 @@ class OperationOrchestratorTest : StringSpec() {
             op.state shouldBe Operation.State.COMPLETE
 
             val progress = providers.operations.getProgress("foo", op.id)
-            progress.size shouldBe 4
+            progress.size shouldBe 2
             progress[0].type shouldBe ProgressEntry.Type.MESSAGE
-            progress[1].type shouldBe ProgressEntry.Type.START
-            progress[1].message shouldBe "Running operation"
-            progress[2].type shouldBe ProgressEntry.Type.END
-            progress[3].type shouldBe ProgressEntry.Type.COMPLETE
+            progress[1].type shouldBe ProgressEntry.Type.COMPLETE
 
             shouldThrow<NoSuchObjectException> {
                 providers.operations.getOperation("foo", op.id)
@@ -481,7 +476,7 @@ class OperationOrchestratorTest : StringSpec() {
             }
             every { zfsStorageProvider.createVolumeSet(any()) } just Runs
             every { zfsStorageProvider.createVolume(any(), any()) } returns mapOf("mountpoint" to "/mountpoint")
-            every { nopRemoteProvider.startOperation(any()) } throws Exception("error")
+            every { nopProvider.startOperation(any()) } throws Exception("error")
 
             var op = providers.operations.startPull("foo", "remote", "commit", params)
             providers.operations.getExecutor("foo", op.id).join()
@@ -503,8 +498,7 @@ class OperationOrchestratorTest : StringSpec() {
             }
             every { zfsStorageProvider.createVolumeSet(any()) } just Runs
             every { zfsStorageProvider.createVolume(any(), any()) } returns mapOf("mountpoint" to "/mountpoint")
-            every { nopRemoteProvider.startOperation(any()) } throws InterruptedException()
-            every { nopRemoteProvider.pullVolume(any(), any(), any(), any(), any()) } just Runs
+            every { nopProvider.startOperation(any()) } throws InterruptedException()
 
             var op = providers.operations.startPull("foo", "remote", "commit", params)
             providers.operations.getExecutor("foo", op.id).join()
@@ -569,13 +563,10 @@ class OperationOrchestratorTest : StringSpec() {
             op.state shouldBe Operation.State.COMPLETE
 
             val progress = providers.operations.getProgress("foo", op.id)
-            progress.size shouldBe 4
+            progress.size shouldBe 2
             progress[0].type shouldBe ProgressEntry.Type.MESSAGE
             progress[0].message shouldBe "Pushing id to 'remote'"
-            progress[1].type shouldBe ProgressEntry.Type.START
-            progress[1].message shouldBe "Running operation"
-            progress[2].type shouldBe ProgressEntry.Type.END
-            progress[3].type shouldBe ProgressEntry.Type.COMPLETE
+            progress[1].type shouldBe ProgressEntry.Type.COMPLETE
 
             shouldThrow<NoSuchObjectException> {
                 providers.operations.getOperation("foo", op.id)
@@ -589,7 +580,7 @@ class OperationOrchestratorTest : StringSpec() {
             }
             every { zfsStorageProvider.cloneVolumeSet(any(), any(), any()) } just Runs
             every { zfsStorageProvider.cloneVolume(any(), any(), any(), any()) } returns mapOf("mountpoint" to "/mountpoint")
-            every { nopRemoteProvider.startOperation(any()) } throws Exception("error")
+            every { nopProvider.startOperation(any()) } throws Exception("error")
 
             var op = providers.operations.startPush("foo", "remote", "id", params)
             providers.operations.getExecutor("foo", op.id).join()
@@ -612,7 +603,7 @@ class OperationOrchestratorTest : StringSpec() {
             }
             every { zfsStorageProvider.cloneVolumeSet(any(), any(), any()) } just Runs
             every { zfsStorageProvider.cloneVolume(any(), any(), any(), any()) } returns mapOf("mountpoint" to "/mountpoint")
-            every { nopRemoteProvider.startOperation(any()) } throws InterruptedException()
+            every { nopProvider.startOperation(any()) } throws InterruptedException()
 
             var op = providers.operations.startPush("foo", "remote", "id", params)
             providers.operations.getExecutor("foo", op.id).join()
@@ -681,13 +672,10 @@ class OperationOrchestratorTest : StringSpec() {
             op.state shouldBe Operation.State.COMPLETE
 
             val progress = providers.operations.getProgress("foo", op.id)
-            progress.size shouldBe 4
+            progress.size shouldBe 2
             progress[0].type shouldBe ProgressEntry.Type.MESSAGE
             progress[0].message shouldBe "Retrying operation after restart"
-            progress[1].type shouldBe ProgressEntry.Type.START
-            progress[1].message shouldBe "Running operation"
-            progress[2].type shouldBe ProgressEntry.Type.END
-            progress[3].type shouldBe ProgressEntry.Type.COMPLETE
+            progress[1].type shouldBe ProgressEntry.Type.COMPLETE
         }
     }
 }

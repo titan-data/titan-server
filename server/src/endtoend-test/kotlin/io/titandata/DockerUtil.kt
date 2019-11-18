@@ -6,8 +6,8 @@ package io.titandata
 
 import com.jcraft.jsch.JSch
 import io.titandata.client.apis.VolumesApi
-import io.titandata.exception.CommandException
-import io.titandata.util.CommandExecutor
+import io.titandata.shell.CommandException
+import io.titandata.shell.CommandExecutor
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.slf4j.LoggerFactory

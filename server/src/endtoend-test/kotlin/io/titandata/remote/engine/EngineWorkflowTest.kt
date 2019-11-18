@@ -30,7 +30,6 @@ class EngineWorkflowTest : EndToEndTest() {
     fun waitForJob(engine: Delphix, result: JSONObject) {
         val actionResult: JSONObject = engine.action().read(result.getString("action")).getJSONObject("result")
         if (actionResult.optString("state") != "COMPLETED") {
-            EngineRemoteProvider.log.debug("waiting for job ${result.getString("job")}")
             var job: JSONObject = engine.job().read(result.getString("job")).getJSONObject("result")
             while (job.optString("jobState") == "RUNNING") {
                 Thread.sleep(5000)
@@ -114,11 +113,9 @@ class EngineWorkflowTest : EndToEndTest() {
             remoteApi.createRemote("foo", remote)
         }
 
-        "list remote commits returns an error" {
-            val e = shouldThrow<ClientException> {
-                remoteApi.listRemoteCommits("foo", "origin", params)
-            }
-            e.code shouldBe "NoSuchObjectException"
+        "list remote commits returns an empty list" {
+            val commits = remoteApi.listRemoteCommits("foo", "origin", params)
+            commits.size shouldBe 0
         }
 
         "push commit succeeds" {

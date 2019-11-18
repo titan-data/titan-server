@@ -1,28 +1,41 @@
 package io.titandata.orchestrator
 
 import io.titandata.ProviderModule
+import io.titandata.exception.NoSuchObjectException
 import io.titandata.models.Commit
 import io.titandata.models.Remote
 import io.titandata.models.RemoteParameters
-import java.time.Instant
-import java.time.OffsetDateTime
-import java.time.format.DateTimeFormatter
 import org.jetbrains.exposed.sql.transactions.transaction
 
 class RemoteOrchestrator(val providers: ProviderModule) {
+
+    internal fun getTags(tags: List<String>?): List<Pair<String, String?>> {
+        if (tags == null) {
+            return emptyList()
+        }
+        val ret = mutableListOf<Pair<String, String?>>()
+        for (tag in tags) {
+            if (tag.contains("=")) {
+                ret.add(tag.substringBefore("=") to tag.substringAfter("="))
+            } else {
+                ret.add(tag to null)
+            }
+        }
+        return ret.toList()
+    }
 
     fun validateRemote(remote: Remote): Remote {
         return Remote(
                 provider = remote.provider,
                 name = remote.name,
-                properties = providers.dynamicRemote(remote.provider).validateRemote(remote.properties)
+                properties = providers.remoteProvider(remote.provider).validateRemote(remote.properties)
         )
     }
 
     fun validateParameters(parameters: RemoteParameters): RemoteParameters {
         return RemoteParameters(
                 provider = parameters.provider,
-                properties = providers.dynamicRemote(parameters.provider).validateParameters(parameters.properties)
+                properties = providers.remoteProvider(parameters.provider).validateParameters(parameters.properties)
         )
     }
 
@@ -68,14 +81,24 @@ class RemoteOrchestrator(val providers: ProviderModule) {
 
     fun listRemoteCommits(repo: String, remoteName: String, params: RemoteParameters, tags: List<String>?): List<Commit> {
         val remote = getRemote(repo, remoteName)
-        val commits = providers.remote(remote.provider).listCommits(remote, validateParameters(params), tags)
-        return commits.sortedByDescending { OffsetDateTime.parse(it.properties.get("timestamp")?.toString()
-                ?: DateTimeFormatter.ISO_INSTANT.format(Instant.ofEpochSecond(0)),
-                DateTimeFormatter.ISO_DATE_TIME) }
+        if (params.provider != remote.provider) {
+            throw IllegalArgumentException("invalid remote parameter type '${params.provider}' for remote type '${remote.provider}")
+        }
+        val commits = providers.remoteProvider(remote.provider).listCommits(remote.properties,
+                validateParameters(params).properties, getTags(tags))
+        return commits.map { Commit(id = it.first, properties = it.second) }
     }
 
     fun getRemoteCommit(repo: String, remoteName: String, params: RemoteParameters, commitId: String): Commit {
         val remote = getRemote(repo, remoteName)
-        return providers.remote(remote.provider).getCommit(remote, commitId, validateParameters(params))
+        if (params.provider != remote.provider) {
+            throw IllegalArgumentException("invalid remote parameter type '${params.provider}' for remote type '${remote.provider}")
+        }
+        val commit = providers.remoteProvider(remote.provider).getCommit(remote.properties,
+                validateParameters(params).properties, commitId)
+        if (commit == null) {
+            throw NoSuchObjectException("no such commit '$commitId' in remote '$remoteName'")
+        }
+        return Commit(id = commitId, properties = commit)
     }
 }

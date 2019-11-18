@@ -28,7 +28,6 @@ val ktorVersion = "1.2.5"
 
 dependencies {
     compile(project(":client"))
-    compile(project(":engine"))
     compile(kotlin("stdlib"))
     compile("io.ktor:ktor-server-cio:$ktorVersion")
     compile("io.ktor:ktor-gson:$ktorVersion")
@@ -40,16 +39,12 @@ dependencies {
     compile("com.zaxxer:HikariCP:3.4.1")
 
     // Remotes
-    compile("io.titandata:remote-sdk:0.0.8")
-    compile("io.titandata:nop-remote-server:0.0.3")
-    compile("io.titandata:ssh-remote-server:0.0.4")
-    compile("io.titandata:s3-remote-server:0.0.5")
-    compile("io.titandata:s3web-remote-server:0.0.2")
-    compile("io.titandata:delphix-remote-server:0.0.2")
-
-    // S3 Provider dependencies
-    compile("com.amazonaws:aws-java-sdk-s3:1.11.668")
-    compile("javax.xml.bind:jaxb-api:2.3.1")
+    compile("io.titandata:remote-sdk:0.0.11")
+    compile("io.titandata:nop-remote-server:0.0.5")
+    compile("io.titandata:ssh-remote-server:0.0.7")
+    compile("io.titandata:s3-remote-server:0.0.8")
+    compile("io.titandata:s3web-remote-server:0.0.8")
+    compile("io.titandata:delphix-remote-server:0.0.8")
 
     testCompile("com.h2database:h2:1.4.200")
     testCompile("io.ktor:ktor-server-test-host:$ktorVersion")

@@ -17,14 +17,14 @@ import io.kotlintest.TestCaseOrder
 import io.kotlintest.shouldBe
 import io.kotlintest.shouldThrow
 import io.titandata.EndToEndTest
-import io.titandata.ProviderModule
 import io.titandata.client.infrastructure.ClientException
 import io.titandata.models.Commit
 import io.titandata.models.Remote
 import io.titandata.models.RemoteParameters
 import io.titandata.models.Repository
 import io.titandata.models.Volume
-import io.titandata.remote.s3.S3RemoteProvider
+import io.titandata.remote.s3.server.S3RemoteServer
+import io.titandata.remote.s3web.server.S3WebRemoteServer
 import java.io.ByteArrayInputStream
 import java.util.UUID
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider
@@ -106,11 +106,11 @@ class S3WebWorkflowTest : EndToEndTest() {
 
         "creating and accessing S3 object succeeds" {
             val remote = getS3Remote()
-            val provider = S3RemoteProvider(ProviderModule("test"))
+            val provider = S3RemoteServer()
 
-            val s3 = provider.getClient(remote, s3params)
+            val s3 = provider.getClient(remote.properties, s3params.properties)
             try {
-                val (bucket, key) = provider.getPath(remote, "id")
+                val (bucket, key) = provider.getPath(remote.properties, "id")
                 val metadata = ObjectMetadata()
                 metadata.userMetadata = mapOf("test" to "test")
                 val input = ByteArrayInputStream("Hello, world!".toByteArray())
@@ -118,8 +118,8 @@ class S3WebWorkflowTest : EndToEndTest() {
                 s3.putObject(request)
 
                 val webRemote = getS3WebRemote()
-                val webProvider = S3WebRemoteProvider(ProviderModule("test"))
-                val body = webProvider.getFile(webRemote, "id").body!!.string()
+                val webProvider = S3WebRemoteServer()
+                val body = webProvider.getFile(webRemote.properties, "id").body!!.string()
                 body shouldBe "Hello, world!"
 
                 s3.deleteObject(bucket, key)

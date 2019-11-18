@@ -4,11 +4,11 @@
 
 package io.titandata.storage.zfs
 
-import io.titandata.exception.CommandException
 import io.titandata.models.CommitStatus
 import io.titandata.models.RepositoryVolumeStatus
+import io.titandata.shell.CommandException
+import io.titandata.shell.CommandExecutor
 import io.titandata.storage.StorageProvider
-import io.titandata.util.CommandExecutor
 import org.slf4j.LoggerFactory
 
 /**

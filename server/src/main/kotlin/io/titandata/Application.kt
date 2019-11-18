@@ -45,16 +45,9 @@ import io.titandata.orchestrator.Reaper
 import io.titandata.orchestrator.RemoteOrchestrator
 import io.titandata.orchestrator.RepositoryOrchestrator
 import io.titandata.orchestrator.VolumeOrchestrator
-import io.titandata.remote.RemoteProvider
 import io.titandata.remote.RemoteServer
-import io.titandata.remote.engine.EngineRemoteProvider
-import io.titandata.remote.nop.NopRemoteProvider
-import io.titandata.remote.s3.S3RemoteProvider
-import io.titandata.remote.s3web.S3WebRemoteProvider
-import io.titandata.remote.ssh.SshRemoteProvider
 import io.titandata.storage.StorageProvider
 import io.titandata.storage.zfs.ZfsStorageProvider
-import io.titandata.util.CommandExecutor
 import java.io.PrintWriter
 import java.io.StringWriter
 import java.util.ServiceLoader
@@ -76,7 +69,7 @@ fun exceptionToError(request: ApplicationRequest, t: Throwable): Any {
 
 class ProviderModule(pool: String, inMemory: Boolean = true) {
     private val loader = ServiceLoader.load(RemoteServer::class.java)
-    private val dynamicRemotes: Map<String, RemoteServer>
+    private val remoteProviders: MutableMap<String, RemoteServer>
 
     init {
         val providers = mutableMapOf<String, RemoteServer>()
@@ -85,15 +78,10 @@ class ProviderModule(pool: String, inMemory: Boolean = true) {
                 providers[it.getProvider()] = it
             }
         }
-        dynamicRemotes = providers.toMap()
+        remoteProviders = providers
     }
 
     private val zfsStorageProvider = ZfsStorageProvider(pool)
-    private val nopRemoteProvider = NopRemoteProvider()
-    private val engineRemoteProvider = EngineRemoteProvider(this)
-    private val sshRemoteProvider = SshRemoteProvider(this)
-    private val s3Provider = S3RemoteProvider(this)
-    private val s3WebProvider = S3WebRemoteProvider(this)
 
     val metadata = MetadataProvider(inMemory)
     val commits = CommitOrchestrator(this)
@@ -104,7 +92,6 @@ class ProviderModule(pool: String, inMemory: Boolean = true) {
     val reaper = Reaper(this)
 
     val gson = GsonBuilder().create()
-    val commandExecutor = CommandExecutor()
 
     // Return the default storage provider
     val storage: StorageProvider
@@ -118,22 +105,15 @@ class ProviderModule(pool: String, inMemory: Boolean = true) {
         return zfsStorageProvider
     }
 
-    // Get a new-style remote provider by name
-    fun dynamicRemote(type: String): RemoteServer {
-        return dynamicRemotes[type]
+    // Get a remote provider by name
+    fun remoteProvider(type: String): RemoteServer {
+        return remoteProviders[type]
                 ?: throw IllegalArgumentException("unknown remote provider '$type'")
     }
 
-    // Get a remote provider by name
-    fun remote(type: String): RemoteProvider {
-        return when (type) {
-            "nop" -> nopRemoteProvider
-            "engine" -> engineRemoteProvider
-            "ssh" -> sshRemoteProvider
-            "s3" -> s3Provider
-            "s3web" -> s3WebProvider
-            else -> throw IllegalArgumentException("unknown remote provider '$type'")
-        }
+    // For testing purposes
+    fun setRemoteProvider(type: String, server: RemoteServer) {
+        remoteProviders[type] = server
     }
 }
 

@@ -12,14 +12,16 @@ interface RuntimeContext {
     fun cloneVolumeSet(sourceVolumeSet: String, sourceCommit: String, newVolumeSet: String)
     fun deleteVolumeSet(volumeSet: String)
     fun getVolumeStatus(volumeSet: String, volume: String): RepositoryVolumeStatus
+    fun deleteVolumeSetCommit(volumeSet: String, commitId: String)
+    fun commitVolumeSet(volumeSet: String, commitId: String)
 
-    fun createCommit(volumeSet: String, commitId: String, volumeNames: List<String>)
     fun getCommitStatus(volumeSet: String, commitId: String, volumeNames: List<String>): CommitStatus
-    fun deleteCommit(volumeSet: String, commitId: String, volumeNames: List<String>)
 
     fun createVolume(volumeSet: String, volumeName: String): Map<String, Any>
-    fun cloneVolume(sourceVolumeSet: String, sourceCommit: String, newVolumeSet: String, volumeName: String): Map<String, Any>
+    fun cloneVolume(sourceVolumeSet: String, sourceCommit: String, newVolumeSet: String, volumeName: String, sourceConfig: Map<String, Any>): Map<String, Any>
+    fun commitVolume(volumeSet: String, commitId: String, volumeName: String, config: Map<String, Any>)
     fun deleteVolume(volumeSet: String, volumeName: String, config: Map<String, Any>)
     fun activateVolume(volumeSet: String, volumeName: String, config: Map<String, Any>)
     fun deactivateVolume(volumeSet: String, volumeName: String, config: Map<String, Any>)
+    fun deleteVolumeCommit(volumeSet: String, commitId: String, volumeName: String)
 }

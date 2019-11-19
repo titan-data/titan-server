@@ -2,7 +2,7 @@
  * Copyright The Titan Project Contributors.
  */
 
-package io.titandata
+package io.titandata.docker
 
 import io.titandata.client.infrastructure.ApiClient
 import io.titandata.client.infrastructure.ClientException

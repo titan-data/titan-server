@@ -63,7 +63,7 @@ class DockerZfsContextTest : StringSpec() {
 
         "clone volume clones dataset" {
             every { executor.exec(*anyVararg()) } returns ""
-            provider.cloneVolume("source", "commit", "dest", "vol")
+            provider.cloneVolume("source", "commit", "dest", "vol", emptyMap())
             verifyAll {
                 executor.exec("zfs", "clone", "test/data/source/vol@commit", "test/data/dest/vol")
             }
@@ -113,12 +113,16 @@ class DockerZfsContextTest : StringSpec() {
             }
         }
 
-        "create commit succeeds" {
+        "commit volumeset succeeds" {
             every { executor.exec(*anyVararg()) } returns ""
-            provider.createCommit("vs", "commit", listOf("one", "two"))
+            provider.commitVolumeSet("vs", "commit")
             verifyAll {
                 executor.exec("zfs", "snapshot", "-r", "test/data/vs@commit")
             }
+        }
+
+        "commit volume succeeds" {
+            provider.commitVolume("vs", "commit", "volume", emptyMap())
         }
 
         "get commit sums volume sizes" {
@@ -135,9 +139,9 @@ class DockerZfsContextTest : StringSpec() {
             }
         }
 
-        "delete commit succeeds" {
+        "delete volumeset commit succeeds" {
             every { executor.exec(*anyVararg()) } returns ""
-            provider.deleteCommit("vs", "commit", listOf("one", "two"))
+            provider.deleteVolumeSetCommit("vs", "commit")
             verifyAll {
                 executor.exec("zfs", "destroy", "-r", "test/data/vs@commit")
             }
@@ -145,10 +149,14 @@ class DockerZfsContextTest : StringSpec() {
 
         "delete commit ignores no snapshot exception" {
             every { executor.exec(*anyVararg()) } throws CommandException("", 1, "could not find any snapshots to destroy")
-            provider.deleteCommit("vs", "commit", listOf("one", "two"))
+            provider.deleteVolumeSetCommit("vs", "commit")
             verifyAll {
                 executor.exec("zfs", "destroy", "-r", "test/data/vs@commit")
             }
+        }
+
+        "delete volume commit succeeds" {
+            provider.deleteVolumeCommit("vs", "commit", "volume")
         }
 
         "create volume succeeds" {

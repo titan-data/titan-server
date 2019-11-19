@@ -2,13 +2,14 @@
  * Copyright The Titan Project Contributors.
  */
 
-package io.titandata
+package io.titandata.docker
 
 import io.kotlintest.Spec
 import io.kotlintest.matchers.string.shouldStartWith
 import io.kotlintest.shouldBe
 import io.kotlintest.shouldNotBe
 import io.kotlintest.shouldThrow
+import io.titandata.EndToEndTest
 import io.titandata.client.infrastructure.ClientException
 import io.titandata.models.Commit
 import io.titandata.models.Repository

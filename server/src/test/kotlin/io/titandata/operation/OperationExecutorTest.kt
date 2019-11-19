@@ -62,7 +62,8 @@ class OperationExecutorTest : StringSpec() {
         }
         val ret = MockKAnnotations.init(this)
         services.setRemoteProvider("nop", nopProvider)
-        every { context.createCommit(any(), any(), any()) } just Runs
+        every { context.commitVolumeSet(any(), any()) } just Runs
+        every { context.commitVolume(any(), any(), any(), any()) } just Runs
         return ret
     }
 
@@ -249,7 +250,8 @@ class OperationExecutorTest : StringSpec() {
 
             verify {
                 nopProvider.syncVolume(any(), "volume", "volume", "/mountpoint", "/scratch")
-                context.createCommit(data.operation.id, "id", listOf("volume"))
+                context.commitVolumeSet(data.operation.id, "id")
+                context.commitVolume(data.operation.id, "id", "volume", mapOf("mountpoint" to "/mountpoint"))
             }
         }
 

@@ -59,7 +59,8 @@ class CommitOrchestratorTest : StringSpec() {
             services.metadata.createVolume(vs, Volume("vol2"))
         }
         val ret = MockKAnnotations.init(this)
-        every { context.createCommit(any(), any(), any()) } just Runs
+        every { context.commitVolumeSet(any(), any()) } just Runs
+        every { context.commitVolume(any(), any(), any(), any()) } just Runs
         return ret
     }
 
@@ -103,7 +104,9 @@ class CommitOrchestratorTest : StringSpec() {
             volumeSet shouldBe vs
             commit.id shouldBe "id"
             verify {
-                context.createCommit(vs, "id", listOf("vol1", "vol2"))
+                context.commitVolumeSet(vs, "id")
+                context.commitVolume(vs, "id", "vol1", emptyMap())
+                context.commitVolume(vs, "id", "vol2", emptyMap())
             }
         }
 
@@ -113,7 +116,7 @@ class CommitOrchestratorTest : StringSpec() {
             }
             services.commits.createCommit("foo", Commit(id = "id", properties = mapOf("a" to "b")), vs2)
             verify {
-                context.createCommit(vs2, "id", listOf())
+                context.commitVolumeSet(vs2, "id")
             }
         }
 
@@ -237,7 +240,7 @@ class CommitOrchestratorTest : StringSpec() {
 
         "checkout commit succeeds" {
             every { context.cloneVolumeSet(any(), any(), any()) } just Runs
-            every { context.cloneVolume(any(), any(), any(), any()) } returns emptyMap()
+            every { context.cloneVolume(any(), any(), any(), any(), any()) } returns emptyMap()
             every { context.createVolume(any(), any()) } returns emptyMap()
             every { reaper.signal() } just Runs
             services.commits.createCommit("foo", Commit("id"))
@@ -256,8 +259,8 @@ class CommitOrchestratorTest : StringSpec() {
             verify {
                 reaper.signal()
                 context.cloneVolumeSet(vs, "id", vs2)
-                context.cloneVolume(vs, "id", vs2, "vol1")
-                context.cloneVolume(vs, "id", vs2, "vol2")
+                context.cloneVolume(vs, "id", vs2, "vol1", emptyMap())
+                context.cloneVolume(vs, "id", vs2, "vol2", emptyMap())
             }
         }
 

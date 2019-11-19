@@ -2,10 +2,11 @@
 * Copyright The Titan Project Contributors.
  */
 
-package io.titandata
+package io.titandata.kubernetes
 
 import io.kotlintest.Spec
 import io.kotlintest.matchers.string.shouldStartWith
+import io.titandata.EndToEndTest
 
 class KubernetesWorkflowTest : EndToEndTest() {
 

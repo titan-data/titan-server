@@ -164,7 +164,8 @@ class RepositoryOrchestratorTest : StringSpec() {
             every { context.createVolume(any(), any()) } returns emptyMap()
             services.volumes.createVolume("foo", Volume("vol1"))
             services.volumes.createVolume("foo", Volume("vol2"))
-            every { context.createCommit(any(), any(), any()) } just Runs
+            every { context.commitVolumeSet(any(), any()) } just Runs
+            every { context.commitVolume(any(), any(), any(), any()) } just Runs
             services.commits.createCommit("foo", Commit(id = "id"))
             every { context.getVolumeStatus(any(), any()) } returns RepositoryVolumeStatus(
                 name = "vol", logicalSize = 20, actualSize = 10)

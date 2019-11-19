@@ -46,6 +46,10 @@ class KubernetesCsiContext : RuntimeContext {
         // Nothing to do
     }
 
+    override fun commitVolumeSet(volumeSet: String, commitId: String) {
+        // Nothing to do
+    }
+
     override fun createVolume(volumeSet: String, volumeName: String): Map<String, Any> {
         val name = "$volumeSet-$volumeName"
         val request = V1PersistentVolumeClaimBuilder()
@@ -84,6 +88,7 @@ class KubernetesCsiContext : RuntimeContext {
         } catch (e: JsonSyntaxException) {
             // Ignore
         }
+
         try {
             val result = coreApi.readNamespacedPersistentVolumeClaimStatus(pvc, namespace, null)
             throw IllegalStateException("Unable to delete PersistentVolumeClaim '$pvc', status = ${result.status.phase}")
@@ -96,7 +101,13 @@ class KubernetesCsiContext : RuntimeContext {
         log.info("Deleted PersistentVolumeClaim '$pvc'")
     }
 
-    override fun cloneVolume(sourceVolumeSet: String, sourceCommit: String, newVolumeSet: String, volumeName: String): Map<String, Any> {
+    override fun cloneVolume(
+        sourceVolumeSet: String,
+        sourceCommit: String,
+        newVolumeSet: String,
+        volumeName: String,
+        sourceConfig: Map<String, Any>
+    ): Map<String, Any> {
         TODO("not implemented")
     }
 
@@ -104,11 +115,11 @@ class KubernetesCsiContext : RuntimeContext {
         TODO("not implemented")
     }
 
-    override fun createCommit(volumeSet: String, commitId: String, volumeNames: List<String>) {
+    override fun getCommitStatus(volumeSet: String, commitId: String, volumeNames: List<String>): CommitStatus {
         TODO("not implemented")
     }
 
-    override fun getCommitStatus(volumeSet: String, commitId: String, volumeNames: List<String>): CommitStatus {
+    override fun commitVolume(volumeSet: String, commitId: String, volumeName: String, config: Map<String, Any>) {
         TODO("not implemented")
     }
 

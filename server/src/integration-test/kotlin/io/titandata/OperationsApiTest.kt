@@ -226,7 +226,7 @@ class OperationsApiTest : StringSpec() {
             }
 
             every { context.cloneVolumeSet(any(), any(), any()) } just Runs
-            every { context.cloneVolume(any(), any(), any(), any()) } returns emptyMap()
+            every { context.cloneVolume(any(), any(), any(), any(), any()) } returns emptyMap()
 
             val result = engine.handleRequest(HttpMethod.Post, "/v1/repositories/foo/remotes/remote/commits/commit/push") {
                 addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())

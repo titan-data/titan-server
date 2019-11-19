@@ -53,7 +53,13 @@ class DockerZfsContext(
      * Clone an individual volume. Here's where we actually do the work of cloning the volume, and then making sure
      * we pass back an updated config with the proper mountpoint.
      */
-    override fun cloneVolume(sourceVolumeSet: String, sourceCommit: String, newVolumeSet: String, volumeName: String): Map<String, Any> {
+    override fun cloneVolume(
+        sourceVolumeSet: String,
+        sourceCommit: String,
+        newVolumeSet: String,
+        volumeName: String,
+        sourceConfig: Map<String, Any>
+    ): Map<String, Any> {
         executor.exec("zfs", "clone", "$poolName/data/$sourceVolumeSet/$volumeName@$sourceCommit",
                 "$poolName/data/$newVolumeSet/$volumeName")
         return mapOf("mountpoint" to "/var/lib/$poolName/mnt/$newVolumeSet/$volumeName")
@@ -100,7 +106,7 @@ class DockerZfsContext(
      * Create a new commit. Since we keep all volumes underneath the volume set, we can just do a recursive snapshot
      * of the set.
      */
-    override fun createCommit(volumeSet: String, commitId: String, volumeNames: List<String>) {
+    override fun commitVolumeSet(volumeSet: String, commitId: String) {
         executor.exec("zfs", "snapshot", "-r", "$poolName/data/$volumeSet@$commitId")
     }
 
@@ -146,6 +152,12 @@ class DockerZfsContext(
     override fun createVolume(volumeSet: String, volumeName: String): Map<String, Any> {
         executor.exec("zfs", "create", "$poolName/data/$volumeSet/$volumeName")
         return mapOf("mountpoint" to "/var/lib/$poolName/mnt/$volumeSet/$volumeName")
+    }
+
+    /**
+     * Commits are done at the volumeset level, so nothing to do for a volume.
+     */
+    override fun commitVolume(volumeSet: String, commitId: String, volumeName: String, config: Map<String, Any>) {
     }
 
     /**

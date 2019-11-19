@@ -343,7 +343,7 @@ class OperationOrchestratorTest : StringSpec() {
 
         "create storage with existing commit clones volume set" {
             every { context.cloneVolumeSet(any(), any(), any()) } just Runs
-            every { context.cloneVolume(any(), any(), any(), any()) } returns mapOf("mountpoint" to "/mountpoint2")
+            every { context.cloneVolume(any(), any(), any(), any(), any()) } returns mapOf("mountpoint" to "/mountpoint2")
 
             val (commitVs, commit) = transaction {
                 val cvs = services.metadata.createVolumeSet("foo")
@@ -367,7 +367,7 @@ class OperationOrchestratorTest : StringSpec() {
 
             verify {
                 context.cloneVolumeSet(commitVs, commit.id, newVs)
-                context.cloneVolume(commitVs, commit.id, newVs, "volume")
+                context.cloneVolume(commitVs, commit.id, newVs, "volume", emptyMap())
             }
         }
 
@@ -448,7 +448,8 @@ class OperationOrchestratorTest : StringSpec() {
             every { context.deactivateVolume(any(), any(), any()) } just Runs
             every { context.createVolume(any(), any()) } returns mapOf("mountpoint" to "/mountpoint")
             every { context.deleteVolume(any(), any(), any()) } just Runs
-            every { context.createCommit(any(), any(), any()) } just Runs
+            every { context.commitVolumeSet(any(), any()) } just Runs
+            every { context.commitVolume(any(), any(), any(), any()) } just Runs
             every { context.createVolumeSet(any()) } just Runs
             every { nopProvider.syncVolume(any(), any(), any(), any(), any()) } just Runs
 
@@ -531,7 +532,8 @@ class OperationOrchestratorTest : StringSpec() {
             every { context.deactivateVolume(any(), any(), any()) } just Runs
             every { context.createVolume(any(), any()) } returns mapOf("mountpoint" to "/mountpoint")
             every { context.deleteVolume(any(), any(), any()) } just Runs
-            every { context.createCommit(any(), any(), any()) } just Runs
+            every { context.commitVolumeSet(any(), any()) } just Runs
+            every { context.commitVolume(any(), any(), any(), any()) } just Runs
             every { context.createVolumeSet(any()) } just Runs
 
             var op = services.operations.startPull("foo", "remote", "commit", params)
@@ -550,9 +552,10 @@ class OperationOrchestratorTest : StringSpec() {
             every { context.deactivateVolume(any(), any(), any()) } just Runs
             every { context.createVolume(any(), any()) } returns mapOf("mountpoint" to "/mountpoint")
             every { context.deleteVolume(any(), any(), any()) } just Runs
-            every { context.createCommit(any(), any(), any()) } just Runs
+            every { context.commitVolumeSet(any(), any()) } just Runs
+            every { context.commitVolume(any(), any(), any(), any()) } just Runs
             every { context.cloneVolumeSet(any(), any(), any()) } just Runs
-            every { context.cloneVolume(any(), any(), any(), any()) } returns mapOf("mountpoint" to "/mountpoint")
+            every { context.cloneVolume(any(), any(), any(), any(), any()) } returns mapOf("mountpoint" to "/mountpoint")
 
             var op = services.operations.startPush("foo", "remote", "id", params)
             op.commitId shouldBe "id"
@@ -580,7 +583,7 @@ class OperationOrchestratorTest : StringSpec() {
                 services.metadata.createCommit("foo", vs, Commit("id"))
             }
             every { context.cloneVolumeSet(any(), any(), any()) } just Runs
-            every { context.cloneVolume(any(), any(), any(), any()) } returns mapOf("mountpoint" to "/mountpoint")
+            every { context.cloneVolume(any(), any(), any(), any(), any()) } returns mapOf("mountpoint" to "/mountpoint")
             every { nopProvider.startOperation(any()) } throws Exception("error")
 
             var op = services.operations.startPush("foo", "remote", "id", params)
@@ -603,7 +606,7 @@ class OperationOrchestratorTest : StringSpec() {
                 services.metadata.createCommit("foo", vs, Commit("id"))
             }
             every { context.cloneVolumeSet(any(), any(), any()) } just Runs
-            every { context.cloneVolume(any(), any(), any(), any()) } returns mapOf("mountpoint" to "/mountpoint")
+            every { context.cloneVolume(any(), any(), any(), any(), any()) } returns mapOf("mountpoint" to "/mountpoint")
             every { nopProvider.startOperation(any()) } throws InterruptedException()
 
             var op = services.operations.startPush("foo", "remote", "id", params)
@@ -641,9 +644,10 @@ class OperationOrchestratorTest : StringSpec() {
             every { context.deactivateVolume(any(), any(), any()) } just Runs
             every { context.createVolume(any(), any()) } returns mapOf("mountpoint" to "/mountpoint")
             every { context.deleteVolume(any(), any(), any()) } just Runs
-            every { context.createCommit(any(), any(), any()) } just Runs
+            every { context.commitVolumeSet(any(), any()) } just Runs
+            every { context.commitVolume(any(), any(), any(), any()) } just Runs
             every { context.cloneVolumeSet(any(), any(), any()) } just Runs
-            every { context.cloneVolume(any(), any(), any(), any()) } returns mapOf("mountpoint" to "/mountpoint")
+            every { context.cloneVolume(any(), any(), any(), any(), any()) } returns mapOf("mountpoint" to "/mountpoint")
 
             var op = services.operations.startPush("foo", "remote", "id", params)
             services.operations.getExecutor("foo", op.id).join()
@@ -662,9 +666,10 @@ class OperationOrchestratorTest : StringSpec() {
             every { context.deactivateVolume(any(), any(), any()) } just Runs
             every { context.createVolume(any(), any()) } returns mapOf("mountpoint" to "/mountpoint")
             every { context.deleteVolume(any(), any(), any()) } just Runs
-            every { context.createCommit(any(), any(), any()) } just Runs
+            every { context.commitVolumeSet(any(), any()) } just Runs
+            every { context.commitVolume(any(), any(), any(), any()) } just Runs
             every { context.cloneVolumeSet(any(), any(), any()) } just Runs
-            every { context.cloneVolume(any(), any(), any(), any()) } returns mapOf("mountpoint" to "/mountpoint")
+            every { context.cloneVolume(any(), any(), any(), any(), any()) } returns mapOf("mountpoint" to "/mountpoint")
 
             services.operations.loadState()
             services.operations.getExecutor("foo", vs).join()

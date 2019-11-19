@@ -63,7 +63,7 @@ class DockerZfsContextTest : StringSpec() {
 
         "clone volume clones dataset" {
             every { executor.exec(*anyVararg()) } returns ""
-            provider.cloneVolume("source", "commit", "dest", "vol")
+            provider.cloneVolume("source", "commit", "dest", "vol", emptyMap())
             verifyAll {
                 executor.exec("zfs", "clone", "test/data/source/vol@commit", "test/data/dest/vol")
             }
@@ -113,12 +113,16 @@ class DockerZfsContextTest : StringSpec() {
             }
         }
 
-        "create commit succeeds" {
+        "commit volumeset succeeds" {
             every { executor.exec(*anyVararg()) } returns ""
-            provider.createCommit("vs", "commit", listOf("one", "two"))
+            provider.commitVolumeSet("vs", "commit")
             verifyAll {
                 executor.exec("zfs", "snapshot", "-r", "test/data/vs@commit")
             }
+        }
+
+        "commit volume succeeds" {
+            provider.commitVolume("vs", "commit", "volume", emptyMap())
         }
 
         "get commit sums volume sizes" {

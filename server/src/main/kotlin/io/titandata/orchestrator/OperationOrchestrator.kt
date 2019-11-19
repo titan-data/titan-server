@@ -161,13 +161,13 @@ class OperationOrchestrator(val services: ServiceLocator) {
         } else {
             val (sourceVolumeSet, volumes) = transaction {
                 val vs = services.metadata.getCommit(repo, commit).first
-                Pair(vs, services.metadata.listVolumes(vs).map { it.name })
+                Pair(vs, services.metadata.listVolumes(vs))
             }
             services.context.cloneVolumeSet(sourceVolumeSet, commit, volumeSet)
             for (v in volumes) {
-                val config = services.context.cloneVolume(sourceVolumeSet, commit, volumeSet, v)
+                val config = services.context.cloneVolume(sourceVolumeSet, commit, volumeSet, v.name, v.config)
                 transaction {
-                    services.metadata.updateVolumeConfig(volumeSet, v, config)
+                    services.metadata.updateVolumeConfig(volumeSet, v.name, config)
                 }
             }
         }

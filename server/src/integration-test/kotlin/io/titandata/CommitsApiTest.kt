@@ -241,7 +241,8 @@ class CommitsApiTest : StringSpec() {
         }
 
         "create commit succeeds" {
-            every { context.createCommit(any(), any(), any()) } just Runs
+            every { context.commitVolumeSet(any(), any()) } just Runs
+            every { context.commitVolume(any(), any(), any(), any()) } just Runs
             with(engine.handleRequest(HttpMethod.Post, "/v1/repositories/foo/commits") {
                 addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
                 setBody("{\"id\":\"hash\",\"properties\":{\"a\":\"b\",\"timestamp\":\"2019-04-28T23:04:06Z\"}}")
@@ -250,7 +251,7 @@ class CommitsApiTest : StringSpec() {
                 response.contentType().toString() shouldBe "application/json; charset=UTF-8"
                 response.content shouldBe "{\"id\":\"hash\",\"properties\":{\"a\":\"b\",\"timestamp\":\"2019-04-28T23:04:06Z\"}}"
                 verify {
-                    context.createCommit(vs, "hash", emptyList())
+                    context.commitVolumeSet(vs, "hash")
                 }
             }
         }
@@ -273,7 +274,7 @@ class CommitsApiTest : StringSpec() {
             }
 
             every { context.cloneVolumeSet(any(), any(), any()) } just Runs
-            every { context.cloneVolume(any(), any(), any(), any()) } returns emptyMap()
+            every { context.cloneVolume(any(), any(), any(), any(), any()) } returns emptyMap()
 
             with(engine.handleRequest(HttpMethod.Post, "/v1/repositories/foo/commits/hash/checkout")) {
                 response.status() shouldBe HttpStatusCode.NoContent

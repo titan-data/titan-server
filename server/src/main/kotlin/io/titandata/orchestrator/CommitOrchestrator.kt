@@ -42,7 +42,10 @@ class CommitOrchestrator(val services: ServiceLocator) {
             services.metadata.listVolumes(volumeSet)
         }
 
-        services.context.createCommit(volumeSet, newCommit.id, volumes.map { it.name })
+        services.context.commitVolumeSet(volumeSet, newCommit.id)
+        for (v in volumes) {
+            services.context.commitVolume(volumeSet, newCommit.id, v.name, v.config)
+        }
         return newCommit
     }
 
@@ -95,14 +98,14 @@ class CommitOrchestrator(val services: ServiceLocator) {
         }
 
         val volumes = transaction {
-            services.metadata.listVolumes(newVolumeSet).map { it.name }
+            services.metadata.listVolumes(newVolumeSet)
         }
 
         services.context.cloneVolumeSet(sourceVolumeSet, commit, newVolumeSet)
         for (v in volumes) {
-            val config = services.context.cloneVolume(sourceVolumeSet, commit, newVolumeSet, v)
+            val config = services.context.cloneVolume(sourceVolumeSet, commit, newVolumeSet, v.name, v.config)
             transaction {
-                services.metadata.updateVolumeConfig(newVolumeSet, v, config)
+                services.metadata.updateVolumeConfig(newVolumeSet, v.name, config)
             }
         }
 

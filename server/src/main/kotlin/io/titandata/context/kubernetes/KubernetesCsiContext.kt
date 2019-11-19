@@ -165,7 +165,39 @@ class KubernetesCsiContext : RuntimeContext {
         volumeName: String,
         sourceConfig: Map<String, Any>
     ): Map<String, Any> {
-        TODO("not implemented")
+        val size = sourceConfig["size"] as? String ?: throw IllegalStateException("missing or invalid size in volume config")
+        val name = "$newVolumeSet-$volumeName"
+        val snapshotName = "$sourceVolumeSet-$volumeName-$sourceCommit"
+
+        val file = createTempFile()
+        try {
+            file.writeText("apiVersion: v1\n" +
+                    "kind: PersistentVolumeClaim\n" +
+                    "metadata:\n" +
+                    "  name: $name\n" +
+                    "  labels:\n" +
+                    "    titanVolume: $volumeName\n" +
+                    "spec:\n" +
+                    "  dataSource:\n" +
+                    "    kind: VolumeSnapshot\n" +
+                    "    apiGroup: snapshot.storage.k8s.io\n" +
+                    "    name: $snapshotName\n" +
+                    "  accessModes:\n" +
+                    "    - ReadWriteOnce\n" +
+                    "  resources:\n" +
+                    "    requests:\n" +
+                    "      storage: $size\n"
+            )
+
+            executor.exec("kubectl", "apply", "-f", file.path)
+        } finally {
+            file.delete()
+        }
+
+        return mapOf(
+                "pvc" to name,
+                "namespace" to defaultNamespace,
+                "size" to size)
     }
 
     override fun getVolumeStatus(volumeSet: String, volume: String): RepositoryVolumeStatus {
@@ -177,10 +209,10 @@ class KubernetesCsiContext : RuntimeContext {
     }
 
     override fun activateVolume(volumeSet: String, volumeName: String, config: Map<String, Any>) {
-        TODO("not implemented")
+        // Nothing to do
     }
 
     override fun deactivateVolume(volumeSet: String, volumeName: String, config: Map<String, Any>) {
-        TODO("not implemented")
+        // Nothing to do
     }
 }

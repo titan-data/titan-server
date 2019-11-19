@@ -236,10 +236,12 @@ class ReaperTest : StringSpec() {
                 services.metadata.markCommitDeleting("foo", "id")
                 vs
             }
-            every { context.deleteCommit(any(), any(), any()) } just Runs
+            every { context.deleteVolumeSetCommit(any(), any()) } just Runs
+            every { context.deleteVolumeCommit(any(), any(), any()) } just Runs
             services.reaper.reapCommits() shouldBe true
             verify {
-                context.deleteCommit(vs, "id", listOf("volume"))
+                context.deleteVolumeSetCommit(vs, "id")
+                context.deleteVolumeCommit(vs, "id", "volume")
             }
             transaction {
                 services.metadata.listDeletingCommits().shouldBeEmpty()

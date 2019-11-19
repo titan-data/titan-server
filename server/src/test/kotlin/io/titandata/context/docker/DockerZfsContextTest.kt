@@ -139,9 +139,9 @@ class DockerZfsContextTest : StringSpec() {
             }
         }
 
-        "delete commit succeeds" {
+        "delete volumeset commit succeeds" {
             every { executor.exec(*anyVararg()) } returns ""
-            provider.deleteCommit("vs", "commit", listOf("one", "two"))
+            provider.deleteVolumeSetCommit("vs", "commit")
             verifyAll {
                 executor.exec("zfs", "destroy", "-r", "test/data/vs@commit")
             }
@@ -149,10 +149,14 @@ class DockerZfsContextTest : StringSpec() {
 
         "delete commit ignores no snapshot exception" {
             every { executor.exec(*anyVararg()) } throws CommandException("", 1, "could not find any snapshots to destroy")
-            provider.deleteCommit("vs", "commit", listOf("one", "two"))
+            provider.deleteVolumeSetCommit("vs", "commit")
             verifyAll {
                 executor.exec("zfs", "destroy", "-r", "test/data/vs@commit")
             }
+        }
+
+        "delete volume commit succeeds" {
+            provider.deleteVolumeCommit("vs", "commit", "volume")
         }
 
         "create volume succeeds" {

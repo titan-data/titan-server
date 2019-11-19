@@ -135,7 +135,7 @@ class DockerZfsContext(
      * Delete a commit. The reaper will have ensured that any clones have been deleted prior to invoking this. We
      * can just recursively delete the snapshot at the level of the volume set.
      */
-    override fun deleteCommit(volumeSet: String, commitId: String, volumeNames: List<String>) {
+    override fun deleteVolumeSetCommit(volumeSet: String, commitId: String) {
         try {
             executor.exec("zfs", "destroy", "-r", "$poolName/data/$volumeSet@$commitId")
         } catch (e: CommandException) {
@@ -152,12 +152,6 @@ class DockerZfsContext(
     override fun createVolume(volumeSet: String, volumeName: String): Map<String, Any> {
         executor.exec("zfs", "create", "$poolName/data/$volumeSet/$volumeName")
         return mapOf("mountpoint" to "/var/lib/$poolName/mnt/$volumeSet/$volumeName")
-    }
-
-    /**
-     * Commits are done at the volumeset level, so nothing to do for a volume.
-     */
-    override fun commitVolume(volumeSet: String, commitId: String, volumeName: String, config: Map<String, Any>) {
     }
 
     /**
@@ -217,5 +211,17 @@ class DockerZfsContext(
             }
             throw e
         }
+    }
+
+    /**
+     * Commits are done at the volumeset level, so nothing to do for a volume.
+     */
+    override fun deleteVolumeCommit(volumeSet: String, commitId: String, volumeName: String) {
+    }
+
+    /**
+     * Commits are done at the volumeset level, so nothing to do for a volume.
+     */
+    override fun commitVolume(volumeSet: String, commitId: String, volumeName: String, config: Map<String, Any>) {
     }
 }

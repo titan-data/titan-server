@@ -74,10 +74,13 @@ class Reaper(val services: ServiceLocator) : Runnable {
         var ret = false
         for (c in commits) {
             val volumes = transaction {
-                services.metadata.listVolumes(c.volumeSet).map { it.name }
+                services.metadata.listVolumes(c.volumeSet)
             }
             try {
-                services.context.deleteCommit(c.volumeSet, c.guid, volumes)
+                services.context.deleteVolumeSetCommit(c.volumeSet, c.guid)
+                for (v in volumes) {
+                    services.context.deleteVolumeCommit(c.volumeSet, c.guid, v.name)
+                }
                 transaction {
                     services.metadata.deleteCommit(c)
                 }

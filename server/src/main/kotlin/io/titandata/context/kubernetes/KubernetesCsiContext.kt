@@ -1,5 +1,7 @@
 package io.titandata.context.kubernetes
 
+import com.google.gson.JsonObject
+import com.google.gson.JsonParser
 import io.kubernetes.client.Configuration.setDefaultApiClient
 import io.kubernetes.client.apis.CoreV1Api
 import io.kubernetes.client.custom.Quantity
@@ -189,11 +191,59 @@ class KubernetesCsiContext(private val storageClass: String? = null, private val
     }
 
     override fun getVolumeStatus(volumeSet: String, volume: String, config: Map<String, Any>): VolumeStatus {
-        TODO("not implemented")
+        val pvc = config["pvc"] as? String ?: throw IllegalStateException("missing or invalid pvc name in volume config")
+
+        val status = coreApi.readNamespacedPersistentVolumeClaimStatus(pvc, defaultNamespace, null)
+
+        val (ready, error) = when (status.status.phase) {
+            "Pending" -> true to null   // Volumes can remain in pending mode if the volume binding mode is WaitForFirstConsumer
+            "Bound" -> true to null
+            else -> false to "persistent volume claim '$pvc' is in bad state ${status.status.phase}"
+        }
+
+        val size = status.status.capacity["storage"]?.number?.toLong() ?: -1L
+        return VolumeStatus(
+                name = volume,
+                logicalSize = size,
+                actualSize = size,
+                ready = ready,
+                error = error
+        )
+    }
+
+    private fun getSnapshotStatus(name: String): JsonObject? {
+        val output = executor.exec("kubectl", "get", "volumesnapshot", name, "-o", "json")
+        val json = JsonParser.parseString(output)
+        return json.asJsonObject.getAsJsonObject("status")
     }
 
     override fun getCommitStatus(volumeSet: String, commitId: String, volumeNames: List<String>): CommitStatus {
-        TODO("not implemented")
+        val size = 0L // TODO get actual size
+        var ready = true
+        var error : String? = null
+        for (v in volumeNames) {
+            val snapshotName = "$volumeSet-$v-$commitId"
+            val status = getSnapshotStatus(snapshotName)
+
+            if (status == null) {
+                ready = false
+            } else if (status.get("readyToUse") != null) {
+                if (status.get("readyToUse").asString != "true") {
+                    ready = false
+                }
+                if (error == null) {
+                    error = status.getAsJsonObject("error")?.get("message")?.asString
+                }
+            }
+        }
+
+        return CommitStatus(
+                logicalSize = size,
+                actualSize = size,
+                uniqueSize = size,
+                ready = ready,
+                error = error
+        )
     }
 
     override fun activateVolume(volumeSet: String, volumeName: String, config: Map<String, Any>) {

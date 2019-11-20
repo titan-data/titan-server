@@ -10,7 +10,7 @@ import io.kubernetes.client.models.V1ResourceRequirementsBuilder
 import io.kubernetes.client.util.Config
 import io.titandata.context.RuntimeContext
 import io.titandata.models.CommitStatus
-import io.titandata.models.RepositoryVolumeStatus
+import io.titandata.models.VolumeStatus
 import io.titandata.shell.CommandException
 import io.titandata.shell.CommandExecutor
 import org.slf4j.LoggerFactory
@@ -188,7 +188,7 @@ class KubernetesCsiContext(private val storageClass: String? = null, private val
                 "size" to size)
     }
 
-    override fun getVolumeStatus(volumeSet: String, volume: String): RepositoryVolumeStatus {
+    override fun getVolumeStatus(volumeSet: String, volume: String): VolumeStatus {
         TODO("not implemented")
     }
 

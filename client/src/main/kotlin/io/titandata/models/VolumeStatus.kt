@@ -4,9 +4,11 @@
 
 package io.titandata.models
 
-data class RepositoryVolumeStatus(
+data class VolumeStatus(
     var name: String,
     var logicalSize: Long,
     var actualSize: Long,
-    var properties: Map<String, Any> = emptyMap()
+    var properties: Map<String, Any> = emptyMap(),
+    var ready: Boolean,
+    var error: String?
 )

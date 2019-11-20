@@ -12,6 +12,7 @@ import io.titandata.client.infrastructure.ResponseType
 import io.titandata.client.infrastructure.ServerException
 import io.titandata.client.infrastructure.Success
 import io.titandata.models.Volume
+import io.titandata.models.VolumeStatus
 
 class VolumesApi(basePath: String = "http://localhost:5001") : ApiClient(basePath) {
 
@@ -55,6 +56,29 @@ class VolumesApi(basePath: String = "http://localhost:5001") : ApiClient(basePat
 
         return when (response.responseType) {
             ResponseType.Success -> (response as Success<*>).data as Volume
+            ResponseType.ClientError -> throw ClientException.fromResponse(gson, response)
+            ResponseType.ServerError -> throw ServerException.fromResponse(gson, response)
+            else -> throw NotImplementedError(response.responseType.toString())
+        }
+    }
+
+    fun getVolumeStatus(repositoryName: String, volumeName: String) : VolumeStatus {
+        val localVariableBody: Any? = null
+        val localVariableQuery: Map<String,List<String>> = mapOf()
+        val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
+        val localVariableConfig = RequestConfig(
+                RequestMethod.GET,
+                "/v1/repositories/$repositoryName/volumes/$volumeName/status",
+                query = localVariableQuery,
+                headers = localVariableHeaders
+        )
+        val response = request<VolumeStatus>(
+                localVariableConfig,
+                localVariableBody
+        )
+
+        return when (response.responseType) {
+            ResponseType.Success -> (response as Success<*>).data as VolumeStatus
             ResponseType.ClientError -> throw ClientException.fromResponse(gson, response)
             ResponseType.ServerError -> throw ServerException.fromResponse(gson, response)
             else -> throw NotImplementedError(response.responseType.toString())

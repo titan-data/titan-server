@@ -5,13 +5,13 @@
 package io.titandata.context
 
 import io.titandata.models.CommitStatus
-import io.titandata.models.RepositoryVolumeStatus
+import io.titandata.models.VolumeStatus
 
 interface RuntimeContext {
     fun createVolumeSet(volumeSet: String)
     fun cloneVolumeSet(sourceVolumeSet: String, sourceCommit: String, newVolumeSet: String)
     fun deleteVolumeSet(volumeSet: String)
-    fun getVolumeStatus(volumeSet: String, volume: String): RepositoryVolumeStatus
+    fun getVolumeStatus(volumeSet: String, volume: String): VolumeStatus
     fun deleteVolumeSetCommit(volumeSet: String, commitId: String)
     fun commitVolumeSet(volumeSet: String, commitId: String)
 

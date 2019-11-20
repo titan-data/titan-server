@@ -183,10 +183,15 @@ class LocalWorkflowTest : EndToEndTest() {
             val status = repoApi.getRepositoryStatus("foo")
             status.sourceCommit shouldBe "id"
             status.lastCommit shouldBe "id"
-            status.volumeStatus.size shouldBe 1
-            status.volumeStatus[0].name shouldBe "vol"
-            status.volumeStatus[0].actualSize shouldNotBe 0
-            status.volumeStatus[0].logicalSize shouldNotBe 0
+        }
+
+        "get volume status succeeds" {
+            val volumeStatus = volumeApi.getVolumeStatus("foo", "vol")
+            volumeStatus.name shouldBe "vol"
+            volumeStatus.actualSize shouldNotBe 0
+            volumeStatus.logicalSize shouldNotBe 0
+            volumeStatus.ready shouldBe true
+            volumeStatus.error shouldBe null
         }
 
         "commit shows up in list" {

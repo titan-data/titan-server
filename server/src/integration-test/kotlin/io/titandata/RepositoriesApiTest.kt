@@ -33,8 +33,6 @@ import io.mockk.mockk
 import io.titandata.context.docker.DockerZfsContext
 import io.titandata.models.Error
 import io.titandata.models.Repository
-import io.titandata.models.RepositoryVolumeStatus
-import io.titandata.models.Volume
 import java.util.concurrent.TimeUnit
 import org.jetbrains.exposed.sql.transactions.transaction
 
@@ -126,14 +124,12 @@ class RepositoriesApiTest : StringSpec() {
         "get repository status succeeds" {
             transaction {
                 services.metadata.createRepository(Repository(name = "foo", properties = emptyMap()))
-                val vs = services.metadata.createVolumeSet("foo", null, true)
-                services.metadata.createVolume(vs, Volume(name = "volume", properties = mapOf("path" to "/var/a")))
+                services.metadata.createVolumeSet("foo", null, true)
             }
-            every { context.getVolumeStatus(any(), any()) } returns RepositoryVolumeStatus(name = "volume", logicalSize = 5, actualSize = 10)
             with(engine.handleRequest(HttpMethod.Get, "/v1/repositories/foo/status")) {
                 response.status() shouldBe HttpStatusCode.OK
                 response.contentType().toString() shouldBe "application/json; charset=UTF-8"
-                response.content shouldBe "{\"volumeStatus\":[{\"name\":\"volume\",\"logicalSize\":5,\"actualSize\":10,\"properties\":{\"path\":\"/var/a\"}}]}"
+                response.content shouldBe "{}"
             }
         }
 

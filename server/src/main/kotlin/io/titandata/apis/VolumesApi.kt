@@ -72,4 +72,12 @@ fun Route.VolumesApi(services: ServiceLocator) {
             call.respond(HttpStatusCode.OK)
         }
     }
+
+    route("/v1/repositories/{repositoryName}/volumes/{volumeName}/status") {
+        get {
+            val repo = getRepoName(call)
+            val volumeName = getVolumeName(call)
+            call.respond(services.volumes.getVolumeStatus(repo, volumeName))
+        }
+    }
 }

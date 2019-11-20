@@ -27,6 +27,7 @@ import io.titandata.context.docker.DockerZfsContext
 import io.titandata.exception.NoSuchObjectException
 import io.titandata.models.Repository
 import io.titandata.models.Volume
+import io.titandata.models.VolumeStatus
 import org.jetbrains.exposed.sql.transactions.transaction
 
 class VolumeOrchestratorTest : StringSpec() {
@@ -240,6 +241,21 @@ class VolumeOrchestratorTest : StringSpec() {
             val volumes = services.volumes.listVolumes("foo")
             volumes.size shouldBe 1
             volumes[0].name shouldBe "vol"
+        }
+
+        "get volume status succeeds" {
+            createVolume()
+
+            every { services.context.getVolumeStatus(any(), any()) } returns VolumeStatus(name = "vol",
+                    actualSize = 10L, logicalSize = 20L, ready = true, error = null)
+
+            val status = services.volumes.getVolumeStatus("foo", "vol")
+
+            status.name shouldBe "vol"
+            status.actualSize shouldBe 10L
+            status.logicalSize shouldBe 20L
+            status.ready shouldBe true
+            status.error shouldBe null
         }
     }
 }

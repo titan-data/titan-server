@@ -3,7 +3,6 @@ package io.titandata.orchestrator
 import io.titandata.ServiceLocator
 import io.titandata.models.Repository
 import io.titandata.models.RepositoryStatus
-import io.titandata.models.RepositoryVolumeStatus
 import org.jetbrains.exposed.sql.transactions.transaction
 
 class RepositoryOrchestrator(val services: ServiceLocator) {
@@ -33,27 +32,15 @@ class RepositoryOrchestrator(val services: ServiceLocator) {
 
     fun getRepositoryStatus(name: String): RepositoryStatus {
         NameUtil.validateRepoName(name)
-        val (volumeSet, volumes) = transaction {
-            val vs = services.metadata.getActiveVolumeSet(name)
-            Pair(vs, services.metadata.listVolumes(vs))
+        val volumeSet = transaction {
+            services.metadata.getActiveVolumeSet(name)
         }
-        val volumeStatus = volumes.map {
-            val rawStatus = services.context.getVolumeStatus(volumeSet, it.name)
-            RepositoryVolumeStatus(
-                    name = it.name,
-                    logicalSize = rawStatus.logicalSize,
-                    actualSize = rawStatus.actualSize,
-                    properties = it.properties
-            )
-        }
-        val status = transaction {
+        return transaction {
             RepositoryStatus(
-                    volumeStatus = volumeStatus,
                     lastCommit = services.metadata.getLastCommit(name),
                     sourceCommit = services.metadata.getCommitSource(volumeSet)
             )
         }
-        return status
     }
 
     fun updateRepository(name: String, repo: Repository) {

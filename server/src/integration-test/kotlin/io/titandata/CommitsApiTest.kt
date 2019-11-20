@@ -158,10 +158,10 @@ class CommitsApiTest : StringSpec() {
             transaction {
                 services.metadata.createCommit("foo", vs, Commit("hash"))
             }
-            every { context.getCommitStatus(any(), any(), any()) } returns CommitStatus(logicalSize = 3, actualSize = 6, uniqueSize = 9)
+            every { context.getCommitStatus(any(), any(), any()) } returns CommitStatus(logicalSize = 3, actualSize = 6, uniqueSize = 9, ready = false, error = "error")
             with(engine.handleRequest(HttpMethod.Get, "/v1/repositories/foo/commits/hash/status")) {
                 response.status() shouldBe HttpStatusCode.OK
-                response.content shouldBe "{\"logicalSize\":3,\"actualSize\":6,\"uniqueSize\":9}"
+                response.content shouldBe "{\"logicalSize\":3,\"actualSize\":6,\"uniqueSize\":9,\"ready\":false,\"error\":\"error\"}"
             }
         }
 

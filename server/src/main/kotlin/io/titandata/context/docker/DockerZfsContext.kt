@@ -6,7 +6,7 @@ package io.titandata.context.docker
 
 import io.titandata.context.RuntimeContext
 import io.titandata.models.CommitStatus
-import io.titandata.models.RepositoryVolumeStatus
+import io.titandata.models.VolumeStatus
 import io.titandata.shell.CommandException
 import io.titandata.shell.CommandExecutor
 import org.slf4j.LoggerFactory
@@ -88,17 +88,19 @@ class DockerZfsContext(
         }
     }
 
-    override fun getVolumeStatus(volumeSet: String, volume: String): RepositoryVolumeStatus {
+    override fun getVolumeStatus(volumeSet: String, volume: String, config: Map<String, Any>): VolumeStatus {
         val output = executor.exec("zfs", "list", "-pHo",
                 "logicalreferenced,referenced", "$poolName/data/$volumeSet/$volume")
         val regex = "^([^\t]+)\t([^\t]+)$".toRegex()
         val result = regex.find(output.trim())
         val volumeLogical = result!!.groupValues.get(1).toLong()
         val volumeActual = result.groupValues.get(2).toLong()
-        return RepositoryVolumeStatus(
+        return VolumeStatus(
                 name = volume,
                 logicalSize = volumeLogical,
-                actualSize = volumeActual
+                actualSize = volumeActual,
+                ready = true,
+                error = null
         )
     }
 
@@ -128,7 +130,11 @@ class DockerZfsContext(
             uniqueSize += result.groupValues.get(3).toLong()
         }
 
-        return CommitStatus(logicalSize = logicalSize, actualSize = actualSize, uniqueSize = uniqueSize)
+        return CommitStatus(logicalSize = logicalSize,
+                actualSize = actualSize,
+                uniqueSize = uniqueSize,
+                ready = true,
+                error = null)
     }
 
     /**

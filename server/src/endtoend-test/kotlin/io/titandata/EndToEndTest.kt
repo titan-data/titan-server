@@ -16,10 +16,9 @@ import io.titandata.models.ProgressEntry
 import io.titandata.serialization.RemoteUtil
 import org.slf4j.LoggerFactory
 
-abstract class EndToEndTest : StringSpec() {
+abstract class EndToEndTest(val titanContext: String = "docker-zfs") : StringSpec() {
 
-    val dockerUtil = DockerUtil()
-    val kubernetesUtil = DockerUtil("kubernetes-csi")
+    val dockerUtil = DockerUtil(titanContext)
     val remoteUtil = RemoteUtil()
     val url = "http://localhost:${dockerUtil.port}"
     val repoApi = RepositoriesApi(url)

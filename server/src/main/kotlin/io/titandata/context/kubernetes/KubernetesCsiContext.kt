@@ -1,7 +1,7 @@
 package io.titandata.context.kubernetes
 
-import com.google.gson.JsonSyntaxException
-import io.kubernetes.client.ApiException
+import com.google.gson.JsonObject
+import com.google.gson.JsonParser
 import io.kubernetes.client.Configuration.setDefaultApiClient
 import io.kubernetes.client.apis.CoreV1Api
 import io.kubernetes.client.custom.Quantity
@@ -12,7 +12,7 @@ import io.kubernetes.client.models.V1ResourceRequirementsBuilder
 import io.kubernetes.client.util.Config
 import io.titandata.context.RuntimeContext
 import io.titandata.models.CommitStatus
-import io.titandata.models.RepositoryVolumeStatus
+import io.titandata.models.VolumeStatus
 import io.titandata.shell.CommandException
 import io.titandata.shell.CommandExecutor
 import org.slf4j.LoggerFactory
@@ -22,9 +22,9 @@ import org.slf4j.LoggerFactory
  * snapshot and cloning of data for us. Each volume is a PersistentVolumeClaim, while every commit is a
  * VolumeSnapshot.
  */
-class KubernetesCsiContext : RuntimeContext {
+class KubernetesCsiContext(private val storageClass: String? = null, private val snapshotClass: String? = null) : RuntimeContext {
     private var coreApi: CoreV1Api
-    private val defaultNamespace = "default"
+    val defaultNamespace = "default"
     private val executor = CommandExecutor()
 
     companion object {
@@ -60,6 +60,7 @@ class KubernetesCsiContext : RuntimeContext {
     override fun createVolume(volumeSet: String, volumeName: String): Map<String, Any> {
         val name = "$volumeSet-$volumeName"
         val size = "1Gi"
+
         val request = V1PersistentVolumeClaimBuilder()
                 .withMetadata(
                         V1ObjectMetaBuilder()
@@ -77,6 +78,9 @@ class KubernetesCsiContext : RuntimeContext {
                                 )
                                 .build())
                 .build()
+        if (storageClass != null) {
+            request.spec.storageClassName = storageClass
+        }
         val claim = coreApi.createNamespacedPersistentVolumeClaim(defaultNamespace, request, null, null, null)
         log.info("Created PersistentVolumeClaim '$name', status = ${claim.status.phase}")
         return mapOf(
@@ -87,27 +91,12 @@ class KubernetesCsiContext : RuntimeContext {
 
     override fun deleteVolume(volumeSet: String, volumeName: String, config: Map<String, Any>) {
         val pvc = config["pvc"] as? String ?: throw IllegalStateException("missing or invalid pvc name in volume config")
-        val namespace = config["namespace"] as? String ?: throw IllegalStateException("missing or invalid namespace in volume config")
 
-        /*
-         * Delete will always fail parsing the response, due to a limitation of  the swagger-generated client:
-         *
-         *      https://github.com/kubernetes-client/java/issues/86
-         *
-         * There's not much we can do other than to catch the error and then query the PVC to see if it still remains.
-         */
+        // Java client has issues with deletion (https://github.com/kubernetes-client/java/issues/86) so use kubectl
         try {
-            try {
-                coreApi.deleteNamespacedPersistentVolumeClaim(pvc, namespace, null, null, null, null, null, null)
-            } catch (e: JsonSyntaxException) {
-                // Ignore
-            }
-
-            val result = coreApi.readNamespacedPersistentVolumeClaimStatus(pvc, namespace, null)
-            throw IllegalStateException("Unable to delete PersistentVolumeClaim '$pvc', status = ${result.status.phase}")
-        } catch (e: ApiException) {
-            // Deletion is idempotent, so this is designed to ignore not found errors from the original pvc deletion
-            if (e.code != 404) {
+            executor.exec("kubectl", "delete", "pvc", pvc)
+        } catch (e: CommandException) {
+            if (!e.output.contains("NotFound")) {
                 throw e
             }
         }
@@ -138,7 +127,8 @@ class KubernetesCsiContext : RuntimeContext {
                     "spec:\n" +
                     "  source:\n" +
                     "    kind: PersistentVolumeClaim\n" +
-                    "    name: $pvc\n"
+                    "    name: $pvc\n" +
+                    if (snapshotClass != null) { "  snapshotClassName: $snapshotClass\n" } else { "" }
             )
 
             executor.exec("kubectl", "apply", "-f", file.path)
@@ -200,12 +190,67 @@ class KubernetesCsiContext : RuntimeContext {
                 "size" to size)
     }
 
-    override fun getVolumeStatus(volumeSet: String, volume: String): RepositoryVolumeStatus {
-        TODO("not implemented")
+    override fun getVolumeStatus(volumeSet: String, volume: String, config: Map<String, Any>): VolumeStatus {
+        val pvc = config["pvc"] as? String ?: throw IllegalStateException("missing or invalid pvc name in volume config")
+
+        val status = coreApi.readNamespacedPersistentVolumeClaimStatus(pvc, defaultNamespace, null)
+
+        val (ready, error) = when (status.status.phase) {
+            "Pending" -> true to null // Volumes can remain in pending mode if the volume binding mode is WaitForFirstConsumer
+            "Bound" -> true to null
+            else -> false to "persistent volume claim '$pvc' is in bad state ${status.status.phase}"
+        }
+
+        // Volumes can change size, this is just the original size
+        val size = Quantity(config["size"] as String).number.toLong()
+        return VolumeStatus(
+                name = volume,
+                logicalSize = size,
+                actualSize = size,
+                ready = ready,
+                error = error
+        )
+    }
+
+    private fun getSnapshot(name: String): JsonObject? {
+        val output = executor.exec("kubectl", "get", "volumesnapshot", name, "-o", "json")
+        val json = JsonParser.parseString(output)
+        return json.asJsonObject
     }
 
     override fun getCommitStatus(volumeSet: String, commitId: String, volumeNames: List<String>): CommitStatus {
-        TODO("not implemented")
+        var size = 0L
+        var ready = true
+        var error: String? = null
+        for (v in volumeNames) {
+            val snapshotName = "$volumeSet-$v-$commitId"
+            val snapshot = getSnapshot(snapshotName)
+            val status = snapshot?.getAsJsonObject("status")
+
+            if (status == null) {
+                ready = false
+            } else if (status.get("readyToUse") != null) {
+                if (status.get("readyToUse").asString != "true") {
+                    ready = false
+                }
+                if (error == null) {
+                    error = status.getAsJsonObject("error")?.get("message")?.asString
+                }
+            }
+
+            val sizeLabel = snapshot?.getAsJsonObject("metadata")?.getAsJsonObject("labels")?.getAsJsonPrimitive("size")?.asString
+            if (sizeLabel != null) {
+                size += Quantity.fromString(sizeLabel).number.toLong()
+            }
+        }
+
+        return CommitStatus(
+                logicalSize = size,
+                actualSize = size,
+                uniqueSize = size,
+                ready = ready,
+                error = error
+        )
     }
 
     override fun activateVolume(volumeSet: String, volumeName: String, config: Map<String, Any>) {

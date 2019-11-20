@@ -2,6 +2,7 @@ package io.titandata.orchestrator
 
 import io.titandata.ServiceLocator
 import io.titandata.models.Volume
+import io.titandata.models.VolumeStatus
 import org.jetbrains.exposed.sql.transactions.transaction
 
 class VolumeOrchestrator(val services: ServiceLocator) {
@@ -41,6 +42,22 @@ class VolumeOrchestrator(val services: ServiceLocator) {
             val vs = services.metadata.getActiveVolumeSet(repo)
             services.metadata.getVolume(vs, name)
         }
+    }
+
+    fun getVolumeStatus(repo: String, name: String): VolumeStatus {
+        val vol = getVolume(repo, name)
+        val vs = transaction {
+            services.metadata.getActiveVolumeSet(repo)
+        }
+        val rawStatus = services.context.getVolumeStatus(vs, name, vol.config)
+        return VolumeStatus(
+                name = vol.name,
+                logicalSize = rawStatus.logicalSize,
+                actualSize = rawStatus.actualSize,
+                properties = vol.properties,
+                ready = rawStatus.ready,
+                error = rawStatus.error
+        )
     }
 
     fun activateVolume(repo: String, name: String) {

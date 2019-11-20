@@ -6,6 +6,5 @@ package io.titandata.models
 
 data class RepositoryStatus(
     var lastCommit: String? = null,
-    var sourceCommit: String? = null,
-    var volumeStatus: List<RepositoryVolumeStatus>
+    var sourceCommit: String? = null
 )

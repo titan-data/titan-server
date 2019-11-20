@@ -112,23 +112,6 @@ class DockerVolumeTest : EndToEndTest() {
             getTag(commit, "a") shouldBe "b"
         }
 
-        "get commit status succeeds" {
-            val status = commitApi.getCommitStatus("foo", "id")
-            status.logicalSize shouldNotBe 0
-            status.actualSize shouldNotBe 0
-            status.uniqueSize shouldBe 0
-        }
-
-        "get repository status succeeds" {
-            val status = repoApi.getRepositoryStatus("foo")
-            status.sourceCommit shouldBe "id"
-            status.lastCommit shouldBe "id"
-            status.volumeStatus.size shouldBe 1
-            status.volumeStatus[0].name shouldBe "vol"
-            status.volumeStatus[0].actualSize shouldNotBe 0
-            status.volumeStatus[0].logicalSize shouldNotBe 0
-        }
-
         "write new local value succeeds" {
             dockerUtil.writeFile("foo", "vol", "testfile", "Goodbye")
             val result = dockerUtil.readFile("foo", "vol", "testfile")

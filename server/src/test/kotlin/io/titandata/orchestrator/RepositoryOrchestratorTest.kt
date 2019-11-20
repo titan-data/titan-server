@@ -28,7 +28,6 @@ import io.titandata.exception.NoSuchObjectException
 import io.titandata.exception.ObjectExistsException
 import io.titandata.models.Commit
 import io.titandata.models.Repository
-import io.titandata.models.RepositoryVolumeStatus
 import io.titandata.models.Volume
 import org.jetbrains.exposed.sql.transactions.transaction
 
@@ -167,19 +166,9 @@ class RepositoryOrchestratorTest : StringSpec() {
             every { context.commitVolumeSet(any(), any()) } just Runs
             every { context.commitVolume(any(), any(), any(), any()) } just Runs
             services.commits.createCommit("foo", Commit(id = "id"))
-            every { context.getVolumeStatus(any(), any()) } returns RepositoryVolumeStatus(
-                name = "vol", logicalSize = 20, actualSize = 10)
             val status = services.repositories.getRepositoryStatus("foo")
             status.lastCommit shouldBe "id"
             status.sourceCommit shouldBe "id"
-            status.volumeStatus.size shouldBe 2
-            val vols = status.volumeStatus.sortedBy { it.name }
-            vols[0].actualSize shouldBe 10
-            vols[0].actualSize shouldBe 10
-            vols[0].logicalSize shouldBe 20
-            vols[0].name shouldBe "vol1"
-            vols[1].logicalSize shouldBe 20
-            vols[1].name shouldBe "vol2"
         }
     }
 }

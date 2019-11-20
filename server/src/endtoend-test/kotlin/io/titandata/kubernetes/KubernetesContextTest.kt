@@ -1,5 +1,6 @@
 package io.titandata.kubernetes
 
+import com.google.gson.JsonObject
 import com.google.gson.JsonParser
 import io.kotlintest.matchers.string.shouldContain
 import io.kotlintest.shouldBe
@@ -19,8 +20,8 @@ import java.util.UUID
  */
 class KubernetesContextTest : StringSpec() {
 
-    private val context = KubernetesCsiContext()
-    private val coreApi: CoreV1Api = CoreV1Api()
+    private val context : KubernetesCsiContext
+    private val coreApi : CoreV1Api
     private val vs = UUID.randomUUID().toString()
     private val vs2 = UUID.randomUUID().toString()
     private val namespace = "default"
@@ -31,31 +32,41 @@ class KubernetesContextTest : StringSpec() {
 
     // TODO - clean up any partially created resources "vs-"
 
+    init {
+        val storageClass = System.getProperty("k8s.storageClass")
+        val snapshotClass = System.getProperty("k8s.snapshotClass")
+        context = KubernetesCsiContext(storageClass = storageClass, snapshotClass = snapshotClass)
+        coreApi = CoreV1Api()
+    }
+
+    private fun getVolumeStatus(name: String) : String {
+        return coreApi.readNamespacedPersistentVolumeClaimStatus(name, namespace, null).status.phase
+    }
+
     private fun waitForVolume(name: String) {
-        var phase = "Pending"
-        while (phase == "Pending") {
-            val result = coreApi.readNamespacedPersistentVolumeClaimStatus(name, namespace, null)
-            phase = result.status.phase
-            if (phase == "Pending") {
-                Thread.sleep(1000)
-            }
+        var status = getVolumeStatus(name)
+        // Volumes can remain in pending mode if the volume binding mode is WaitForFirstConsumer
+        while (status != "Pending" && status != "Bound") {
+            Thread.sleep(1000)
+            status = getVolumeStatus(name)
         }
-        phase shouldBe "Bound"
+    }
+
+    private fun getSnapshotStatus(name: String) : JsonObject? {
+        val output = executor.exec("kubectl", "get", "volumesnapshot", name, "-o", "json")
+        val json = JsonParser.parseString(output)
+        return json.asJsonObject.getAsJsonObject("status")
     }
 
     private fun waitForSnapshot(name: String) {
-        var ready = "false"
-        while (ready == "false") {
-            val output = executor.exec("kubectl", "get", "volumesnapshot", name, "-o", "json")
-            val json = JsonParser.parseString(output)
-            val status = json.asJsonObject.getAsJsonObject("status")
+        var ready = getSnapshotStatus(name)?.get("readyToUse")?.asString
+        while (ready != "true") {
+            Thread.sleep(1000)
+            val status = getSnapshotStatus(name)
             if (status != null) {
                 ready = status.get("readyToUse").asString
                 val error = status.getAsJsonObject("error")?.get("message")?.asString
                 error shouldBe null
-            }
-            if (ready == "false") {
-                Thread.sleep(1000)
             }
         }
     }

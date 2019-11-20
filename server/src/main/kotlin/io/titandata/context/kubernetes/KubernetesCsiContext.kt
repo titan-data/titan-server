@@ -22,7 +22,7 @@ import org.slf4j.LoggerFactory
  * snapshot and cloning of data for us. Each volume is a PersistentVolumeClaim, while every commit is a
  * VolumeSnapshot.
  */
-class KubernetesCsiContext : RuntimeContext {
+class KubernetesCsiContext(private val storageClass : String? = null, private val snapshotClass : String? = null) : RuntimeContext {
     private var coreApi: CoreV1Api
     private val defaultNamespace = "default"
     private val executor = CommandExecutor()
@@ -60,6 +60,7 @@ class KubernetesCsiContext : RuntimeContext {
     override fun createVolume(volumeSet: String, volumeName: String): Map<String, Any> {
         val name = "$volumeSet-$volumeName"
         val size = "1Gi"
+
         val request = V1PersistentVolumeClaimBuilder()
                 .withMetadata(
                         V1ObjectMetaBuilder()
@@ -77,6 +78,9 @@ class KubernetesCsiContext : RuntimeContext {
                                 )
                                 .build())
                 .build()
+        if (storageClass != null) {
+            request.spec.storageClassName = storageClass
+        }
         val claim = coreApi.createNamespacedPersistentVolumeClaim(defaultNamespace, request, null, null, null)
         log.info("Created PersistentVolumeClaim '$name', status = ${claim.status.phase}")
         return mapOf(
@@ -87,27 +91,12 @@ class KubernetesCsiContext : RuntimeContext {
 
     override fun deleteVolume(volumeSet: String, volumeName: String, config: Map<String, Any>) {
         val pvc = config["pvc"] as? String ?: throw IllegalStateException("missing or invalid pvc name in volume config")
-        val namespace = config["namespace"] as? String ?: throw IllegalStateException("missing or invalid namespace in volume config")
 
-        /*
-         * Delete will always fail parsing the response, due to a limitation of  the swagger-generated client:
-         *
-         *      https://github.com/kubernetes-client/java/issues/86
-         *
-         * There's not much we can do other than to catch the error and then query the PVC to see if it still remains.
-         */
+        // Java client has issues with deletion (https://github.com/kubernetes-client/java/issues/86) so use kubectl
         try {
-            try {
-                coreApi.deleteNamespacedPersistentVolumeClaim(pvc, namespace, null, null, null, null, null, null)
-            } catch (e: JsonSyntaxException) {
-                // Ignore
-            }
-
-            val result = coreApi.readNamespacedPersistentVolumeClaimStatus(pvc, namespace, null)
-            throw IllegalStateException("Unable to delete PersistentVolumeClaim '$pvc', status = ${result.status.phase}")
-        } catch (e: ApiException) {
-            // Deletion is idempotent, so this is designed to ignore not found errors from the original pvc deletion
-            if (e.code != 404) {
+            executor.exec("kubectl", "delete", "pvc", pvc)
+        } catch (e: CommandException) {
+            if (!e.output.contains("NotFound")) {
                 throw e
             }
         }
@@ -138,7 +127,8 @@ class KubernetesCsiContext : RuntimeContext {
                     "spec:\n" +
                     "  source:\n" +
                     "    kind: PersistentVolumeClaim\n" +
-                    "    name: $pvc\n"
+                    "    name: $pvc\n" +
+                    if (snapshotClass != null) { "  snapshotClassName: $snapshotClass\n" } else { "" }
             )
 
             executor.exec("kubectl", "apply", "-f", file.path)

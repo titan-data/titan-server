@@ -196,12 +196,13 @@ class KubernetesCsiContext(private val storageClass: String? = null, private val
         val status = coreApi.readNamespacedPersistentVolumeClaimStatus(pvc, defaultNamespace, null)
 
         val (ready, error) = when (status.status.phase) {
-            "Pending" -> true to null   // Volumes can remain in pending mode if the volume binding mode is WaitForFirstConsumer
+            "Pending" -> true to null // Volumes can remain in pending mode if the volume binding mode is WaitForFirstConsumer
             "Bound" -> true to null
             else -> false to "persistent volume claim '$pvc' is in bad state ${status.status.phase}"
         }
 
-        val size = status.status.capacity["storage"]?.number?.toLong() ?: -1L
+        // Volumes can change size, this is just the original size
+        val size = Quantity(config["size"] as String).number.toLong()
         return VolumeStatus(
                 name = volume,
                 logicalSize = size,
@@ -211,19 +212,20 @@ class KubernetesCsiContext(private val storageClass: String? = null, private val
         )
     }
 
-    private fun getSnapshotStatus(name: String): JsonObject? {
+    private fun getSnapshot(name: String): JsonObject? {
         val output = executor.exec("kubectl", "get", "volumesnapshot", name, "-o", "json")
         val json = JsonParser.parseString(output)
-        return json.asJsonObject.getAsJsonObject("status")
+        return json.asJsonObject
     }
 
     override fun getCommitStatus(volumeSet: String, commitId: String, volumeNames: List<String>): CommitStatus {
-        val size = 0L // TODO get actual size
+        var size = 0L
         var ready = true
-        var error : String? = null
+        var error: String? = null
         for (v in volumeNames) {
             val snapshotName = "$volumeSet-$v-$commitId"
-            val status = getSnapshotStatus(snapshotName)
+            val snapshot = getSnapshot(snapshotName)
+            val status = snapshot?.getAsJsonObject("status")
 
             if (status == null) {
                 ready = false
@@ -234,6 +236,11 @@ class KubernetesCsiContext(private val storageClass: String? = null, private val
                 if (error == null) {
                     error = status.getAsJsonObject("error")?.get("message")?.asString
                 }
+            }
+
+            val sizeLabel = snapshot?.getAsJsonObject("metadata")?.getAsJsonObject("labels")?.getAsJsonPrimitive("size")?.asString
+            if (sizeLabel != null) {
+                size += Quantity.fromString(sizeLabel).number.toLong()
             }
         }
 

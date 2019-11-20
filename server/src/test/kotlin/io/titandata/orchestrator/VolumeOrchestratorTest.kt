@@ -246,7 +246,7 @@ class VolumeOrchestratorTest : StringSpec() {
         "get volume status succeeds" {
             createVolume()
 
-            every { services.context.getVolumeStatus(any(), any()) } returns VolumeStatus(name = "vol",
+            every { services.context.getVolumeStatus(any(), any(), any()) } returns VolumeStatus(name = "vol",
                     actualSize = 10L, logicalSize = 20L, ready = true, error = null)
 
             val status = services.volumes.getVolumeStatus("foo", "vol")

@@ -88,7 +88,7 @@ class DockerZfsContext(
         }
     }
 
-    override fun getVolumeStatus(volumeSet: String, volume: String): VolumeStatus {
+    override fun getVolumeStatus(volumeSet: String, volume: String, config: Map<String, Any>): VolumeStatus {
         val output = executor.exec("zfs", "list", "-pHo",
                 "logicalreferenced,referenced", "$poolName/data/$volumeSet/$volume")
         val regex = "^([^\t]+)\t([^\t]+)$".toRegex()

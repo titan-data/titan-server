@@ -104,7 +104,7 @@ class DockerZfsContextTest : StringSpec() {
 
         "get volume status succeeds" {
             every { executor.exec(*anyVararg()) } returns "20\t30"
-            val status = provider.getVolumeStatus("vs", "vol")
+            val status = provider.getVolumeStatus("vs", "vol", emptyMap())
             status.name shouldBe "vol"
             status.logicalSize shouldBe 20
             status.actualSize shouldBe 30

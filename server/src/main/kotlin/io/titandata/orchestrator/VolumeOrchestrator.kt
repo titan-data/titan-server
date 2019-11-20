@@ -49,7 +49,7 @@ class VolumeOrchestrator(val services: ServiceLocator) {
         val vs = transaction {
             services.metadata.getActiveVolumeSet(repo)
         }
-        val rawStatus = services.context.getVolumeStatus(vs, name)
+        val rawStatus = services.context.getVolumeStatus(vs, name, vol.config)
         return VolumeStatus(
                 name = vol.name,
                 logicalSize = rawStatus.logicalSize,

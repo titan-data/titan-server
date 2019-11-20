@@ -188,7 +188,7 @@ class KubernetesCsiContext(private val storageClass: String? = null, private val
                 "size" to size)
     }
 
-    override fun getVolumeStatus(volumeSet: String, volume: String): VolumeStatus {
+    override fun getVolumeStatus(volumeSet: String, volume: String, config: Map<String, Any>): VolumeStatus {
         TODO("not implemented")
     }
 

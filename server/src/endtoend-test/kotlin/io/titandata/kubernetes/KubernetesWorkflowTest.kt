@@ -22,8 +22,7 @@ class KubernetesWorkflowTest : EndToEndTest() {
 
     init {
         "kubectl works" {
-            val output = kubernetesUtil.execServer("kubectl", "get", "pods")
-            output.shouldStartWith("NAME")
+            kubernetesUtil.execServer("kubectl", "cluster-info")
         }
     }
 }

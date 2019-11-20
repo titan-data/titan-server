@@ -8,6 +8,15 @@ import io.kotlintest.shouldThrow
 import io.kotlintest.specs.StringSpec
 import io.kubernetes.client.ApiException
 import io.kubernetes.client.apis.CoreV1Api
+import io.kubernetes.client.models.V1ContainerBuilder
+import io.kubernetes.client.models.V1ObjectMeta
+import io.kubernetes.client.models.V1ObjectMetaBuilder
+import io.kubernetes.client.models.V1PersistentVolumeClaimVolumeSource
+import io.kubernetes.client.models.V1PersistentVolumeClaimVolumeSourceBuilder
+import io.kubernetes.client.models.V1PodBuilder
+import io.kubernetes.client.models.V1PodSpecBuilder
+import io.kubernetes.client.models.V1VolumeBuilder
+import io.kubernetes.client.models.V1VolumeMountBuilder
 import io.titandata.context.kubernetes.KubernetesCsiContext
 import io.titandata.shell.CommandException
 import io.titandata.shell.CommandExecutor
@@ -71,6 +80,51 @@ class KubernetesContextTest : StringSpec() {
         }
     }
 
+    private fun getPodStatus(name: String) : Boolean {
+        var pod = coreApi.readNamespacedPod(name, context.defaultNamespace, null, null, null)
+        val statuses = pod?.status?.containerStatuses ?: return false
+        for (container in statuses) {
+            if (container.restartCount != 0) {
+                throw Exception("container ${container.name} restarted ${container.restartCount} times")
+            }
+            if (!container.isReady) {
+                return false
+            }
+        }
+        return true
+    }
+
+    private fun waitForPod(name: String) {
+        var ready = getPodStatus(name)
+        while (!ready) {
+            Thread.sleep(1000)
+            ready = getPodStatus(name)
+        }
+    }
+
+    private fun launchPod(name: String, claim: String) {
+        val request = V1PodBuilder()
+                .withMetadata(V1ObjectMetaBuilder().withName(name).build())
+                .withSpec(V1PodSpecBuilder()
+                        .withContainers(V1ContainerBuilder()
+                                .withName("test")
+                                .withImage("ubuntu")
+                                .withCommand("/bin/sh")
+                                .withArgs("-c", "while true; do sleep 5; done")
+                                .withVolumeMounts(V1VolumeMountBuilder()
+                                        .withName("data")
+                                        .withMountPath("/data")
+                                        .build())
+                                .build())
+                        .withVolumes(V1VolumeBuilder()
+                                .withName("data")
+                                .withPersistentVolumeClaim(V1PersistentVolumeClaimVolumeSourceBuilder().withClaimName(claim).build())
+                                .build())
+                        .build())
+                .build()
+        coreApi.createNamespacedPod(context.defaultNamespace, request, null, null, null)
+    }
+
     init {
         "create volume succeeds" {
             volumeConfig = context.createVolume(vs, "test")
@@ -78,9 +132,22 @@ class KubernetesContextTest : StringSpec() {
             waitForVolume("$vs-test")
         }
 
+        "create pod succeeds" {
+            launchPod("$vs-test", "$vs-test")
+            waitForPod("$vs-test")
+        }
+
+        "write file contents succeeds" {
+            executor.exec("kubectl", "exec", "$vs-test", "--", "sh", "-c", "echo test > /data/out; sync; sleep 1;")
+        }
+
         "create commit succeeds" {
             context.commitVolume(vs, "id", "test", volumeConfig)
             waitForSnapshot("$vs-test-id")
+        }
+
+        "delete pod succeeds" {
+            executor.exec("kubectl", "delete", "pod", "$vs-test")
         }
 
         "clone volume succeeds" {
@@ -88,7 +155,21 @@ class KubernetesContextTest : StringSpec() {
             waitForVolume("$vs2-test")
         }
 
-        "delete clone succeeds" {
+        "create cloned pod succeeds" {
+            launchPod("$vs2-test", "$vs2-test")
+            waitForPod("$vs2-test")
+        }
+
+        "file contents are correct" {
+            val output = executor.exec("kubectl", "exec", "$vs2-test", "cat", "/data/out").trim()
+            output shouldBe "test"
+        }
+
+        "delete cloned pod succeeds" {
+            executor.exec("kubectl", "delete", "pod", "$vs2-test")
+        }
+
+        "delete cloned volumed succeeds" {
             context.deleteVolume(vs2, "test", cloneConfig)
             val exception = shouldThrow<ApiException> {
                 coreApi.readNamespacedPersistentVolumeClaimStatus("$vs2-test", namespace, null)

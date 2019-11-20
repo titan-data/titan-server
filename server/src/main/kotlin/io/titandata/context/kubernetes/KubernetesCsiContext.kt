@@ -24,7 +24,7 @@ import org.slf4j.LoggerFactory
  */
 class KubernetesCsiContext(private val storageClass : String? = null, private val snapshotClass : String? = null) : RuntimeContext {
     private var coreApi: CoreV1Api
-    private val defaultNamespace = "default"
+    val defaultNamespace = "default"
     private val executor = CommandExecutor()
 
     companion object {

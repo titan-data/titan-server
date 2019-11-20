@@ -1,7 +1,5 @@
 package io.titandata.context.kubernetes
 
-import com.google.gson.JsonSyntaxException
-import io.kubernetes.client.ApiException
 import io.kubernetes.client.Configuration.setDefaultApiClient
 import io.kubernetes.client.apis.CoreV1Api
 import io.kubernetes.client.custom.Quantity
@@ -22,7 +20,7 @@ import org.slf4j.LoggerFactory
  * snapshot and cloning of data for us. Each volume is a PersistentVolumeClaim, while every commit is a
  * VolumeSnapshot.
  */
-class KubernetesCsiContext(private val storageClass : String? = null, private val snapshotClass : String? = null) : RuntimeContext {
+class KubernetesCsiContext(private val storageClass: String? = null, private val snapshotClass: String? = null) : RuntimeContext {
     private var coreApi: CoreV1Api
     val defaultNamespace = "default"
     private val executor = CommandExecutor()

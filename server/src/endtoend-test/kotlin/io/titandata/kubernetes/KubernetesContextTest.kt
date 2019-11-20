@@ -9,9 +9,7 @@ import io.kotlintest.specs.StringSpec
 import io.kubernetes.client.ApiException
 import io.kubernetes.client.apis.CoreV1Api
 import io.kubernetes.client.models.V1ContainerBuilder
-import io.kubernetes.client.models.V1ObjectMeta
 import io.kubernetes.client.models.V1ObjectMetaBuilder
-import io.kubernetes.client.models.V1PersistentVolumeClaimVolumeSource
 import io.kubernetes.client.models.V1PersistentVolumeClaimVolumeSourceBuilder
 import io.kubernetes.client.models.V1PodBuilder
 import io.kubernetes.client.models.V1PodSpecBuilder
@@ -29,8 +27,8 @@ import java.util.UUID
  */
 class KubernetesContextTest : StringSpec() {
 
-    private val context : KubernetesCsiContext
-    private val coreApi : CoreV1Api
+    private val context: KubernetesCsiContext
+    private val coreApi: CoreV1Api
     private val vs = UUID.randomUUID().toString()
     private val vs2 = UUID.randomUUID().toString()
     private val namespace = "default"
@@ -48,7 +46,7 @@ class KubernetesContextTest : StringSpec() {
         coreApi = CoreV1Api()
     }
 
-    private fun getVolumeStatus(name: String) : String {
+    private fun getVolumeStatus(name: String): String {
         return coreApi.readNamespacedPersistentVolumeClaimStatus(name, namespace, null).status.phase
     }
 
@@ -61,7 +59,7 @@ class KubernetesContextTest : StringSpec() {
         }
     }
 
-    private fun getSnapshotStatus(name: String) : JsonObject? {
+    private fun getSnapshotStatus(name: String): JsonObject? {
         val output = executor.exec("kubectl", "get", "volumesnapshot", name, "-o", "json")
         val json = JsonParser.parseString(output)
         return json.asJsonObject.getAsJsonObject("status")
@@ -80,7 +78,7 @@ class KubernetesContextTest : StringSpec() {
         }
     }
 
-    private fun getPodStatus(name: String) : Boolean {
+    private fun getPodStatus(name: String): Boolean {
         var pod = coreApi.readNamespacedPod(name, context.defaultNamespace, null, null, null)
         val statuses = pod?.status?.containerStatuses ?: return false
         for (container in statuses) {
@@ -108,7 +106,7 @@ class KubernetesContextTest : StringSpec() {
                 .withSpec(V1PodSpecBuilder()
                         .withContainers(V1ContainerBuilder()
                                 .withName("test")
-                                .withImage("ubuntu")
+                                .withImage("ubuntu:bionic")
                                 .withCommand("/bin/sh")
                                 .withArgs("-c", "while true; do sleep 5; done")
                                 .withVolumeMounts(V1VolumeMountBuilder()
@@ -147,7 +145,7 @@ class KubernetesContextTest : StringSpec() {
         }
 
         "delete pod succeeds" {
-            executor.exec("kubectl", "delete", "pod", "$vs-test")
+            executor.exec("kubectl", "delete", "pod", "--grace-period=0", "--force", "$vs-test")
         }
 
         "clone volume succeeds" {
@@ -166,7 +164,7 @@ class KubernetesContextTest : StringSpec() {
         }
 
         "delete cloned pod succeeds" {
-            executor.exec("kubectl", "delete", "pod", "$vs2-test")
+            executor.exec("kubectl", "delete", "pod", "--grace-period=0", "--force", "$vs2-test")
         }
 
         "delete cloned volumed succeeds" {

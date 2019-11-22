@@ -4,6 +4,7 @@ import com.google.gson.JsonObject
 import com.google.gson.JsonParser
 import io.kubernetes.client.Configuration.setDefaultApiClient
 import io.kubernetes.client.apis.CoreV1Api
+import io.kubernetes.client.apis.StorageV1Api
 import io.kubernetes.client.custom.Quantity
 import io.kubernetes.client.models.V1ObjectMetaBuilder
 import io.kubernetes.client.models.V1PersistentVolumeClaimBuilder
@@ -24,6 +25,7 @@ import org.slf4j.LoggerFactory
  */
 class KubernetesCsiContext(private val storageClass: String? = null, private val snapshotClass: String? = null) : RuntimeContext {
     private var coreApi: CoreV1Api
+    private var storageApi: StorageV1Api
     val defaultNamespace = "default"
     private val executor = CommandExecutor()
 
@@ -35,6 +37,7 @@ class KubernetesCsiContext(private val storageClass: String? = null, private val
         val client = Config.defaultClient()
         setDefaultApiClient(client)
         coreApi = CoreV1Api()
+        storageApi = StorageV1Api()
     }
 
     override fun createVolumeSet(volumeSet: String) {
@@ -94,7 +97,7 @@ class KubernetesCsiContext(private val storageClass: String? = null, private val
 
         // Java client has issues with deletion (https://github.com/kubernetes-client/java/issues/86) so use kubectl
         try {
-            executor.exec("kubectl", "delete", "pvc", pvc)
+            executor.exec("kubectl", "delete", "--wait=false", "pvc", pvc)
         } catch (e: CommandException) {
             if (!e.output.contains("NotFound")) {
                 throw e
@@ -139,7 +142,7 @@ class KubernetesCsiContext(private val storageClass: String? = null, private val
 
     override fun deleteVolumeCommit(volumeSet: String, commitId: String, volumeName: String) {
         try {
-            executor.exec("kubectl", "delete", "volumesnapshot", "$volumeSet-$volumeName-$commitId")
+            executor.exec("kubectl", "delete", "--wait=false", "volumesnapshot", "$volumeSet-$volumeName-$commitId")
         } catch (e: CommandException) {
             // Deletion is idempotent, so ignore errors if it doesn't exist
             if (!e.output.contains("NotFound")) {
@@ -193,12 +196,22 @@ class KubernetesCsiContext(private val storageClass: String? = null, private val
     override fun getVolumeStatus(volumeSet: String, volume: String, config: Map<String, Any>): VolumeStatus {
         val pvc = config["pvc"] as? String ?: throw IllegalStateException("missing or invalid pvc name in volume config")
 
-        val status = coreApi.readNamespacedPersistentVolumeClaimStatus(pvc, defaultNamespace, null)
+        val claim = coreApi.readNamespacedPersistentVolumeClaimStatus(pvc, defaultNamespace, null)
 
-        val (ready, error) = when (status.status.phase) {
-            "Pending" -> true to null // Volumes can remain in pending mode if the volume binding mode is WaitForFirstConsumer
-            "Bound" -> true to null
-            else -> false to "persistent volume claim '$pvc' is in bad state ${status.status.phase}"
+        var okPhases = listOf("Pending", "Bound")
+        var readyPhases = listOf("Pending", "Bound")
+        if (claim.spec.storageClassName != null) {
+            val storageClass = storageApi.readStorageClass(claim.spec.storageClassName, null, null, null)
+            if (storageClass.volumeBindingMode == "Immediate") {
+                readyPhases = listOf("Bound")
+            }
+        }
+
+        val ready = claim.status.phase in readyPhases
+        val error = if (claim.status.phase in okPhases) {
+            null
+        } else {
+            "volume '$pvc' is in unknown state ${claim.status.phase}"
         }
 
         // Volumes can change size, this is just the original size

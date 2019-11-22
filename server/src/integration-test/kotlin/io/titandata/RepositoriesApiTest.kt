@@ -9,6 +9,7 @@ import io.kotlintest.Spec
 import io.kotlintest.TestCase
 import io.kotlintest.TestCaseOrder
 import io.kotlintest.TestResult
+import io.kotlintest.matchers.string.shouldContain
 import io.kotlintest.shouldBe
 import io.kotlintest.specs.StringSpec
 import io.ktor.http.ContentType
@@ -117,7 +118,7 @@ class RepositoriesApiTest : StringSpec() {
                 response.status() shouldBe HttpStatusCode.BadRequest
                 val error = Gson().fromJson(response.content, Error::class.java)
                 error.code shouldBe "IllegalArgumentException"
-                error.message shouldBe "invalid repository name, can only contain alphanumeric characters, '-', ':', '.', or '_'"
+                error.message shouldContain "invalid repository name"
             }
         }
 
@@ -148,7 +149,7 @@ class RepositoriesApiTest : StringSpec() {
                 response.status() shouldBe HttpStatusCode.BadRequest
                 val error = Gson().fromJson(response.content, Error::class.java)
                 error.code shouldBe "IllegalArgumentException"
-                error.message shouldBe "invalid repository name, can only contain alphanumeric characters, '-', ':', '.', or '_'"
+                error.message shouldContain "invalid repository name"
             }
         }
 
@@ -172,7 +173,7 @@ class RepositoriesApiTest : StringSpec() {
                 response.status() shouldBe HttpStatusCode.BadRequest
                 val error = Gson().fromJson(response.content, Error::class.java)
                 error.code shouldBe "IllegalArgumentException"
-                error.message shouldBe "invalid repository name, can only contain alphanumeric characters, '-', ':', '.', or '_'"
+                error.message shouldContain "invalid repository name"
             }
         }
 
@@ -220,7 +221,7 @@ class RepositoriesApiTest : StringSpec() {
                 response.status() shouldBe HttpStatusCode.BadRequest
                 val error = Gson().fromJson(response.content, Error::class.java)
                 error.code shouldBe "IllegalArgumentException"
-                error.message shouldBe "invalid repository name, can only contain alphanumeric characters, '-', ':', '.', or '_'"
+                error.message shouldContain "invalid repository name"
             }
         }
     }

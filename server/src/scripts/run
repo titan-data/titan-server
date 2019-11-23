@@ -13,7 +13,9 @@
 #                   driver. The TITAN_DATA variable must be set to determine where to place the persistent
 #                   database in /var/lib/$TITAN_DATA, which should be backed by a persistent volume. Unlike
 #                   the docker-zfs context, the server doesn't need to be run via 'launch', and can operate
-#                   in any docker environment even if kernel ZFS support isn't present.
+#                   in any docker environment even if kernel ZFS support isn't present. Additional context
+#                   can be passed through the TITAN_CONFIG variable, which is a list of name=value pairs,
+#                   separated by commas.
 #
 
 function log_error {
@@ -87,7 +89,7 @@ elif [[ $TITAN_CONTEXT = "kubernetes-csi" ]]; then
 
   start_database $DB_DIR
 
-  exec java -Dtitan.context=$TITAN_CONTEXT -jar /titan/titan-server.jar
+  exec java -Dtitan.context=$TITAN_CONTEXT -Dtitan.contextConfig=$TITAN_CONFIG -jar /titan/titan-server.jar
 else
   log_error "Unknown context $TITAN_CONTEXT"
 fi

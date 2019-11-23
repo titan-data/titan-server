@@ -11,22 +11,37 @@ import io.kubernetes.client.models.V1PersistentVolumeClaimBuilder
 import io.kubernetes.client.models.V1PersistentVolumeClaimSpecBuilder
 import io.kubernetes.client.models.V1ResourceRequirementsBuilder
 import io.kubernetes.client.util.Config
+import io.kubernetes.client.util.KubeConfig
 import io.titandata.context.RuntimeContext
 import io.titandata.models.CommitStatus
 import io.titandata.models.VolumeStatus
 import io.titandata.shell.CommandException
 import io.titandata.shell.CommandExecutor
 import org.slf4j.LoggerFactory
+import java.io.FileReader
 
 /**
  * Kubernetes runtime context. In a k8s environment, we leverage CSI (Container Storage Interface) drivers to do
  * snapshot and cloning of data for us. Each volume is a PersistentVolumeClaim, while every commit is a
  * VolumeSnapshot.
+ *
+ * The context supports the following configuration:
+ *
+ *      configFile      Path, relative to ~/.kube, for the kubernetes configuration file. If not specified, then the
+ *                      the default ("config") is used.
+ *
+ *      namespace       Cluster namespace, defaults to "default".
+ *
+ *      storageClass    Default volume storage class to use when creating volumes. If unspecified, then the
+ *                      cluster default is used.
+ *
+ *      snapshotClass   Default snapshot class to use when createing snapshots. If unspecified, then the cluster
+ *                      default is used.
  */
-class KubernetesCsiContext(private val storageClass: String? = null, private val snapshotClass: String? = null) : RuntimeContext {
-    private var coreApi: CoreV1Api
-    private var storageApi: StorageV1Api
-    val defaultNamespace = "default"
+class KubernetesCsiContext(private val properties : Map<String, String> = emptyMap()) : RuntimeContext {
+    private val coreApi: CoreV1Api
+    private val storageApi: StorageV1Api
+    val namespace : String
     private val executor = CommandExecutor()
 
     companion object {
@@ -34,10 +49,27 @@ class KubernetesCsiContext(private val storageClass: String? = null, private val
     }
 
     init {
-        val client = Config.defaultClient()
-        setDefaultApiClient(client)
+        val home = System.getProperty("user.home")
+        val config = if (properties.containsKey("config")) {
+            KubeConfig.loadKubeConfig(FileReader("$home/.kube/${properties["config"]}"))
+        } else {
+            KubeConfig.loadKubeConfig(FileReader("$home/.kube/config"))
+        }
+        if (properties.containsKey("context")) {
+            config.setContext(properties["context"])
+        }
+        setDefaultApiClient(Config.fromConfig(config))
         coreApi = CoreV1Api()
         storageApi = StorageV1Api()
+        namespace = properties.get("namespace") ?: "default"
+    }
+
+    override fun getProvider(): String {
+        return "kubernetes-csi"
+    }
+
+    override fun getProperties(): Map<String, String> {
+        return properties
     }
 
     override fun createVolumeSet(volumeSet: String) {
@@ -81,14 +113,14 @@ class KubernetesCsiContext(private val storageClass: String? = null, private val
                                 )
                                 .build())
                 .build()
-        if (storageClass != null) {
-            request.spec.storageClassName = storageClass
+        if (properties["storageClass"] != null) {
+            request.spec.storageClassName = properties["storageClass"]
         }
-        val claim = coreApi.createNamespacedPersistentVolumeClaim(defaultNamespace, request, null, null, null)
+        val claim = coreApi.createNamespacedPersistentVolumeClaim(namespace, request, null, null, null)
         log.info("Created PersistentVolumeClaim '$name', status = ${claim.status.phase}")
         return mapOf(
                 "pvc" to name,
-                "namespace" to defaultNamespace,
+                "namespace" to namespace,
                 "size" to size)
     }
 
@@ -131,7 +163,7 @@ class KubernetesCsiContext(private val storageClass: String? = null, private val
                     "  source:\n" +
                     "    kind: PersistentVolumeClaim\n" +
                     "    name: $pvc\n" +
-                    if (snapshotClass != null) { "  snapshotClassName: $snapshotClass\n" } else { "" }
+                    if (properties["snapshotClass"] != null) { "  snapshotClassName: ${properties["snapshotClass"]}\n" } else { "" }
             )
 
             executor.exec("kubectl", "apply", "-f", file.path)
@@ -189,14 +221,14 @@ class KubernetesCsiContext(private val storageClass: String? = null, private val
 
         return mapOf(
                 "pvc" to name,
-                "namespace" to defaultNamespace,
+                "namespace" to namespace,
                 "size" to size)
     }
 
     override fun getVolumeStatus(volumeSet: String, volume: String, config: Map<String, Any>): VolumeStatus {
         val pvc = config["pvc"] as? String ?: throw IllegalStateException("missing or invalid pvc name in volume config")
 
-        val claim = coreApi.readNamespacedPersistentVolumeClaimStatus(pvc, defaultNamespace, null)
+        val claim = coreApi.readNamespacedPersistentVolumeClaimStatus(pvc, namespace, null)
 
         var okPhases = listOf("Pending", "Bound")
         var readyPhases = listOf("Pending", "Bound")

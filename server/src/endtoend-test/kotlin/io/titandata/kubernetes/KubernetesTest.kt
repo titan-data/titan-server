@@ -21,13 +21,10 @@ abstract class KubernetesTest : EndToEndTest("kubernetes-csi") {
 
     internal val context: KubernetesCsiContext
     internal val coreApi: CoreV1Api
-    internal val namespace = "default"
     internal val executor = CommandExecutor()
 
     init {
-        val storageClass = System.getProperty("k8s.storageClass")
-        val snapshotClass = System.getProperty("k8s.snapshotClass")
-        context = KubernetesCsiContext(storageClass = storageClass, snapshotClass = snapshotClass)
+        context = KubernetesCsiContext()
         coreApi = CoreV1Api()
     }
 
@@ -84,7 +81,7 @@ abstract class KubernetesTest : EndToEndTest("kubernetes-csi") {
     }
 
     internal fun getPodStatus(name: String): Boolean {
-        val pod = coreApi.readNamespacedPod(name, context.defaultNamespace, null, null, null)
+        val pod = coreApi.readNamespacedPod(name, context.namespace, null, null, null)
         val statuses = pod?.status?.containerStatuses ?: return false
         for (container in statuses) {
             if (container.restartCount != 0) {
@@ -125,6 +122,6 @@ abstract class KubernetesTest : EndToEndTest("kubernetes-csi") {
                                 .build())
                         .build())
                 .build()
-        coreApi.createNamespacedPod(context.defaultNamespace, request, null, null, null)
+        coreApi.createNamespacedPod(context.namespace, request, null, null, null)
     }
 }

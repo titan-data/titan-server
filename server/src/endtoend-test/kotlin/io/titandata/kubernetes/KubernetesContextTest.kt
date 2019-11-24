@@ -67,7 +67,7 @@ class KubernetesContextTest : KubernetesTest() {
         "delete cloned volumed succeeds" {
             context.deleteVolume(vs2, "test", cloneConfig)
             val exception = shouldThrow<ApiException> {
-                coreApi.readNamespacedPersistentVolumeClaimStatus("$vs2-test", namespace, null)
+                coreApi.readNamespacedPersistentVolumeClaimStatus("$vs2-test", context.namespace, null)
             }
             exception.code shouldBe 404
         }
@@ -87,7 +87,7 @@ class KubernetesContextTest : KubernetesTest() {
         "delete volume succeeds" {
             context.deleteVolume(vs, "test", volumeConfig)
             val exception = shouldThrow<ApiException> {
-                coreApi.readNamespacedPersistentVolumeClaimStatus("$vs-test", namespace, null)
+                coreApi.readNamespacedPersistentVolumeClaimStatus("$vs-test", context.namespace, null)
             }
             exception.code shouldBe 404
         }

@@ -8,6 +8,9 @@ import io.titandata.models.CommitStatus
 import io.titandata.models.VolumeStatus
 
 interface RuntimeContext {
+    fun getProvider(): String
+    fun getProperties(): Map<String, String>
+
     fun createVolumeSet(volumeSet: String)
     fun cloneVolumeSet(sourceVolumeSet: String, sourceCommit: String, newVolumeSet: String)
     fun deleteVolumeSet(volumeSet: String)

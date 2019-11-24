@@ -26,6 +26,12 @@ class KubernetesWorkflowTest : KubernetesTest() {
     }
 
     init {
+        "get context returns correct configuration" {
+            val context = contextApi.getContext()
+            context.provider shouldBe "kubernetes-csi"
+            context.properties.size shouldBe 0
+        }
+
         "kubectl works" {
             dockerUtil.execServer("kubectl", "cluster-info")
         }

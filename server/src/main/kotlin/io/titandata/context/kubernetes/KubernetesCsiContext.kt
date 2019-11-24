@@ -17,8 +17,8 @@ import io.titandata.models.CommitStatus
 import io.titandata.models.VolumeStatus
 import io.titandata.shell.CommandException
 import io.titandata.shell.CommandExecutor
-import org.slf4j.LoggerFactory
 import java.io.FileReader
+import org.slf4j.LoggerFactory
 
 /**
  * Kubernetes runtime context. In a k8s environment, we leverage CSI (Container Storage Interface) drivers to do
@@ -38,10 +38,10 @@ import java.io.FileReader
  *      snapshotClass   Default snapshot class to use when createing snapshots. If unspecified, then the cluster
  *                      default is used.
  */
-class KubernetesCsiContext(private val properties : Map<String, String> = emptyMap()) : RuntimeContext {
+class KubernetesCsiContext(private val properties: Map<String, String> = emptyMap()) : RuntimeContext {
     private val coreApi: CoreV1Api
     private val storageApi: StorageV1Api
-    val namespace : String
+    val namespace: String
     private val executor = CommandExecutor()
 
     companion object {

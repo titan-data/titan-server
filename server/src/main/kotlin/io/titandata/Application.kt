@@ -6,7 +6,6 @@ package io.titandata
 
 import com.google.gson.GsonBuilder
 import com.google.gson.JsonSyntaxException
-import com.google.gson.reflect.TypeToken
 import io.ktor.application.Application
 import io.ktor.application.call
 import io.ktor.application.install
@@ -30,6 +29,7 @@ import io.ktor.server.cio.CIO
 import io.ktor.server.engine.embeddedServer
 import io.ktor.util.KtorExperimentalAPI
 import io.titandata.apis.CommitsApi
+import io.titandata.apis.ContextApi
 import io.titandata.apis.DockerVolumeApi
 import io.titandata.apis.OperationsApi
 import io.titandata.apis.RemotesApi
@@ -125,6 +125,7 @@ fun Application.mainProvider(services: ServiceLocator) {
     install(Compression, ApplicationCompressionConfiguration())
     install(Routing) {
         CommitsApi(services)
+        ContextApi(services)
         DockerVolumeApi(services)
         OperationsApi(services)
         RemotesApi(services)

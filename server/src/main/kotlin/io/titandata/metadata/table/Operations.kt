@@ -1,8 +1,6 @@
 package io.titandata.metadata.table
 
-import io.titandata.metadata.table.Remotes.references
 import io.titandata.models.Operation
-import org.jetbrains.exposed.sql.ReferenceOption
 import org.jetbrains.exposed.sql.Table
 
 /*

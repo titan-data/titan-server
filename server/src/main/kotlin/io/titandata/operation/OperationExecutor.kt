@@ -94,17 +94,24 @@ class OperationExecutor(
             success = true
             provider.endOperation(operationData, true)
 
-            services.metadata.addProgressEntry(operation.id, ProgressEntry(ProgressEntry.Type.COMPLETE))
+            transaction {
+                services.metadata.addProgressEntry(operation.id, ProgressEntry(ProgressEntry.Type.COMPLETE))
+            }
         } catch (t: InterruptedException) {
-            services.metadata.addProgressEntry(operation.id, ProgressEntry(ProgressEntry.Type.ABORT))
+            transaction {
+                services.metadata.addProgressEntry(operation.id, ProgressEntry(ProgressEntry.Type.ABORT))
+            }
             log.info("${operation.type} operation ${operation.id} interrupted", t)
         } catch (t: Throwable) {
-            services.metadata.addProgressEntry(operation.id, ProgressEntry(ProgressEntry.Type.FAILED, t.message))
+            transaction {
+                services.metadata.addProgressEntry(operation.id, ProgressEntry(ProgressEntry.Type.FAILED, t.message))
+            }
             log.error("${operation.type} operation ${operation.id} failed", t)
         } finally {
             try {
-                if (operation.state == Operation.State.COMPLETE &&
-                        operation.type == Operation.Type.PULL && !metadataOnly) {
+                val op = services.operations.getOperation(operation.id)
+                if (op.state == Operation.State.COMPLETE &&
+                        op.type == Operation.Type.PULL && !metadataOnly) {
                     // It shouldn't be possible for commit to be null here, or else it would've failed
                     services.commits.createCommit(repo, commit!!, operation.id)
                 }

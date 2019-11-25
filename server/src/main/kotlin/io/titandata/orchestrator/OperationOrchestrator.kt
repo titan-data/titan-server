@@ -43,6 +43,16 @@ class OperationOrchestrator(val services: ServiceLocator) {
         services.reaper.signal()
     }
 
+    fun createExecutor(
+        operation: Operation,
+        repository: String,
+        remote: Remote,
+        params: RemoteParameters,
+        metadataOnly: Boolean
+    ): OperationExecutor {
+        return OperationExecutor(services, operation, repository, remote, params, metadataOnly, operationComplete)
+    }
+
     internal fun createAndStartOperation(
         type: Operation.Type,
         repository: String,
@@ -60,13 +70,15 @@ class OperationOrchestrator(val services: ServiceLocator) {
         }
 
         // Run executor
-        val exec = OperationExecutor(services, operation, repository, remote, params, metadataOnly, operationComplete)
+        val exec = createExecutor(operation, repository, remote, params, metadataOnly)
         runningOperations.put(exec.operation.id, exec)
         val message = when (type) {
             Operation.Type.PULL -> "Pulling $commitId from '${remote.name}'"
             Operation.Type.PUSH -> "Pushing $commitId to '${remote.name}'"
         }
-        services.metadata.addProgressEntry(operation.id, ProgressEntry(ProgressEntry.Type.MESSAGE, message))
+        transaction {
+            services.metadata.addProgressEntry(operation.id, ProgressEntry(ProgressEntry.Type.MESSAGE, message))
+        }
         exec.start()
         return operation
     }
@@ -185,14 +197,15 @@ class OperationOrchestrator(val services: ServiceLocator) {
             services.metadata.listOperations()
         }
         for (op in operations) {
-            val exec = OperationExecutor(services, op.operation, op.repo,
-                    services.remotes.getRemote(op.repo, op.operation.remote), op.params, op.metadataOnly,
-                    operationComplete)
+            val exec = createExecutor(op.operation, op.repo,
+                    services.remotes.getRemote(op.repo, op.operation.remote), op.params, op.metadataOnly)
             if (op.operation.state == Operation.State.RUNNING) {
                 runningOperations.put(exec.operation.id, exec)
                 log.info("retrying operation ${op.operation.id} after restart")
-                services.metadata.addProgressEntry(op.operation.id, ProgressEntry(ProgressEntry.Type.MESSAGE,
-                        "Retrying operation after restart"))
+                transaction {
+                    services.metadata.addProgressEntry(op.operation.id, ProgressEntry(ProgressEntry.Type.MESSAGE,
+                            "Retrying operation after restart"))
+                }
                 exec.start()
             }
         }

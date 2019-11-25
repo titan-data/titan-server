@@ -24,7 +24,6 @@ import io.titandata.exception.NoSuchObjectException
 import io.titandata.metadata.OperationData
 import io.titandata.models.Commit
 import io.titandata.models.Operation
-import io.titandata.models.ProgressEntry
 import io.titandata.models.Remote
 import io.titandata.models.RemoteParameters
 import io.titandata.models.Repository
@@ -101,7 +100,7 @@ class OperationExecutorTest : StringSpec() {
     }
 
     fun getExecutor(data: OperationData): OperationExecutor {
-        return OperationExecutor(services, data.operation, "foo", Remote("nop", "origin"), RemoteParameters("nop"),
+        return services.operations.createExecutor(data.operation, "foo", Remote("nop", "origin"), RemoteParameters("nop"),
                 data.metadataOnly)
     }
 
@@ -188,7 +187,7 @@ class OperationExecutorTest : StringSpec() {
             val executor = getExecutor(data)
             executor.run()
 
-            data.operation.state shouldBe Operation.State.COMPLETE
+            services.operations.getOperation(vs).state shouldBe Operation.State.COMPLETE
 
             verify {
                 nopProvider.syncVolume(any(), "volume", "volume", "/mountpoint", "/scratch")
@@ -212,7 +211,7 @@ class OperationExecutorTest : StringSpec() {
             val executor = getExecutor(data)
             executor.run()
 
-            data.operation.state shouldBe Operation.State.COMPLETE
+            services.operations.getOperation(vs).state shouldBe Operation.State.COMPLETE
 
             verify {
                 nopProvider.syncVolume(any(), "volume", "volume", "/mountpoint", "/scratch")
@@ -231,7 +230,7 @@ class OperationExecutorTest : StringSpec() {
             val executor = getExecutor(data)
             executor.run()
 
-            data.operation.state shouldBe Operation.State.ABORTED
+            services.operations.getOperation(vs).state shouldBe Operation.State.ABORTED
 
             verify {
                 context.deactivateVolume(data.operation.id, "_scratch", mapOf("mountpoint" to "/scratch"))
@@ -257,7 +256,7 @@ class OperationExecutorTest : StringSpec() {
             val executor = getExecutor(data)
             executor.run()
 
-            data.operation.state shouldBe Operation.State.FAILED
+            services.operations.getOperation(vs).state shouldBe Operation.State.FAILED
 
             verify {
                 context.deactivateVolume(data.operation.id, "_scratch", mapOf("mountpoint" to "/scratch"))
@@ -283,7 +282,7 @@ class OperationExecutorTest : StringSpec() {
             val executor = getExecutor(data)
             executor.run()
 
-            data.operation.state shouldBe Operation.State.FAILED
+            services.operations.getOperation(vs).state shouldBe Operation.State.FAILED
 
             verify {
                 nopProvider.endOperation(any(), false)

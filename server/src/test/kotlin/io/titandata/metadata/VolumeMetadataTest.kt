@@ -126,6 +126,18 @@ class VolumeMetadataTest : StringSpec() {
             }
         }
 
+        "list deleting volumes succeeds" {
+            val vs = createVolumeSet()
+            val volumes = transaction {
+                md.createVolume(vs, Volume("vol"))
+                md.markVolumeDeleting(vs, "vol")
+                md.listDeletingVolumes()
+            }
+            volumes.size shouldBe 1
+            volumes[0].first shouldBe vs
+            volumes[0].second.name shouldBe "vol"
+        }
+
         "delete volume succeeds" {
             val vs = createVolumeSet()
             transaction {

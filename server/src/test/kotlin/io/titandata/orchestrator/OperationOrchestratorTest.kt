@@ -108,12 +108,6 @@ class OperationOrchestratorTest : StringSpec() {
             }
         }
 
-        "get operation fails for invalid repository name" {
-            shouldThrow<IllegalArgumentException> {
-                services.operations.getOperation(UUID.randomUUID().toString())
-            }
-        }
-
         "get operation fails for non-existent repository" {
             shouldThrow<NoSuchObjectException> {
                 services.operations.getOperation(UUID.randomUUID().toString())
@@ -444,10 +438,6 @@ class OperationOrchestratorTest : StringSpec() {
             progress.size shouldBe 2
             progress[0].type shouldBe ProgressEntry.Type.MESSAGE
             progress[1].type shouldBe ProgressEntry.Type.COMPLETE
-
-            shouldThrow<NoSuchObjectException> {
-                services.operations.getOperation(op.id)
-            }
         }
 
         "error during pull is reported correctly" {
@@ -549,10 +539,6 @@ class OperationOrchestratorTest : StringSpec() {
             progress[0].type shouldBe ProgressEntry.Type.MESSAGE
             progress[0].message shouldBe "Pushing id to 'remote'"
             progress[1].type shouldBe ProgressEntry.Type.COMPLETE
-
-            shouldThrow<NoSuchObjectException> {
-                services.operations.getOperation(op.id)
-            }
         }
 
         "error during push is reported correctly" {

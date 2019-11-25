@@ -7,9 +7,9 @@ import io.kotlintest.shouldThrow
 import io.kotlintest.specs.StringSpec
 import io.titandata.exception.NoSuchObjectException
 import io.titandata.models.Operation
-import io.titandata.models.ProgressEntry
 import io.titandata.models.RemoteParameters
 import io.titandata.models.Repository
+import java.util.UUID
 import org.jetbrains.exposed.sql.transactions.transaction
 
 class OperationMetadataTest : StringSpec() {
@@ -58,6 +58,14 @@ class OperationMetadataTest : StringSpec() {
             }
         }
 
+        "get non-existent operation fails" {
+            shouldThrow<NoSuchObjectException> {
+                transaction {
+                    md.getOperation(UUID.randomUUID().toString())
+                }
+            }
+        }
+
         "list operations by repository succeeds" {
             transaction {
                 md.createOperation("foo", vs, buildOperationData(vs))
@@ -87,6 +95,21 @@ class OperationMetadataTest : StringSpec() {
                 md.updateOperationState(vs, Operation.State.COMPLETE)
                 val op = md.getOperation(vs)
                 op.operation.state shouldBe Operation.State.COMPLETE
+            }
+        }
+
+        "operation in progress succeeds" {
+            transaction {
+                md.createOperation("foo", vs, buildOperationData(vs))
+                md.operationRunning(vs) shouldBe true
+            }
+        }
+
+        "operation in progress fails" {
+            transaction {
+                md.createOperation("foo", vs, buildOperationData(vs))
+                md.updateOperationState(vs, Operation.State.COMPLETE)
+                md.operationRunning(vs) shouldBe false
             }
         }
 

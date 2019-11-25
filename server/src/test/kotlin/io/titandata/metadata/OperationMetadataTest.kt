@@ -7,6 +7,7 @@ import io.kotlintest.shouldThrow
 import io.kotlintest.specs.StringSpec
 import io.titandata.exception.NoSuchObjectException
 import io.titandata.models.Operation
+import io.titandata.models.ProgressEntry
 import io.titandata.models.RemoteParameters
 import io.titandata.models.Repository
 import org.jetbrains.exposed.sql.transactions.transaction
@@ -32,6 +33,7 @@ class OperationMetadataTest : StringSpec() {
         return OperationData(
                 metadataOnly = false,
                 params = RemoteParameters("nop"),
+                repo = "foo",
                 operation = Operation(
                         id = id,
                         type = Operation.Type.PULL,
@@ -56,15 +58,26 @@ class OperationMetadataTest : StringSpec() {
             }
         }
 
+        "list operations by repository succeeds" {
+            transaction {
+                md.createOperation("foo", vs, buildOperationData(vs))
+                md.createRepository(Repository(name = "bar"))
+                val vs2 = md.createVolumeSet("bar")
+                md.createOperation("bar", vs2, buildOperationData(vs2))
+                val result = md.listOperationsByRepository("foo")
+                result.size shouldBe 1
+                result[0].operation.id shouldBe vs
+            }
+        }
+
         "list operations succeeds" {
             transaction {
                 md.createOperation("foo", vs, buildOperationData(vs))
                 md.createRepository(Repository(name = "bar"))
                 val vs2 = md.createVolumeSet("bar")
                 md.createOperation("bar", vs2, buildOperationData(vs2))
-                val result = md.listOperations("foo")
-                result.size shouldBe 1
-                result[0].operation.id shouldBe vs
+                val result = md.listOperations()
+                result.size shouldBe 2
             }
         }
 
@@ -74,27 +87,6 @@ class OperationMetadataTest : StringSpec() {
                 md.updateOperationState(vs, Operation.State.COMPLETE)
                 val op = md.getOperation(vs)
                 op.operation.state shouldBe Operation.State.COMPLETE
-            }
-        }
-
-        "delete operation succeeds" {
-            transaction {
-                md.createOperation("foo", vs, buildOperationData(vs))
-                md.deleteOperation(vs)
-            }
-
-            shouldThrow<NoSuchObjectException> {
-                transaction {
-                    md.getOperation(vs)
-                }
-            }
-        }
-
-        "delete non-existent operation fails" {
-            shouldThrow<NoSuchObjectException> {
-                transaction {
-                    md.deleteOperation(vs)
-                }
             }
         }
 

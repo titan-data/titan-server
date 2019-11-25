@@ -38,7 +38,7 @@ class OperationOrchestrator(val services: ServiceLocator) {
 
     private val runningOperations: MutableMap<String, OperationExecutor> = mutableMapOf()
 
-    val operationComplete = fun(operationId: String) {
+    private val operationComplete = fun(operationId: String) {
         runningOperations.remove(operationId)
         services.reaper.signal()
     }
@@ -210,7 +210,7 @@ class OperationOrchestrator(val services: ServiceLocator) {
         runningOperations.clear()
     }
 
-    fun getProgress(operationId: String, lastEntryId: Int): List<ProgressEntry> {
+    fun getProgress(operationId: String, lastEntryId: Int = 0): List<ProgressEntry> {
         return transaction {
             services.metadata.listProgressEntries(operationId, lastEntryId)
         }
@@ -237,6 +237,10 @@ class OperationOrchestrator(val services: ServiceLocator) {
     fun abortOperation(id: String) {
         getOperation(id)
         runningOperations[id]?.abort()
+    }
+
+    fun waitForComplete(id: String) {
+        runningOperations[id]?.join()
     }
 
     /**

@@ -167,7 +167,8 @@ class ReaperTest : StringSpec() {
                                 commitId = "commit"
                         ),
                         params = RemoteParameters("nop"),
-                        metadataOnly = false
+                        metadataOnly = false,
+                        repo = "foo"
                 ))
             }
             services.reaper.markEmptyVolumeSets()

@@ -41,13 +41,15 @@ class OperationExecutor(
     private var commit: Commit? = null
 
     val updateProgress = fun(type: RemoteProgress, message: String?, percent: Int?) {
-        val progressType = when (type) {
-            RemoteProgress.START -> ProgressEntry.Type.START
-            RemoteProgress.END -> ProgressEntry.Type.END
-            RemoteProgress.PROGRESS -> ProgressEntry.Type.PROGRESS
-            RemoteProgress.MESSAGE -> ProgressEntry.Type.MESSAGE
+        transaction {
+            val progressType = when (type) {
+                RemoteProgress.START -> ProgressEntry.Type.START
+                RemoteProgress.END -> ProgressEntry.Type.END
+                RemoteProgress.PROGRESS -> ProgressEntry.Type.PROGRESS
+                RemoteProgress.MESSAGE -> ProgressEntry.Type.MESSAGE
+            }
+            services.metadata.addProgressEntry(operation.id, ProgressEntry(progressType, message, percent))
         }
-        services.metadata.addProgressEntry(operation.id, ProgressEntry(progressType, message, percent))
     }
 
     override fun run() {

@@ -20,15 +20,9 @@ import org.slf4j.LoggerFactory
 /**
  * The operation manager is responsible for starting, stopping, and monitoring all active
  * operations. There are two basic types of operations: push and pull. In either case, we
- * create a volume set that is marked as an in-progress operation. For pushes, it's simply
+ * create a volume set that has an associated in-progress operation. For pushes, it's simply
  * a clone of the source commit. For pulls, we try to find the closest possible commit based
  * on the commit source as recorded in the remote repository.
- *
- * Progress messages are queued up for the CLI to pull down and display to the user, but if the
- * server restarts then we will lose any progress and the CLI will have to start with progress
- * from the resumed operation. We have a very simple model of a single client, so we adopt a
- * model of simply discarding progress entries once they've been read, and marking the entire
- * operation complete once the last progress message has been read.
  */
 class OperationOrchestrator(val services: ServiceLocator) {
 

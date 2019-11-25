@@ -20,7 +20,7 @@ fun Route.OperationsApi(services: ServiceLocator) {
 
     route("/v1/operations") {
         get {
-            val repo = call.request.queryParameters["repositoryName"]
+            val repo = call.request.queryParameters["repository"]
             call.respond(services.operations.listOperations(repo))
         }
     }

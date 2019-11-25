@@ -103,17 +103,17 @@ class OperationsApiTest : StringSpec() {
     fun loadTestOperations() {
         loadOperation(OperationData(operation = Operation(id = vs1,
                 type = Operation.Type.PUSH,
-                state = Operation.State.COMPLETE, remote = "remote", commitId = "commit1"),
-                params = RemoteParameters("nop")))
+                state = Operation.State.RUNNING, remote = "remote", commitId = "commit1"),
+                params = RemoteParameters("nop"), repo = "foo"))
         loadOperation(OperationData(operation = Operation(id = vs2,
                 type = Operation.Type.PULL,
-                state = Operation.State.COMPLETE, remote = "remote", commitId = "commit2"),
-                params = RemoteParameters("nop")))
+                state = Operation.State.RUNNING, remote = "remote", commitId = "commit2"),
+                params = RemoteParameters("nop"), repo = "foo"))
     }
 
     init {
         "list empty operations succeeds" {
-            with(engine.handleRequest(HttpMethod.Get, "/v1/repositories/foo/operations")) {
+            with(engine.handleRequest(HttpMethod.Get, "/v1/operations")) {
                 response.status() shouldBe HttpStatusCode.OK
                 response.contentType().toString() shouldBe "application/json; charset=UTF-8"
                 response.content shouldBe "[]"
@@ -122,19 +122,43 @@ class OperationsApiTest : StringSpec() {
 
         "list operations succeeds" {
             loadTestOperations()
-            with(engine.handleRequest(HttpMethod.Get, "/v1/repositories/foo/operations")) {
+            with(engine.handleRequest(HttpMethod.Get, "/v1/operations")) {
                 response.status() shouldBe HttpStatusCode.OK
                 response.contentType().toString() shouldBe "application/json; charset=UTF-8"
                 response.content shouldBe "[{\"id\":\"$vs1\",\"type\":\"PUSH\"," +
-                        "\"state\":\"COMPLETE\",\"remote\":\"remote\",\"commitId\":\"commit1\"}," +
-                        "{\"id\":\"$vs2\",\"type\":\"PULL\",\"state\":\"COMPLETE\"," +
+                        "\"state\":\"RUNNING\",\"remote\":\"remote\",\"commitId\":\"commit1\"}," +
+                        "{\"id\":\"$vs2\",\"type\":\"PULL\",\"state\":\"RUNNING\"," +
                         "\"remote\":\"remote\",\"commitId\":\"commit2\"}]"
+            }
+        }
+
+        "list operations by repo succeeds" {
+            loadTestOperations()
+            with(engine.handleRequest(HttpMethod.Get, "/v1/operations?repository=foo")) {
+                response.status() shouldBe HttpStatusCode.OK
+                response.contentType().toString() shouldBe "application/json; charset=UTF-8"
+                response.content shouldBe "[{\"id\":\"$vs1\",\"type\":\"PUSH\"," +
+                        "\"state\":\"RUNNING\",\"remote\":\"remote\",\"commitId\":\"commit1\"}," +
+                        "{\"id\":\"$vs2\",\"type\":\"PULL\",\"state\":\"RUNNING\"," +
+                        "\"remote\":\"remote\",\"commitId\":\"commit2\"}]"
+            }
+        }
+
+        "list operations by repo returns empty list" {
+            loadTestOperations()
+            transaction {
+                services.metadata.createRepository(Repository(name = "bar", properties = mapOf()))
+            }
+            with(engine.handleRequest(HttpMethod.Get, "/v1/operations?repository=bar")) {
+                response.status() shouldBe HttpStatusCode.OK
+                response.contentType().toString() shouldBe "application/json; charset=UTF-8"
+                response.content shouldBe "[]"
             }
         }
 
         "get operation fails for non-existent operation" {
             val id = UUID.randomUUID().toString()
-            with(engine.handleRequest(HttpMethod.Get, "/v1/repositories/foo/operations/$id")) {
+            with(engine.handleRequest(HttpMethod.Get, "/v1/operations/$id")) {
                 response.status() shouldBe HttpStatusCode.NotFound
                 val error = Gson().fromJson(response.content, Error::class.java)
                 error.code shouldBe "NoSuchObjectException"
@@ -144,11 +168,11 @@ class OperationsApiTest : StringSpec() {
 
         "get operation succeeds" {
             loadTestOperations()
-            with(engine.handleRequest(HttpMethod.Get, "/v1/repositories/foo/operations/$vs1")) {
+            with(engine.handleRequest(HttpMethod.Get, "/v1/operations/$vs1")) {
                 response.status() shouldBe HttpStatusCode.OK
                 response.contentType().toString() shouldBe "application/json; charset=UTF-8"
                 response.content shouldBe "{\"id\":\"$vs1\",\"type\":\"PUSH\"," +
-                    "\"state\":\"COMPLETE\",\"remote\":\"remote\",\"commitId\":\"commit1\"}"
+                    "\"state\":\"RUNNING\",\"remote\":\"remote\",\"commitId\":\"commit1\"}"
             }
         }
 
@@ -158,16 +182,16 @@ class OperationsApiTest : StringSpec() {
             }
             loadOperation(OperationData(Operation(id = vs2,
                     type = Operation.Type.PUSH, commitId = "commit",
-                    state = Operation.State.RUNNING, remote = "remote"),
+                    state = Operation.State.RUNNING, remote = "remote"), repo = "foo",
                     params = RemoteParameters("nop", mapOf("delay" to 10))))
             services.operations.loadState()
-            with(engine.handleRequest(HttpMethod.Delete, "/v1/repositories/foo/operations/$vs2")) {
+            with(engine.handleRequest(HttpMethod.Delete, "/v1/operations/$vs2")) {
                 response.status() shouldBe HttpStatusCode.NoContent
             }
 
             delay(Duration.ofMillis(500))
 
-            with(engine.handleRequest(HttpMethod.Get, "/v1/repositories/foo/operations/$vs2")) {
+            with(engine.handleRequest(HttpMethod.Get, "/v1/operations/$vs2")) {
                 response.status() shouldBe HttpStatusCode.OK
                 val op = gson.fromJson(response.content, Operation::class.java)
                 op.state shouldBe Operation.State.ABORTED
@@ -175,16 +199,22 @@ class OperationsApiTest : StringSpec() {
         }
 
         "abort completed operation doesn't alter operation" {
-            loadTestOperations()
+            transaction {
+                services.metadata.createCommit("foo", vs1, Commit("commit"))
+            }
+            loadOperation(OperationData(Operation(id = vs1,
+                    type = Operation.Type.PUSH, commitId = "commit",
+                    state = Operation.State.COMPLETE, remote = "remote"), repo = "foo",
+                    params = RemoteParameters("nop", mapOf("delay" to 10))))
             services.operations.loadState()
-            with(engine.handleRequest(HttpMethod.Delete, "/v1/repositories/foo/operations/$vs1")) {
+            with(engine.handleRequest(HttpMethod.Delete, "/v1/operations/$vs1")) {
                 response.status() shouldBe HttpStatusCode.NoContent
             }
 
-            with(engine.handleRequest(HttpMethod.Get, "/v1/repositories/foo/operations/$vs1")) {
+            with(engine.handleRequest(HttpMethod.Get, "/v1/operations/$vs1")) {
                 response.status() shouldBe HttpStatusCode.OK
                 response.content shouldBe "{\"id\":\"$vs1\",\"type\":\"PUSH\"," +
-                        "\"state\":\"COMPLETE\",\"remote\":\"remote\",\"commitId\":\"commit1\"}"
+                        "\"state\":\"COMPLETE\",\"remote\":\"remote\",\"commitId\":\"commit\"}"
             }
         }
 
@@ -194,29 +224,16 @@ class OperationsApiTest : StringSpec() {
             }
             loadOperation(OperationData(Operation(id = vs2,
                     type = Operation.Type.PUSH, commitId = "commit",
-                    state = Operation.State.RUNNING, remote = "remote"),
+                    state = Operation.State.RUNNING, remote = "remote"), repo = "foo",
                     params = RemoteParameters("nop", mapOf("delay" to 10))))
             services.operations.loadState()
             delay(Duration.ofMillis(500))
-            with(engine.handleRequest(HttpMethod.Get, "/v1/repositories/foo/operations/$vs2/progress")) {
+            with(engine.handleRequest(HttpMethod.Get, "/v1/operations/$vs2/progress")) {
                 response.status() shouldBe HttpStatusCode.OK
                 val entries: List<ProgressEntry> = gson.fromJson(response.content, object : TypeToken<List<ProgressEntry>>() { }.type)
                 entries.size shouldBe 1
                 entries[0].type shouldBe ProgressEntry.Type.MESSAGE
                 entries[0].message shouldBe "Retrying operation after restart"
-            }
-        }
-
-        "get progress of completed operation removes operation" {
-            loadTestOperations()
-            services.operations.loadState()
-            with(engine.handleRequest(HttpMethod.Get, "/v1/repositories/foo/operations/$vs1/progress")) {
-                response.status() shouldBe HttpStatusCode.OK
-                response.content shouldBe "[]"
-            }
-
-            with(engine.handleRequest(HttpMethod.Get, "/v1/repositories/foo/operations/$vs1")) {
-                response.status() shouldBe HttpStatusCode.NotFound
             }
         }
 
@@ -238,7 +255,7 @@ class OperationsApiTest : StringSpec() {
             operation.commitId shouldBe "commit"
             operation.remote shouldBe "remote"
             operation.type shouldBe Operation.Type.PUSH
-            with(engine.handleRequest(HttpMethod.Get, "/v1/repositories/foo/operations/${operation.id}")) {
+            with(engine.handleRequest(HttpMethod.Get, "/v1/operations/${operation.id}")) {
                 response.status() shouldBe HttpStatusCode.OK
             }
         }
@@ -257,7 +274,7 @@ class OperationsApiTest : StringSpec() {
             operation.remote shouldBe "remote"
             operation.type shouldBe Operation.Type.PULL
 
-            with(engine.handleRequest(HttpMethod.Get, "/v1/repositories/foo/operations/${operation.id}")) {
+            with(engine.handleRequest(HttpMethod.Get, "/v1/operations/${operation.id}")) {
                 response.status() shouldBe HttpStatusCode.OK
             }
         }

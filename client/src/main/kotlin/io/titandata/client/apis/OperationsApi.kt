@@ -17,13 +17,13 @@ import io.titandata.models.ProgressEntry
 
 class OperationsApi(basePath: String = "http://localhost:5001") : ApiClient(basePath) {
 
-    fun deleteOperation(repositoryName: String, operationId: String) {
+    fun deleteOperation(operationId: String) {
         val localVariableBody: Any? = null
         val localVariableQuery: Map<String,List<String>> = mapOf()
         val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
         val localVariableConfig = RequestConfig(
                 RequestMethod.DELETE,
-                "/v1/repositories/$repositoryName/operations/$operationId",
+                "/v1/operations/$operationId",
                 query = localVariableQuery,
                 headers = localVariableHeaders
         )
@@ -40,13 +40,13 @@ class OperationsApi(basePath: String = "http://localhost:5001") : ApiClient(base
         }
     }
 
-    fun getOperation(repositoryName: String, operationId: String) : Operation {
+    fun getOperation(operationId: String) : Operation {
         val localVariableBody: Any? = null
         val localVariableQuery: Map<String,List<String>> = mapOf()
         val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
         val localVariableConfig = RequestConfig(
                 RequestMethod.GET,
-                "/v1/repositories/$repositoryName/operations/$operationId",
+                "/v1/operations/$operationId",
                 query = localVariableQuery,
                 headers = localVariableHeaders
         )
@@ -64,13 +64,15 @@ class OperationsApi(basePath: String = "http://localhost:5001") : ApiClient(base
     }
 
     @Suppress("UNCHECKED_CAST")
-    fun getProgress(repositoryName: String, operationId: String) : Array<ProgressEntry> {
+    fun getProgress(operationId: String, lastId: Int) : Array<ProgressEntry> {
         val localVariableBody: Any? = null
-        val localVariableQuery: Map<String,List<String>> = mapOf()
+        val localVariableQuery: Map<String,List<String>> = mapOf(
+                "lastId" to listOf(lastId.toString())
+        )
         val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
         val localVariableConfig = RequestConfig(
                 RequestMethod.GET,
-                "/v1/repositories/$repositoryName/operations/$operationId/progress",
+                "/v1/operations/$operationId/progress",
                 query = localVariableQuery,
                 headers = localVariableHeaders
         )
@@ -90,11 +92,11 @@ class OperationsApi(basePath: String = "http://localhost:5001") : ApiClient(base
     @Suppress("UNCHECKED_CAST")
     fun listOperations(repositoryName: String) : Array<Operation> {
         val localVariableBody: Any? = null
-        val localVariableQuery: Map<String,List<String>> = mapOf()
+        val localVariableQuery: Map<String,List<String>> = mapOf("repository" to listOf(repositoryName))
         val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
         val localVariableConfig = RequestConfig(
                 RequestMethod.GET,
-                "/v1/repositories/$repositoryName/operations",
+                "/v1/operations",
                 query = localVariableQuery,
                 headers = localVariableHeaders
         )

@@ -61,22 +61,24 @@ class DockerUtil(
         return executor.exec(*args.toTypedArray()).trim()
     }
 
-    fun runTitanKubernetes(entryPoint: String): String {
+    fun runTitanKubernetes(entryPoint: String, parameters: Array<out String>): String {
         val home = System.getProperty("user.home")
+        val config = parameters.joinToString(",")
         val args = arrayOf("docker", "run",
                 "-d", "--restart", "always", "--name", "$identity-server",
                 "-v", "$home/.kube:/root/.kube", "-v", "$identity-data:/var/lib/$identity",
                 "-e", "TITAN_CONTEXT=kubernetes-csi", "-e", "TITAN_DATA=$identity",
+                "-e", "TITAN_CONFIG=$config",
                 "-p", "$port:5001", image, "/bin/bash", "/titan/$entryPoint")
         return executor.exec(*args).trim()
     }
 
-    fun startServer() {
+    fun startServer(vararg parameters: String) {
         executor.exec("docker", "volume", "create", "$identity-data")
         if (context == "docker-zfs") {
             runTitanDocker("launch", true)
         } else {
-            runTitanKubernetes("run")
+            runTitanKubernetes("run", parameters)
         }
     }
 

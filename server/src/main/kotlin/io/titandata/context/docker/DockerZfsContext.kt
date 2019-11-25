@@ -31,6 +31,14 @@ class DockerZfsContext(
 
     internal val executor = CommandExecutor()
 
+    override fun getProvider(): String {
+        return "docker-zfs"
+    }
+
+    override fun getProperties(): Map<String, String> {
+        return mapOf("pool" to poolName)
+    }
+
     /**
      * Create a new volume set. This is simply an empty placeholder volumeset.
      */

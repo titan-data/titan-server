@@ -41,6 +41,13 @@ class LocalWorkflowTest : EndToEndTest() {
     }
 
     init {
+        "get context returns correct configuration" {
+            val context = contextApi.getContext()
+            context.provider shouldBe "docker-zfs"
+            context.properties.size shouldBe 1
+            context.properties["pool"] shouldBe "test"
+        }
+
         "repository list is empty" {
             val repositories = repoApi.listRepositories()
             repositories.size shouldBe 0

@@ -7,6 +7,7 @@ package io.titandata
 import io.kotlintest.TestCaseOrder
 import io.kotlintest.specs.StringSpec
 import io.titandata.client.apis.CommitsApi
+import io.titandata.client.apis.ContextApi
 import io.titandata.client.apis.OperationsApi
 import io.titandata.client.apis.RemotesApi
 import io.titandata.client.apis.RepositoriesApi
@@ -26,6 +27,7 @@ abstract class EndToEndTest(val titanContext: String = "docker-zfs") : StringSpe
     val commitApi = CommitsApi(url)
     val remoteApi = RemotesApi(url)
     val operationApi = OperationsApi(url)
+    val contextApi = ContextApi(url)
 
     override fun testCaseOrder() = TestCaseOrder.Sequential
 

@@ -29,6 +29,7 @@ import io.ktor.server.cio.CIO
 import io.ktor.server.engine.embeddedServer
 import io.ktor.util.KtorExperimentalAPI
 import io.titandata.apis.CommitsApi
+import io.titandata.apis.ContextApi
 import io.titandata.apis.DockerVolumeApi
 import io.titandata.apis.OperationsApi
 import io.titandata.apis.RemotesApi
@@ -82,7 +83,21 @@ fun Application.main() {
             DockerZfsContext(pool)
         }
         "kubernetes-csi" -> {
-            KubernetesCsiContext()
+            val configProperty = System.getProperty("titan.contextConfig")
+            val contextConfig = if (!configProperty.isNullOrEmpty()) {
+                val map = mutableMapOf<String, String>()
+                for (propval in configProperty.split(",")) {
+                    val components = propval.split("=")
+                    if (components.size != 2) {
+                        throw IllegalArgumentException("invalid configuration property '$propval'")
+                    }
+                    map[components[0]] = components[1]
+                }
+                map
+            } else {
+                emptyMap<String, String>()
+            }
+            KubernetesCsiContext(contextConfig)
         }
         else -> throw IllegalArgumentException("unknown context '$context', must be one of ('docker-zfs', 'kubernetes-csi')")
     }
@@ -110,6 +125,7 @@ fun Application.mainProvider(services: ServiceLocator) {
     install(Compression, ApplicationCompressionConfiguration())
     install(Routing) {
         CommitsApi(services)
+        ContextApi(services)
         DockerVolumeApi(services)
         OperationsApi(services)
         RemotesApi(services)

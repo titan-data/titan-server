@@ -311,7 +311,7 @@ class LocalWorkflowTest : EndToEndTest() {
         }
 
         "get push operation succeeds" {
-            val result = operationApi.getOperation("foo", currentOp.id)
+            val result = operationApi.getOperation(currentOp.id)
             result.id shouldBe currentOp.id
             result.commitId shouldBe currentOp.commitId
             result.remote shouldBe currentOp.remote
@@ -326,20 +326,13 @@ class LocalWorkflowTest : EndToEndTest() {
 
         "get push operation progress succeeds" {
             delay(Duration.ofMillis(1000))
-            val result = operationApi.getOperation("foo", currentOp.id)
+            val result = operationApi.getOperation(currentOp.id)
             result.state shouldBe Operation.State.COMPLETE
-            val progress = operationApi.getProgress("foo", currentOp.id)
+            val progress = operationApi.getProgress(currentOp.id, 0)
             progress.size shouldBe 2
             progress[0].type shouldBe ProgressEntry.Type.MESSAGE
             progress[0].message shouldBe "Pushing id to 'b'"
             progress[1].type shouldBe ProgressEntry.Type.COMPLETE
-        }
-
-        "push operation no longer exists" {
-            val exception = shouldThrow<ClientException> {
-                operationApi.getOperation("foo", currentOp.id)
-            }
-            exception.code shouldBe "NoSuchObjectException"
         }
 
         "push operation no longer in list of operations" {
@@ -355,7 +348,7 @@ class LocalWorkflowTest : EndToEndTest() {
         }
 
         "get pull operation succeeds" {
-            val result = operationApi.getOperation("foo", currentOp.id)
+            val result = operationApi.getOperation(currentOp.id)
             result.id shouldBe currentOp.id
             result.commitId shouldBe currentOp.commitId
             result.remote shouldBe currentOp.remote
@@ -370,20 +363,13 @@ class LocalWorkflowTest : EndToEndTest() {
 
         "get pull progress succeeds" {
             delay(Duration.ofMillis(1000))
-            val result = operationApi.getOperation("foo", currentOp.id)
+            val result = operationApi.getOperation(currentOp.id)
             result.state shouldBe Operation.State.COMPLETE
-            val progress = operationApi.getProgress("foo", currentOp.id)
+            val progress = operationApi.getProgress(currentOp.id, 0)
             progress.size shouldBe 2
             progress[0].type shouldBe ProgressEntry.Type.MESSAGE
             progress[0].message shouldBe "Pulling id2 from 'b'"
             progress[1].type shouldBe ProgressEntry.Type.COMPLETE
-        }
-
-        "pull operation no longer exists" {
-            val exception = shouldThrow<ClientException> {
-                operationApi.getOperation("foo", currentOp.id)
-            }
-            exception.code shouldBe "NoSuchObjectException"
         }
 
         "pulled commit exists" {
@@ -415,11 +401,11 @@ class LocalWorkflowTest : EndToEndTest() {
             currentOp = operationApi.push("foo", "b", "id", RemoteParameters(params.provider, props))
             currentOp.state shouldBe Operation.State.RUNNING
             delay(Duration.ofMillis(1000))
-            operationApi.deleteOperation("foo", currentOp.id)
+            operationApi.deleteOperation(currentOp.id)
             delay(Duration.ofMillis(1000))
-            val result = operationApi.getOperation("foo", currentOp.id)
+            val result = operationApi.getOperation(currentOp.id)
             result.state shouldBe Operation.State.ABORTED
-            val progress = operationApi.getProgress("foo", currentOp.id)
+            val progress = operationApi.getProgress(currentOp.id, 0)
             progress.size shouldBe 2
             progress[0].type shouldBe ProgressEntry.Type.MESSAGE
             progress[0].message shouldBe "Pushing id to 'b'"

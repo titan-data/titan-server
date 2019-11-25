@@ -97,7 +97,7 @@ class Reaper(val services: ServiceLocator) : Runnable {
         val volumeSets = transaction {
             services.metadata.listInactiveVolumeSets().filter {
                 services.metadata.isVolumeSetEmpty(it) &&
-                        !services.metadata.operationExists(it)
+                        !services.metadata.operationRunning(it)
             }
         }
 

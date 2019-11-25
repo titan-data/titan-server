@@ -44,8 +44,9 @@ abstract class EndToEndTest(val titanContext: String = "docker-zfs") : StringSpe
     fun waitForOperation(id: String): List<ProgressEntry> {
         var completed = false
         val result = mutableListOf<ProgressEntry>()
+        var lastEntry = 0
         while (!completed) {
-            val progress = operationApi.getProgress("foo", id)
+            val progress = operationApi.getProgress(id, lastEntry)
             result.addAll(progress)
             for (p in progress) {
                 when (p.type) {
@@ -53,6 +54,9 @@ abstract class EndToEndTest(val titanContext: String = "docker-zfs") : StringSpe
                     ProgressEntry.Type.ABORT -> throw Exception("operation aborted: ${p.message}")
                     ProgressEntry.Type.FAILED -> throw Exception("operation failed: ${p.message}")
                     else -> log.info(p.message)
+                }
+                if (p.id > lastEntry) {
+                    lastEntry = p.id
                 }
             }
             if (!completed) {

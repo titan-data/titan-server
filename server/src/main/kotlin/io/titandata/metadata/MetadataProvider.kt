@@ -607,7 +607,7 @@ class MetadataProvider(val inMemory: Boolean = true, val databaseName: String = 
 
     fun createOperation(repo: String, volumeSet: String, data: OperationData) {
         Operations.insert {
-            it[Operations.volumeSet] = UUID.fromString(volumeSet)
+            it[id] = UUID.fromString(volumeSet)
             it[Operations.repo] = repo
             it[metadataOnly] = data.metadataOnly
             it[remoteParameters] = gson.toJson(data.params)
@@ -618,21 +618,12 @@ class MetadataProvider(val inMemory: Boolean = true, val databaseName: String = 
         }
     }
 
-    fun deleteOperation(volumeSet: String) {
-        val uuid = UUID.fromString(volumeSet)
-        val count = Operations.deleteWhere {
-            Operations.volumeSet eq uuid
-        }
-        if (count == 0) {
-            throw NoSuchObjectException("no such operation '$volumeSet")
-        }
-    }
-
     private fun convertOperation(it: ResultRow) = OperationData(
             metadataOnly = it[Operations.metadataOnly],
             params = gson.fromJson(it[Operations.remoteParameters], RemoteParameters::class.java),
+            repo = it[Operations.repo],
             operation = Operation(
-                    id = it[Operations.volumeSet].toString(),
+                    id = it[Operations.id].toString(),
                     remote = it[Operations.remote],
                     commitId = it[Operations.commitId],
                     type = it[Operations.type],
@@ -640,32 +631,38 @@ class MetadataProvider(val inMemory: Boolean = true, val databaseName: String = 
             )
     )
 
-    fun listOperations(repo: String): List<OperationData> {
+    fun listOperationsByRepository(repo: String): List<OperationData> {
         return Operations.select {
-            Operations.repo eq repo
+            (Operations.repo eq repo) and (Operations.state eq Operation.State.RUNNING)
+        }.map { convertOperation(it) }
+    }
+
+    fun listOperations(): List<OperationData> {
+        return Operations.select {
+            Operations.state eq Operation.State.RUNNING
         }.map { convertOperation(it) }
     }
 
     fun getOperation(id: String): OperationData {
         val uuid = UUID.fromString(id)
         return Operations.select {
-            Operations.volumeSet eq uuid
+            Operations.id eq uuid
         }.map { convertOperation(it) }
                 .firstOrNull()
                 ?: throw NoSuchObjectException("no such operation '$id'")
     }
 
-    fun operationExists(id: String): Boolean {
+    fun operationRunning(id: String): Boolean {
         val uuid = UUID.fromString(id)
         return Operations.select {
-            Operations.volumeSet eq uuid
+            (Operations.id eq uuid) and (Operations.state eq Operation.State.RUNNING)
         }.count() > 0
     }
 
     fun updateOperationState(id: String, state: Operation.State) {
         val uuid = UUID.fromString(id)
         Operations.update({
-            Operations.volumeSet eq uuid
+            Operations.id eq uuid
         }) {
             it[Operations.state] = state
         }
@@ -678,7 +675,7 @@ class MetadataProvider(val inMemory: Boolean = true, val databaseName: String = 
         remote?.let {
             query.andWhere { Operations.remote eq remote }
         }
-        return query.map { it[Operations.volumeSet].toString() }
+        return query.map { it[Operations.id].toString() }
                 .firstOrNull()
     }
 
@@ -696,6 +693,13 @@ class MetadataProvider(val inMemory: Boolean = true, val databaseName: String = 
             it[type] = entry.type
             it[percent] = entry.percent
         } get ProgressEntries.id
+        val operationState = when (entry.type) {
+            ProgressEntry.Type.FAILED -> Operation.State.FAILED
+            ProgressEntry.Type.ABORT -> Operation.State.ABORTED
+            ProgressEntry.Type.COMPLETE -> Operation.State.COMPLETE
+            else -> Operation.State.RUNNING
+        }
+        updateOperationState(operation, operationState)
         return result.value
     }
 

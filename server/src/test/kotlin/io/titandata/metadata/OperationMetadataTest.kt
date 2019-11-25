@@ -9,6 +9,7 @@ import io.titandata.exception.NoSuchObjectException
 import io.titandata.models.Operation
 import io.titandata.models.RemoteParameters
 import io.titandata.models.Repository
+import java.util.UUID
 import org.jetbrains.exposed.sql.transactions.transaction
 
 class OperationMetadataTest : StringSpec() {
@@ -32,6 +33,7 @@ class OperationMetadataTest : StringSpec() {
         return OperationData(
                 metadataOnly = false,
                 params = RemoteParameters("nop"),
+                repo = "foo",
                 operation = Operation(
                         id = id,
                         type = Operation.Type.PULL,
@@ -56,15 +58,34 @@ class OperationMetadataTest : StringSpec() {
             }
         }
 
+        "get non-existent operation fails" {
+            shouldThrow<NoSuchObjectException> {
+                transaction {
+                    md.getOperation(UUID.randomUUID().toString())
+                }
+            }
+        }
+
+        "list operations by repository succeeds" {
+            transaction {
+                md.createOperation("foo", vs, buildOperationData(vs))
+                md.createRepository(Repository(name = "bar"))
+                val vs2 = md.createVolumeSet("bar")
+                md.createOperation("bar", vs2, buildOperationData(vs2))
+                val result = md.listOperationsByRepository("foo")
+                result.size shouldBe 1
+                result[0].operation.id shouldBe vs
+            }
+        }
+
         "list operations succeeds" {
             transaction {
                 md.createOperation("foo", vs, buildOperationData(vs))
                 md.createRepository(Repository(name = "bar"))
                 val vs2 = md.createVolumeSet("bar")
                 md.createOperation("bar", vs2, buildOperationData(vs2))
-                val result = md.listOperations("foo")
-                result.size shouldBe 1
-                result[0].operation.id shouldBe vs
+                val result = md.listOperations()
+                result.size shouldBe 2
             }
         }
 
@@ -77,24 +98,18 @@ class OperationMetadataTest : StringSpec() {
             }
         }
 
-        "delete operation succeeds" {
+        "operation in progress succeeds" {
             transaction {
                 md.createOperation("foo", vs, buildOperationData(vs))
-                md.deleteOperation(vs)
-            }
-
-            shouldThrow<NoSuchObjectException> {
-                transaction {
-                    md.getOperation(vs)
-                }
+                md.operationRunning(vs) shouldBe true
             }
         }
 
-        "delete non-existent operation fails" {
-            shouldThrow<NoSuchObjectException> {
-                transaction {
-                    md.deleteOperation(vs)
-                }
+        "operation in progress fails" {
+            transaction {
+                md.createOperation("foo", vs, buildOperationData(vs))
+                md.updateOperationState(vs, Operation.State.COMPLETE)
+                md.operationRunning(vs) shouldBe false
             }
         }
 

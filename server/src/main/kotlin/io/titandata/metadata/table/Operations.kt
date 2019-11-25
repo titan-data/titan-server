@@ -1,8 +1,6 @@
 package io.titandata.metadata.table
 
-import io.titandata.metadata.table.Remotes.references
 import io.titandata.models.Operation
-import org.jetbrains.exposed.sql.ReferenceOption
 import org.jetbrains.exposed.sql.Table
 
 /*
@@ -10,7 +8,7 @@ import org.jetbrains.exposed.sql.Table
  * is ongoing.
  */
 object Operations : Table("operations") {
-    val volumeSet = uuid("volume_set").references(VolumeSets.id, onDelete = ReferenceOption.CASCADE).primaryKey()
+    val id = uuid("id").primaryKey()
     val repo = varchar("repo", 64)
     val metadataOnly = bool("metadata_only")
     val remoteParameters = varchar("remote_parameters", 8192)

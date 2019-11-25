@@ -10,7 +10,7 @@ import org.jetbrains.exposed.sql.ReferenceOption
  * such that consumers can fetch any progress entries that have been added since the last time they checked.
  */
 object ProgressEntries : IntIdTable("progress_entries") {
-    val operation = uuid("volume_set").references(Operations.volumeSet, onDelete = ReferenceOption.CASCADE).primaryKey()
+    val operation = uuid("operation_id").references(Operations.id, onDelete = ReferenceOption.CASCADE).primaryKey()
     val percent = integer("percent").nullable()
     val message = varchar("message", 4096).nullable()
     val type = enumerationByName("type", 16, ProgressEntry.Type::class)

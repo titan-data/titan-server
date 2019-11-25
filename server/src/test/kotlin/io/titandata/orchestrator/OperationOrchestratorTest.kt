@@ -88,51 +88,35 @@ class OperationOrchestratorTest : StringSpec() {
                 state = Operation.State.RUNNING,
                 remote = "remote",
                 commitId = "id"
-        ), params = params, metadataOnly = false)
+        ), params = params, metadataOnly = false, repo = "foo")
     }
 
     init {
         "get operation succeeds" {
             transaction {
                 services.metadata.createOperation("foo", vs, buildOperation())
-                val op = services.operations.getOperation("foo", vs)
+                val op = services.operations.getOperation(vs)
                 op.id shouldBe vs
                 op.remote shouldBe "remote"
                 op.commitId shouldBe "id"
             }
         }
 
-        "get operation fails if incorrect repo specified" {
-            transaction {
-                services.metadata.createOperation("foo", vs, buildOperation())
-                services.metadata.createRepository(Repository(name = "bar"))
-            }
-            shouldThrow<NoSuchObjectException> {
-                services.operations.getOperation("bar", vs)
-            }
-        }
-
         "get operation fails for invalid operation id" {
             shouldThrow<IllegalArgumentException> {
-                services.operations.getOperation("foo", "bad/id")
-            }
-        }
-
-        "get operation fails for invalid repository name" {
-            shouldThrow<IllegalArgumentException> {
-                services.operations.getOperation("bad/repo", UUID.randomUUID().toString())
+                services.operations.getOperation("bad/id")
             }
         }
 
         "get operation fails for non-existent repository" {
             shouldThrow<NoSuchObjectException> {
-                services.operations.getOperation("bar", UUID.randomUUID().toString())
+                services.operations.getOperation(UUID.randomUUID().toString())
             }
         }
 
         "get operation fails for non-existent operation" {
             shouldThrow<NoSuchObjectException> {
-                services.operations.getOperation("repo", UUID.randomUUID().toString())
+                services.operations.getOperation(UUID.randomUUID().toString())
             }
         }
 
@@ -294,27 +278,15 @@ class OperationOrchestratorTest : StringSpec() {
             }
         }
 
-        "abort operation fails for bad repository name" {
-            shouldThrow<IllegalArgumentException> {
-                services.operations.abortOperation("bad/repo", vs)
-            }
-        }
-
         "abort operation fails for bad operation name" {
             shouldThrow<IllegalArgumentException> {
-                services.operations.abortOperation("foo", "badid")
-            }
-        }
-
-        "abort operation fails for unknown repository" {
-            shouldThrow<NoSuchObjectException> {
-                services.operations.abortOperation("bar", vs)
+                services.operations.abortOperation("badid")
             }
         }
 
         "abort operation fails for unknown operation" {
             shouldThrow<NoSuchObjectException> {
-                services.operations.abortOperation("bar", UUID.randomUUID().toString())
+                services.operations.abortOperation(UUID.randomUUID().toString())
             }
         }
 
@@ -457,19 +429,15 @@ class OperationOrchestratorTest : StringSpec() {
             op.commitId shouldBe "commit"
             op.type shouldBe Operation.Type.PULL
             op.remote shouldBe "remote"
-            services.operations.getExecutor("foo", op.id).join()
+            services.operations.waitForComplete(op.id)
 
-            op = services.operations.getOperation("foo", op.id)
+            op = services.operations.getOperation(op.id)
             op.state shouldBe Operation.State.COMPLETE
 
-            val progress = services.operations.getProgress("foo", op.id)
+            val progress = services.operations.getProgress(op.id)
             progress.size shouldBe 2
             progress[0].type shouldBe ProgressEntry.Type.MESSAGE
             progress[1].type shouldBe ProgressEntry.Type.COMPLETE
-
-            shouldThrow<NoSuchObjectException> {
-                services.operations.getOperation("foo", op.id)
-            }
         }
 
         "error during pull is reported correctly" {
@@ -481,12 +449,12 @@ class OperationOrchestratorTest : StringSpec() {
             every { nopProvider.startOperation(any()) } throws Exception("error")
 
             var op = services.operations.startPull("foo", "remote", "commit", params)
-            services.operations.getExecutor("foo", op.id).join()
+            services.operations.waitForComplete(op.id)
 
-            op = services.operations.getOperation("foo", op.id)
+            op = services.operations.getOperation(op.id)
             op.state shouldBe Operation.State.FAILED
 
-            val progress = services.operations.getProgress("foo", op.id)
+            val progress = services.operations.getProgress(op.id)
             progress.size shouldBe 2
             progress[0].type shouldBe ProgressEntry.Type.MESSAGE
             progress[0].message shouldBe "Pulling commit from 'remote'"
@@ -503,12 +471,12 @@ class OperationOrchestratorTest : StringSpec() {
             every { nopProvider.startOperation(any()) } throws InterruptedException()
 
             var op = services.operations.startPull("foo", "remote", "commit", params)
-            services.operations.getExecutor("foo", op.id).join()
+            services.operations.waitForComplete(op.id)
 
-            op = services.operations.getOperation("foo", op.id)
+            op = services.operations.getOperation(op.id)
             op.state shouldBe Operation.State.ABORTED
 
-            val progress = services.operations.getProgress("foo", op.id)
+            val progress = services.operations.getProgress(op.id)
             progress.size shouldBe 2
             progress[1].type shouldBe ProgressEntry.Type.ABORT
         }
@@ -537,8 +505,8 @@ class OperationOrchestratorTest : StringSpec() {
             every { context.createVolumeSet(any()) } just Runs
 
             var op = services.operations.startPull("foo", "remote", "commit", params)
-            services.operations.getExecutor("foo", op.id).join()
-            op = services.operations.getOperation("foo", op.id)
+            services.operations.waitForComplete(op.id)
+            op = services.operations.getOperation(op.id)
             op.state shouldBe Operation.State.COMPLETE
         }
 
@@ -561,20 +529,16 @@ class OperationOrchestratorTest : StringSpec() {
             op.commitId shouldBe "id"
             op.type shouldBe Operation.Type.PUSH
             op.remote shouldBe "remote"
-            services.operations.getExecutor("foo", op.id).join()
+            services.operations.waitForComplete(op.id)
 
-            op = services.operations.getOperation("foo", op.id)
+            op = services.operations.getOperation(op.id)
             op.state shouldBe Operation.State.COMPLETE
 
-            val progress = services.operations.getProgress("foo", op.id)
+            val progress = services.operations.getProgress(op.id)
             progress.size shouldBe 2
             progress[0].type shouldBe ProgressEntry.Type.MESSAGE
             progress[0].message shouldBe "Pushing id to 'remote'"
             progress[1].type shouldBe ProgressEntry.Type.COMPLETE
-
-            shouldThrow<NoSuchObjectException> {
-                services.operations.getOperation("foo", op.id)
-            }
         }
 
         "error during push is reported correctly" {
@@ -587,12 +551,12 @@ class OperationOrchestratorTest : StringSpec() {
             every { nopProvider.startOperation(any()) } throws Exception("error")
 
             var op = services.operations.startPush("foo", "remote", "id", params)
-            services.operations.getExecutor("foo", op.id).join()
+            services.operations.waitForComplete(op.id)
 
-            op = services.operations.getOperation("foo", op.id)
+            op = services.operations.getOperation(op.id)
             op.state shouldBe Operation.State.FAILED
 
-            val progress = services.operations.getProgress("foo", op.id)
+            val progress = services.operations.getProgress(op.id)
             progress.size shouldBe 2
             progress[0].type shouldBe ProgressEntry.Type.MESSAGE
             progress[0].message shouldBe "Pushing id to 'remote'"
@@ -610,12 +574,11 @@ class OperationOrchestratorTest : StringSpec() {
             every { nopProvider.startOperation(any()) } throws InterruptedException()
 
             var op = services.operations.startPush("foo", "remote", "id", params)
-            services.operations.getExecutor("foo", op.id).join()
-
-            op = services.operations.getOperation("foo", op.id)
+            services.operations.waitForComplete(op.id)
+            op = services.operations.getOperation(op.id)
             op.state shouldBe Operation.State.ABORTED
 
-            val progress = services.operations.getProgress("foo", op.id)
+            val progress = services.operations.getProgress(op.id)
             progress.size shouldBe 2
             progress[0].type shouldBe ProgressEntry.Type.MESSAGE
             progress[0].message shouldBe "Pushing id to 'remote'"
@@ -650,8 +613,8 @@ class OperationOrchestratorTest : StringSpec() {
             every { context.cloneVolume(any(), any(), any(), any(), any()) } returns mapOf("mountpoint" to "/mountpoint")
 
             var op = services.operations.startPush("foo", "remote", "id", params)
-            services.operations.getExecutor("foo", op.id).join()
-            op = services.operations.getOperation("foo", op.id)
+            services.operations.waitForComplete(op.id)
+            op = services.operations.getOperation(op.id)
             op.state shouldBe Operation.State.COMPLETE
         }
 
@@ -672,12 +635,12 @@ class OperationOrchestratorTest : StringSpec() {
             every { context.cloneVolume(any(), any(), any(), any(), any()) } returns mapOf("mountpoint" to "/mountpoint")
 
             services.operations.loadState()
-            services.operations.getExecutor("foo", vs).join()
+            services.operations.waitForComplete(vs)
 
-            var op = services.operations.getOperation("foo", vs)
+            var op = services.operations.getOperation(vs)
             op.state shouldBe Operation.State.COMPLETE
 
-            val progress = services.operations.getProgress("foo", op.id)
+            val progress = services.operations.getProgress(op.id)
             progress.size shouldBe 2
             progress[0].type shouldBe ProgressEntry.Type.MESSAGE
             progress[0].message shouldBe "Retrying operation after restart"

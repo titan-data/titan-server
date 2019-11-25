@@ -29,7 +29,8 @@ class OperationExecutor(
     val repo: String,
     val remote: Remote,
     val params: RemoteParameters,
-    val metadataOnly: Boolean = false
+    val metadataOnly: Boolean = false,
+    val completionCallback: ((operationId: String) -> Unit)? = null
 ) : Runnable {
 
     companion object {
@@ -37,17 +38,18 @@ class OperationExecutor(
     }
 
     internal var thread: Thread? = null
-    private var lastProgress: Int = 0
     private var commit: Commit? = null
 
     val updateProgress = fun(type: RemoteProgress, message: String?, percent: Int?) {
-        val progressType = when (type) {
-            RemoteProgress.START -> ProgressEntry.Type.START
-            RemoteProgress.END -> ProgressEntry.Type.END
-            RemoteProgress.PROGRESS -> ProgressEntry.Type.PROGRESS
-            RemoteProgress.MESSAGE -> ProgressEntry.Type.MESSAGE
+        transaction {
+            val progressType = when (type) {
+                RemoteProgress.START -> ProgressEntry.Type.START
+                RemoteProgress.END -> ProgressEntry.Type.END
+                RemoteProgress.PROGRESS -> ProgressEntry.Type.PROGRESS
+                RemoteProgress.MESSAGE -> ProgressEntry.Type.MESSAGE
+            }
+            services.metadata.addProgressEntry(operation.id, ProgressEntry(progressType, message, percent))
         }
-        addProgress(ProgressEntry(progressType, message, percent))
     }
 
     override fun run() {
@@ -94,17 +96,24 @@ class OperationExecutor(
             success = true
             provider.endOperation(operationData, true)
 
-            addProgress(ProgressEntry(ProgressEntry.Type.COMPLETE))
+            transaction {
+                services.metadata.addProgressEntry(operation.id, ProgressEntry(ProgressEntry.Type.COMPLETE))
+            }
         } catch (t: InterruptedException) {
-            addProgress(ProgressEntry(ProgressEntry.Type.ABORT))
+            transaction {
+                services.metadata.addProgressEntry(operation.id, ProgressEntry(ProgressEntry.Type.ABORT))
+            }
             log.info("${operation.type} operation ${operation.id} interrupted", t)
         } catch (t: Throwable) {
-            addProgress(ProgressEntry(ProgressEntry.Type.FAILED, t.message))
+            transaction {
+                services.metadata.addProgressEntry(operation.id, ProgressEntry(ProgressEntry.Type.FAILED, t.message))
+            }
             log.error("${operation.type} operation ${operation.id} failed", t)
         } finally {
             try {
-                if (operation.state == Operation.State.COMPLETE &&
-                        operation.type == Operation.Type.PULL && !metadataOnly) {
+                val op = services.operations.getOperation(operation.id)
+                if (op.state == Operation.State.COMPLETE &&
+                        op.type == Operation.Type.PULL && !metadataOnly) {
                     // It shouldn't be possible for commit to be null here, or else it would've failed
                     services.commits.createCommit(repo, commit!!, operation.id)
                 }
@@ -115,15 +124,16 @@ class OperationExecutor(
                 if (!success && operationData != null) {
                     provider.endOperation(operationData, success)
                 }
+                completionCallback?.invoke(operation.id)
             }
         }
     }
 
-    fun getVolumeDesc(vol: Volume): String {
+    private fun getVolumeDesc(vol: Volume): String {
         return vol.properties.get("path")?.toString() ?: vol.name
     }
 
-    fun syncData(provider: RemoteServer, data: RemoteOperation) {
+    internal fun syncData(provider: RemoteServer, data: RemoteOperation) {
         val operationId = operation.id
             val volumes = transaction {
                 val vols = services.metadata.listVolumes(operationId)
@@ -166,31 +176,5 @@ class OperationExecutor(
 
     fun abort() {
         thread?.interrupt()
-    }
-
-    @Synchronized
-    fun getProgress(): List<ProgressEntry> {
-        val ret = transaction {
-            services.metadata.listProgressEntries(operation.id, lastProgress)
-        }
-        if (ret.size > 0) {
-            lastProgress = ret.last().id
-        }
-        return ret
-    }
-
-    @Synchronized
-    fun addProgress(entry: ProgressEntry) {
-        val operationState = when (entry.type) {
-            ProgressEntry.Type.FAILED -> Operation.State.FAILED
-            ProgressEntry.Type.ABORT -> Operation.State.ABORTED
-            ProgressEntry.Type.COMPLETE -> Operation.State.COMPLETE
-            else -> Operation.State.RUNNING
-        }
-        transaction {
-            services.metadata.addProgressEntry(operation.id, entry)
-            services.metadata.updateOperationState(operation.id, operationState)
-        }
-        operation.state = operationState
     }
 }

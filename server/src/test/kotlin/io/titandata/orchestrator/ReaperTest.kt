@@ -154,7 +154,7 @@ class ReaperTest : StringSpec() {
             }
         }
 
-        "mark empty volume sets ignores volume sets with operations" {
+        "mark empty volume sets ignores volume sets with running operations" {
             transaction {
                 services.metadata.createRepository(Repository("foo"))
                 val vs = services.metadata.createVolumeSet("foo")
@@ -162,12 +162,13 @@ class ReaperTest : StringSpec() {
                         operation = Operation(
                                 id = vs,
                                 type = Operation.Type.PUSH,
-                                state = Operation.State.COMPLETE,
+                                state = Operation.State.RUNNING,
                                 remote = "origin",
                                 commitId = "commit"
                         ),
                         params = RemoteParameters("nop"),
-                        metadataOnly = false
+                        metadataOnly = false,
+                        repo = "foo"
                 ))
             }
             services.reaper.markEmptyVolumeSets()

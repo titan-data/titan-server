@@ -27,6 +27,7 @@ class ProgressEntryMetadataTest : StringSpec() {
             md.createOperation("foo", vs, OperationData(
                     metadataOnly = false,
                     params = RemoteParameters("nop"),
+                    repo = "foo",
                     operation = Operation(
                             id = vs,
                             type = Operation.Type.PULL,
@@ -83,11 +84,28 @@ class ProgressEntryMetadataTest : StringSpec() {
             }
         }
 
-        "operation with progress entries can be deleted" {
-            transaction {
-                md.addProgressEntry(vs, ProgressEntry(type = ProgressEntry.Type.MESSAGE, message = "one"))
-                md.deleteOperation(vs)
+        "add failed progress entry updates operation state" {
+            val op = transaction {
+                md.addProgressEntry(vs, ProgressEntry(type = ProgressEntry.Type.FAILED, message = "message"))
+                md.getOperation(vs)
             }
+            op.operation.state shouldBe Operation.State.FAILED
+        }
+
+        "add aborted progress entry updates operation state" {
+            val op = transaction {
+                md.addProgressEntry(vs, ProgressEntry(type = ProgressEntry.Type.ABORT, message = "message"))
+                md.getOperation(vs)
+            }
+            op.operation.state shouldBe Operation.State.ABORTED
+        }
+
+        "add completed progress entry updates operation state" {
+            val op = transaction {
+                md.addProgressEntry(vs, ProgressEntry(type = ProgressEntry.Type.COMPLETE, message = "message"))
+                md.getOperation(vs)
+            }
+            op.operation.state shouldBe Operation.State.COMPLETE
         }
     }
 }

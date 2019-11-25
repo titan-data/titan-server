@@ -18,33 +18,31 @@ import io.titandata.models.RemoteParameters
 
 fun Route.OperationsApi(services: ServiceLocator) {
 
-    route("/v1/repositories/{repositoryName}/operations") {
+    route("/v1/operations") {
         get {
-            val repo = call.parameters["repositoryName"] ?: throw IllegalArgumentException("missing repository name parameter")
+            val repo = call.request.queryParameters["repositoryName"]
             call.respond(services.operations.listOperations(repo))
         }
     }
 
-    route("/v1/repositories/{repositoryName}/operations/{operationId}") {
+    route("/v1/operations/{operationId}") {
         delete {
-            val repo = call.parameters["repositoryName"] ?: throw IllegalArgumentException("missing repository name parameter")
             val operation = call.parameters["operationId"] ?: throw IllegalArgumentException("missing operation id parameter")
-            services.operations.abortOperation(repo, operation)
+            services.operations.abortOperation(operation)
             call.respond(HttpStatusCode.NoContent)
         }
 
         get {
-            val repo = call.parameters["repositoryName"] ?: throw IllegalArgumentException("missing repository name parameter")
             val operation = call.parameters["operationId"] ?: throw IllegalArgumentException("missing operation id parameter")
-            call.respond(services.operations.getOperation(repo, operation))
+            call.respond(services.operations.getOperation(operation))
         }
     }
 
-    route("/v1/repositories/{repositoryName}/operations/{operationId}/progress") {
+    route("/v1/operations/{operationId}/progress") {
         get {
-            val repo = call.parameters["repositoryName"] ?: throw IllegalArgumentException("missing repository name parameter")
             val operation = call.parameters["operationId"] ?: throw IllegalArgumentException("missing operation id parameter")
-            call.respond(services.operations.getProgress(repo, operation))
+            val lastId = call.request.queryParameters.get("lastId")?.toInt() ?: 0
+            call.respond(services.operations.getProgress(operation, lastId))
         }
     }
 

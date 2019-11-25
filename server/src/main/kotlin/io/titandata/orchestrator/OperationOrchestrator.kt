@@ -36,7 +36,12 @@ class OperationOrchestrator(val services: ServiceLocator) {
         val log = LoggerFactory.getLogger(OperationOrchestrator::class.java)
     }
 
-    private val executors: MutableMap<String, OperationExecutor> = mutableMapOf()
+    private val runningOperations: MutableMap<String, OperationExecutor> = mutableMapOf()
+
+    val operationComplete = fun(operationId: String) {
+        runningOperations.remove(operationId)
+        services.reaper.signal()
+    }
 
     internal fun createAndStartOperation(
         type: Operation.Type,
@@ -55,13 +60,13 @@ class OperationOrchestrator(val services: ServiceLocator) {
         }
 
         // Run executor
-        val exec = OperationExecutor(services, operation, repository, remote, params, metadataOnly)
-        executors.put(exec.operation.id, exec)
+        val exec = OperationExecutor(services, operation, repository, remote, params, metadataOnly, operationComplete)
+        runningOperations.put(exec.operation.id, exec)
         val message = when (type) {
             Operation.Type.PULL -> "Pulling $commitId from '${remote.name}'"
             Operation.Type.PUSH -> "Pushing $commitId to '${remote.name}'"
         }
-        exec.addProgress(ProgressEntry(ProgressEntry.Type.MESSAGE, message))
+        services.metadata.addProgressEntry(operation.id, ProgressEntry(ProgressEntry.Type.MESSAGE, message))
         exec.start()
         return operation
     }
@@ -134,6 +139,7 @@ class OperationOrchestrator(val services: ServiceLocator) {
             services.metadata.createOperation(repo, vs, OperationData(
                     metadataOnly = metadataOnly,
                     params = params,
+                    repo = repo,
                     operation = op
             ))
             Pair(vs, op)
@@ -173,107 +179,71 @@ class OperationOrchestrator(val services: ServiceLocator) {
         }
     }
 
-    /**
-     * Convenience routine to fetch the given executor, with some additional checks.
-     */
-    internal fun getExecutor(repository: String, id: String): OperationExecutor {
-        services.repositories.getRepository(repository)
-        NameUtil.validateOperationId(id)
-        val op = executors[id]
-        if (op == null || op.repo != repository) {
-            throw NoSuchObjectException("no such operation '$id' in repository '$repository'")
-        }
-        return op
-    }
-
-    @Synchronized
     fun loadState() {
         log.debug("loading operation state")
-        for (r in services.repositories.listRepositories()) {
-            val operations = transaction {
-                services.metadata.listOperations(r.name)
-            }
-            for (op in operations) {
-                val exec = OperationExecutor(services, op.operation, r.name,
-                        services.remotes.getRemote(r.name, op.operation.remote), op.params, op.metadataOnly)
-                executors.put(exec.operation.id, exec)
-                if (op.operation.state == Operation.State.RUNNING) {
-                    log.info("retrying operation ${op.operation.id} after restart")
-                    exec.addProgress(ProgressEntry(ProgressEntry.Type.MESSAGE,
-                            "Retrying operation after restart"))
-                    exec.start()
-                }
+        val operations = transaction {
+            services.metadata.listOperations()
+        }
+        for (op in operations) {
+            val exec = OperationExecutor(services, op.operation, op.repo,
+                    services.remotes.getRemote(op.repo, op.operation.remote), op.params, op.metadataOnly,
+                    operationComplete)
+            if (op.operation.state == Operation.State.RUNNING) {
+                runningOperations.put(exec.operation.id, exec)
+                log.info("retrying operation ${op.operation.id} after restart")
+                services.metadata.addProgressEntry(op.operation.id, ProgressEntry(ProgressEntry.Type.MESSAGE,
+                        "Retrying operation after restart"))
+                exec.start()
             }
         }
     }
 
-    @Synchronized
+    /**
+     * This method is just for testing, and handles cases where we've mocked up some executors without a fully
+     * functional completion callback.
+     */
     fun clearState() {
-        val values = executors.values
-        for (exec in values) {
+        for (exec in runningOperations.values) {
             exec.abort()
             exec.join()
         }
-        executors.clear()
+        runningOperations.clear()
     }
 
-    @Synchronized
-    fun getProgress(repository: String, id: String): List<ProgressEntry> {
-        val exec = getExecutor(repository, id)
-        val ret = exec.getProgress()
-        // When you get the progress of an operation that's done, then we remove it from the history
-        val remove = when (exec.operation.state) {
-            Operation.State.COMPLETE -> true
-            Operation.State.ABORTED -> true
-            Operation.State.FAILED -> true
-            else -> false
-        }
-        if (remove) {
-            transaction {
-                services.metadata.deleteOperation(id)
-            }
-            executors.remove(exec.operation.id)
-            /*
-             * If the operation failed or this was a push operation, then this will leave an abandoned volumeset that
-             * will be reaped automatically.
-             */
-            services.reaper.signal()
-        }
-        return ret
-    }
-
-    fun listOperations(repository: String): List<Operation> {
-        services.repositories.getRepository(repository)
+    fun getProgress(operationId: String, lastEntryId: Int): List<ProgressEntry> {
         return transaction {
-            services.metadata.listOperations(repository).map { it.operation }
+            services.metadata.listProgressEntries(operationId, lastEntryId)
         }
     }
 
-    fun getOperation(repository: String, id: String): Operation {
+    fun listOperations(repository: String?): List<Operation> {
+        return transaction {
+            if (repository != null) {
+                services.repositories.getRepository(repository)
+                services.metadata.listOperationsByRepository(repository).map { it.operation }
+            } else {
+                services.metadata.listOperations().map { it.operation }
+            }
+        }
+    }
+
+    fun getOperation(id: String): Operation {
         NameUtil.validateOperationId(id)
-        services.repositories.getRepository(repository)
         return transaction {
-            val op = services.metadata.getOperation(id).operation
-            if (services.metadata.getVolumeSetRepo(op.id) != repository) {
-                throw NoSuchObjectException("no such operation '$id' in repository '$repository'")
-            }
-            op
+            services.metadata.getOperation(id).operation
         }
     }
 
-    @Synchronized
-    fun abortOperation(repository: String, id: String) {
-        log.info("abort operation $id in $repository")
-        getExecutor(repository, id).abort()
-        // This won't actually wait for the operation or remove it, callers must consume the last
-        // progress message to remove it
+    fun abortOperation(id: String) {
+        getOperation(id)
+        runningOperations[id]?.abort()
     }
+
     /**
      * Start a pull operation. This will perforjm all the checks to make sure the local and remote repository are in
      * the appropriate state, and then invoke createAndStartOperation() to do the actual work of creating and
      * running the operation.
      */
-    @Synchronized
     fun startPull(
         repository: String,
         remote: String,
@@ -315,11 +285,10 @@ class OperationOrchestrator(val services: ServiceLocator) {
     }
 
     /**
-     * Start a push operation. This will perforjm all the checks to make sure the local and remote repository are in
+     * Start a push operation. This will perform all the checks to make sure the local and remote repository are in
      * the appropriate state, and then invoke createAndStartOperation() to do the actual work of creating and
      * running the operation.
      */
-    @Synchronized
     fun startPush(
         repository: String,
         remote: String,

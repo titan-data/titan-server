@@ -42,7 +42,7 @@ dependencies {
     // Remotes
     compile("io.titandata:remote-sdk:0.2.0")
     compile("io.titandata:nop-remote-server:0.2.0")
-    compile("io.titandata:ssh-remote-server:0.1.0")
+    compile("io.titandata:ssh-remote-server:0.2.0")
     compile("io.titandata:s3-remote-server:0.2.0")
     compile("io.titandata:s3web-remote-server:0.2.0")
     compile("io.titandata:delphix-remote-server:0.2.0")

@@ -131,7 +131,7 @@ class OperationExecutor(
             if (metadataOnly) {
                 services.commits.updateCommit(repo, commit)
             } else {
-                services.commits.createCommit(repo, commit)
+                services.commits.createCommit(repo, commit, operation.operationId)
             }
         }
     }

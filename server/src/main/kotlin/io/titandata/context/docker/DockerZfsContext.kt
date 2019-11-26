@@ -6,7 +6,10 @@ package io.titandata.context.docker
 
 import io.titandata.context.RuntimeContext
 import io.titandata.models.CommitStatus
+import io.titandata.models.Volume
 import io.titandata.models.VolumeStatus
+import io.titandata.remote.RemoteOperation
+import io.titandata.remote.RemoteServer
 import io.titandata.shell.CommandException
 import io.titandata.shell.CommandExecutor
 import org.slf4j.LoggerFactory
@@ -237,5 +240,22 @@ class DockerZfsContext(
      * Commits are done at the volumeset level, so nothing to do for a volume.
      */
     override fun commitVolume(volumeSet: String, commitId: String, volumeName: String, config: Map<String, Any>) {
+    }
+
+    override fun syncVolumes(provider: RemoteServer, operation: RemoteOperation, volumes: List<Volume>, scratchVolume: Volume) {
+        val data = provider.syncDataStart(operation)
+        var success = false
+        try {
+            val scratch = scratchVolume.config["mountpoint"] as? String
+                    ?: error("missing mountpoint for volume ${scratchVolume.name}")
+            for (volume in volumes) {
+                val mountpoint = volume.config["mountpoint"] as? String ?: error("missing mountpoint for volume ${volume.name}")
+                val description = volume.properties.get("path")?.toString() ?: volume.name
+                provider.syncDataVolume(operation, data, volume.name, description, mountpoint, scratch)
+            }
+            success = true
+        } finally {
+            provider.syncDataEnd(operation, data, success)
+        }
     }
 }

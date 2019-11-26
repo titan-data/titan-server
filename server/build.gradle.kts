@@ -40,12 +40,12 @@ dependencies {
     compile("io.kubernetes:client-java:6.0.1")
 
     // Remotes
-    compile("io.titandata:remote-sdk:0.1.0")
-    compile("io.titandata:nop-remote-server:0.1.0")
-    compile("io.titandata:ssh-remote-server:0.1.0")
-    compile("io.titandata:s3-remote-server:0.1.0")
-    compile("io.titandata:s3web-remote-server:0.1.0")
-    compile("io.titandata:delphix-remote-server:0.1.0")
+    compile("io.titandata:remote-sdk:0.2.0")
+    compile("io.titandata:nop-remote-server:0.2.0")
+    compile("io.titandata:ssh-remote-server:0.2.0")
+    compile("io.titandata:s3-remote-server:0.2.0")
+    compile("io.titandata:s3web-remote-server:0.2.0")
+    compile("io.titandata:delphix-remote-server:0.2.0")
 
     testCompile("com.h2database:h2:1.4.200")
     testCompile("io.ktor:ktor-server-test-host:$ktorVersion")

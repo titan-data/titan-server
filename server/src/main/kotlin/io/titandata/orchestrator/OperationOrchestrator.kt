@@ -59,22 +59,32 @@ class OperationOrchestrator(val services: ServiceLocator) {
 
         val (volumeSet, operation) = createMetadata(repository, type, remote.name, commitId, metadataOnly, params, localCommit)
 
-        if (!metadataOnly) {
-            createStorage(repository, volumeSet, localCommit)
-        }
+        try {
+            if (!metadataOnly) {
+                createStorage(repository, volumeSet, localCommit)
+            }
 
-        // Run executor
-        val exec = createExecutor(operation, repository, remote, params, metadataOnly)
-        runningOperations.put(exec.operation.id, exec)
-        val message = when (type) {
-            Operation.Type.PULL -> "Pulling $commitId from '${remote.name}'"
-            Operation.Type.PUSH -> "Pushing $commitId to '${remote.name}'"
+            // Run executor
+            val exec = createExecutor(operation, repository, remote, params, metadataOnly)
+            runningOperations.put(exec.operation.id, exec)
+            val message = when (type) {
+                Operation.Type.PULL -> "Pulling $commitId from '${remote.name}'"
+                Operation.Type.PUSH -> "Pushing $commitId to '${remote.name}'"
+            }
+            transaction {
+                services.metadata.addProgressEntry(operation.id, ProgressEntry(ProgressEntry.Type.MESSAGE, message))
+            }
+            exec.start()
+            return operation
+        } catch (t: Throwable) {
+            // If we fail after we've created the operation but before we've started it running asynchronously,
+            // make sure to record the failure
+            transaction {
+                services.metadata.addProgressEntry(operation.id, ProgressEntry(ProgressEntry.Type.FAILED, t.message))
+            }
+            log.error("${operation.type} operation ${operation.id} failed to start", t)
+            throw t
         }
-        transaction {
-            services.metadata.addProgressEntry(operation.id, ProgressEntry(ProgressEntry.Type.MESSAGE, message))
-        }
-        exec.start()
-        return operation
     }
 
     /**

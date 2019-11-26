@@ -14,7 +14,10 @@ import io.kubernetes.client.util.Config
 import io.kubernetes.client.util.KubeConfig
 import io.titandata.context.RuntimeContext
 import io.titandata.models.CommitStatus
+import io.titandata.models.Volume
 import io.titandata.models.VolumeStatus
+import io.titandata.remote.RemoteOperation
+import io.titandata.remote.RemoteServer
 import io.titandata.shell.CommandException
 import io.titandata.shell.CommandExecutor
 import java.io.FileReader
@@ -304,5 +307,9 @@ class KubernetesCsiContext(private val properties: Map<String, String> = emptyMa
 
     override fun deactivateVolume(volumeSet: String, volumeName: String, config: Map<String, Any>) {
         // Nothing to do
+    }
+
+    override fun syncVolumes(provider: RemoteServer, operation: RemoteOperation, volumes: List<Volume>, scratchVolume: Volume) {
+        TODO("not implemented")
     }
 }

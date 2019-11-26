@@ -5,6 +5,7 @@
 package io.titandata.operation
 
 import io.titandata.ServiceLocator
+import io.titandata.metadata.table.Tags.commit
 import io.titandata.models.Commit
 import io.titandata.models.Operation
 import io.titandata.models.ProgressEntry
@@ -19,9 +20,19 @@ import org.jetbrains.exposed.sql.transactions.transaction
 import org.slf4j.LoggerFactory
 
 /*
- * The operation executor is responsible for managing the execution of a single operation. Every
- * operation will have exactly one executor associated with it, and will be the conduit to manage
- * asynchronous operations, progress, and more.
+ * The operation executor is responsible for managing the asynchronous execution of a single operation. Each operation
+ * is divided into a few phases:
+ *
+ *      1. Setup          Gather up all the necessary metdata required for the operation. The result of this stage is
+ *      2. Data Sync      Prepare all the volumes and invoke the remote provider-specific functionality to push or pull
+ *                        data. This invokes a context-specific method, and could spawn an entirely separate process,
+ *                        such as running in s separate pod in kubernetes. This phase is skipped for metadata-only
+ *                        operations.
+ *      3. Metadata Sync  Sync all metadata, creating the local commit (for pull) or invoking the remote provider
+ *                        to push commits. This always executes in the context of the server.
+ *      4. Completion     Clean up any intermediate objects, and handle any exceptions.
+ *
+ * This all runs in a separate thread, so these operations can take longer periods of time.
  */
 class OperationExecutor(
     val services: ServiceLocator,
@@ -38,7 +49,6 @@ class OperationExecutor(
     }
 
     internal var thread: Thread? = null
-    private var commit: Commit? = null
 
     val updateProgress = fun(type: RemoteProgress, message: String?, percent: Int?) {
         transaction {
@@ -52,50 +62,87 @@ class OperationExecutor(
         }
     }
 
-    override fun run() {
-        val provider = services.remoteProvider(remote.provider)
+    internal fun setup(): RemoteOperation {
+        log.info("starting ${operation.type} operation ${operation.id}")
+
+        val commit = if (operation.type == Operation.Type.PUSH) {
+            services.commits.getCommit(repo, operation.commitId)
+        } else {
+            services.remotes.getRemoteCommit(repo, remote.name, params, operation.commitId)
+        }
+
+        return RemoteOperation(
+                updateProgress = updateProgress,
+                remote = remote.properties,
+                parameters = params.properties,
+                operationId = operation.id,
+                commitId = operation.commitId,
+                commit = commit.properties,
+                type = if (operation.type == Operation.Type.PUSH) { RemoteOperationType.PUSH } else { RemoteOperationType.PULL }
+        )
+    }
+
+    internal fun syncData(provider: RemoteServer, operation: RemoteOperation) {
+        val data = provider.syncDataStart(operation)
 
         var success = false
-        var operationData: RemoteOperation? = null
         try {
-            log.info("starting ${operation.type} operation ${operation.id}")
-
-            if (operation.type == Operation.Type.PULL) {
-                commit = services.remotes.getRemoteCommit(repo, remote.name, params, operation.commitId)
+            val operationId = operation.operationId
+            val volumes = transaction {
+                val vols = services.metadata.listVolumes(operationId)
+                services.metadata.createVolume(operationId, Volume("_scratch"))
+                vols
             }
+            val scratchConfig = services.context.createVolume(operationId, "_scratch")
+            transaction {
+                services.metadata.updateVolumeConfig(operationId, "_scratch", scratchConfig)
+            }
+            try {
+                services.context.activateVolume(operationId, "_scratch", scratchConfig)
+                val scratch = scratchConfig["mountpoint"] as String
+                for (volume in volumes) {
+                    services.context.activateVolume(operationId, volume.name, volume.config)
+                    val mountpoint = volume.config["mountpoint"] as String
+                    try {
+                        provider.syncDataVolume(operation, data, volume.name, getVolumeDesc(volume), mountpoint, scratch)
+                    } finally {
+                        services.context.deactivateVolume(operationId, volume.name, volume.config)
+                    }
+                }
+                success = true
+            } finally {
+                services.context.deactivateVolume(operationId, "_scratch", scratchConfig)
+                services.context.deleteVolume(operationId, "_scratch", scratchConfig)
+                transaction {
+                    services.metadata.deleteVolume(operationId, "_scratch")
+                }
+            }
+        } finally {
+            provider.syncDataEnd(operation, data, success)
+        }
+    }
 
-            val localCommit = if (operation.type == Operation.Type.PUSH) {
-                services.commits.getCommit(repo, operation.commitId)
+    internal fun syncMetadata(provider: RemoteServer, operation: RemoteOperation) {
+        if (operation.type == RemoteOperationType.PUSH) {
+            provider.pushMetadata(operation, operation.commit!!, metadataOnly)
+        } else {
+            val commit = Commit(operation.commitId, operation.commit!!)
+            if (metadataOnly) {
+                services.commits.updateCommit(repo, commit)
             } else {
-                null
+                services.commits.createCommit(repo, commit)
             }
+        }
+    }
 
-            operationData = RemoteOperation(
-                    updateProgress = updateProgress,
-                    remote = remote.properties,
-                    parameters = params.properties,
-                    operationId = operation.id,
-                    commitId = operation.commitId,
-                    commit = localCommit?.properties,
-                    type = if (operation.type == Operation.Type.PUSH) { RemoteOperationType.PUSH } else { RemoteOperationType.PULL },
-                    data = null
-            )
-
-            provider.startOperation(operationData)
-
+    override fun run() {
+        val provider = services.remoteProvider(remote.provider)
+        try {
+            val operationData = setup()
             if (!metadataOnly) {
                 syncData(provider, operationData)
-            } else if (operation.type == Operation.Type.PULL) {
-                services.commits.updateCommit(repo, commit!!)
             }
-
-            if (localCommit != null) {
-                provider.pushMetadata(operationData, localCommit.properties, metadataOnly)
-            }
-
-            success = true
-            provider.endOperation(operationData, true)
-
+            syncMetadata(provider, operationData)
             transaction {
                 services.metadata.addProgressEntry(operation.id, ProgressEntry(ProgressEntry.Type.COMPLETE))
             }
@@ -110,59 +157,12 @@ class OperationExecutor(
             }
             log.error("${operation.type} operation ${operation.id} failed", t)
         } finally {
-            try {
-                val op = services.operations.getOperation(operation.id)
-                if (op.state == Operation.State.COMPLETE &&
-                        op.type == Operation.Type.PULL && !metadataOnly) {
-                    // It shouldn't be possible for commit to be null here, or else it would've failed
-                    services.commits.createCommit(repo, commit!!, operation.id)
-                }
-                // If an operation fails, then we don't explicitly delete it but wait for the last progress to be consumed
-            } catch (t: Throwable) {
-                log.error("finalization of ${operation.type} failed", t)
-            } finally {
-                if (!success && operationData != null) {
-                    provider.endOperation(operationData, success)
-                }
-                completionCallback?.invoke(operation.id)
-            }
+            completionCallback?.invoke(operation.id)
         }
     }
 
     private fun getVolumeDesc(vol: Volume): String {
         return vol.properties.get("path")?.toString() ?: vol.name
-    }
-
-    internal fun syncData(provider: RemoteServer, data: RemoteOperation) {
-        val operationId = operation.id
-            val volumes = transaction {
-                val vols = services.metadata.listVolumes(operationId)
-                services.metadata.createVolume(operation.id, Volume("_scratch"))
-                vols
-            }
-        val scratchConfig = services.context.createVolume(operation.id, "_scratch")
-        transaction {
-            services.metadata.updateVolumeConfig(operationId, "_scratch", scratchConfig)
-        }
-        try {
-            services.context.activateVolume(operationId, "_scratch", scratchConfig)
-            val scratch = scratchConfig["mountpoint"] as String
-            for (volume in volumes) {
-                services.context.activateVolume(operationId, volume.name, volume.config)
-                val mountpoint = volume.config["mountpoint"] as String
-                try {
-                    provider.syncVolume(data, volume.name, getVolumeDesc(volume), mountpoint, scratch)
-                } finally {
-                    services.context.deactivateVolume(operationId, volume.name, volume.config)
-                }
-            }
-        } finally {
-            services.context.deactivateVolume(operationId, "_scratch", scratchConfig)
-            services.context.deleteVolume(operationId, "_scratch", scratchConfig)
-            transaction {
-                services.metadata.deleteVolume(operationId, "_scratch")
-            }
-        }
     }
 
     fun start() {

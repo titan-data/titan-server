@@ -28,8 +28,8 @@ import io.mockk.Runs
 import io.mockk.clearAllMocks
 import io.mockk.every
 import io.mockk.impl.annotations.InjectMockKs
-import io.mockk.impl.annotations.MockK
 import io.mockk.impl.annotations.OverrideMockKs
+import io.mockk.impl.annotations.SpyK
 import io.mockk.just
 import io.mockk.mockk
 import io.titandata.context.docker.DockerZfsContext
@@ -41,6 +41,7 @@ import io.titandata.models.ProgressEntry
 import io.titandata.models.Remote
 import io.titandata.models.RemoteParameters
 import io.titandata.models.Repository
+import io.titandata.models.Volume
 import java.time.Duration
 import java.util.UUID
 import java.util.concurrent.TimeUnit
@@ -50,7 +51,7 @@ import org.jetbrains.exposed.sql.transactions.transaction
 @UseExperimental(KtorExperimentalAPI::class)
 class OperationsApiTest : StringSpec() {
 
-    @MockK
+    @SpyK
     var context = DockerZfsContext("test")
 
     lateinit var vs1: String
@@ -84,8 +85,15 @@ class OperationsApiTest : StringSpec() {
             services.metadata.addRemote("foo", Remote("nop", "remote"))
             vs1 = services.metadata.createVolumeSet("foo", null, true)
             vs2 = services.metadata.createVolumeSet("foo")
+            services.metadata.createVolume(vs1, Volume("volume"))
         }
-        return MockKAnnotations.init(this)
+        MockKAnnotations.init(this)
+        every { context.createVolumeSet(any()) } just Runs
+        every { context.createVolume(any(), any()) } returns mapOf("mountpoint" to "/mountpoint")
+        every { context.cloneVolume(any(), any(), any(), any(), any()) } returns mapOf("mountpoint" to "/mountpoint")
+        every { context.activateVolume(any(), any(), any()) } just Runs
+        every { context.deactivateVolume(any(), any(), any()) } just Runs
+        every { context.deleteVolume(any(), any(), any()) } just Runs
     }
 
     override fun afterTest(testCase: TestCase, result: TestResult) {
@@ -222,6 +230,7 @@ class OperationsApiTest : StringSpec() {
             transaction {
                 services.metadata.createCommit("foo", vs1, Commit("commit"))
             }
+            every { context.createVolume(any(), any()) } returns emptyMap()
             loadOperation(OperationData(Operation(id = vs2,
                     type = Operation.Type.PUSH, commitId = "commit",
                     state = Operation.State.RUNNING, remote = "remote"), repo = "foo",
@@ -242,9 +251,6 @@ class OperationsApiTest : StringSpec() {
                 services.metadata.createCommit("foo", vs1, Commit("commit"))
             }
 
-            every { context.cloneVolumeSet(any(), any(), any()) } just Runs
-            every { context.cloneVolume(any(), any(), any(), any(), any()) } returns emptyMap()
-
             val result = engine.handleRequest(HttpMethod.Post, "/v1/repositories/foo/remotes/remote/commits/commit/push") {
                 addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
                 setBody("{\"provider\":\"nop\",\"properties\":{}}")
@@ -261,8 +267,6 @@ class OperationsApiTest : StringSpec() {
         }
 
         "pull starts operation" {
-            every { context.createVolumeSet(any()) } just Runs
-
             val result = engine.handleRequest(HttpMethod.Post, "/v1/repositories/foo/remotes/remote/commits/commit/pull") {
                 addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
                 setBody("{\"provider\":\"nop\",\"properties\":{}}")

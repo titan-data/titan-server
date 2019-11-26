@@ -14,7 +14,6 @@ import io.mockk.every
 import io.mockk.impl.annotations.InjectMockKs
 import io.mockk.impl.annotations.MockK
 import io.mockk.impl.annotations.OverrideMockKs
-import io.mockk.impl.annotations.SpyK
 import io.mockk.just
 import io.mockk.mockk
 import io.mockk.verify
@@ -31,17 +30,13 @@ import io.titandata.models.Volume
 import io.titandata.remote.RemoteOperation
 import io.titandata.remote.RemoteOperationType
 import io.titandata.remote.RemoteProgress
-import io.titandata.remote.nop.server.NopRemoteServer
 import org.jetbrains.exposed.sql.transactions.transaction
 
 class OperationExecutorTest : StringSpec() {
-    @MockK
+    @MockK(relaxUnitFun = true)
     lateinit var context: DockerZfsContext
 
     lateinit var vs: String
-
-    @SpyK
-    var nopProvider = NopRemoteServer()
 
     @InjectMockKs
     @OverrideMockKs
@@ -60,9 +55,6 @@ class OperationExecutorTest : StringSpec() {
             services.metadata.addRemote("foo", Remote("nop", "origin"))
         }
         val ret = MockKAnnotations.init(this)
-        services.setRemoteProvider("nop", nopProvider)
-        every { context.commitVolumeSet(any(), any()) } just Runs
-        every { context.commitVolume(any(), any(), any(), any()) } just Runs
         return ret
     }
 
@@ -130,16 +122,13 @@ class OperationExecutorTest : StringSpec() {
         }
 
         "sync data for pull succeeds" {
-            every { context.activateVolume(any(), any(), any()) } just Runs
-            every { context.deactivateVolume(any(), any(), any()) } just Runs
             every { context.createVolume(any(), any()) } returns mapOf("mountpoint" to "/mountpoint")
             every { context.createVolume(any(), "_scratch") } returns mapOf("mountpoint" to "/scratch")
-            every { context.deleteVolume(any(), any(), any()) } just Runs
 
             val data = createOperation()
             val executor = getExecutor(data)
             val remoteOperation = createRemoteOperation()
-            executor.syncData(nopProvider, remoteOperation)
+            executor.syncData(services.remoteProvider("nop"), remoteOperation)
 
             verify {
                 context.activateVolume(data.operation.id, "_scratch", mapOf("mountpoint" to "/scratch"))
@@ -148,21 +137,19 @@ class OperationExecutorTest : StringSpec() {
                 context.deactivateVolume(data.operation.id, "volume", mapOf("mountpoint" to "/mountpoint"))
                 context.createVolume(data.operation.id, "_scratch")
                 context.deleteVolume(data.operation.id, "_scratch", mapOf("mountpoint" to "/scratch"))
-                nopProvider.syncDataVolume(remoteOperation, any(), "volume", "volume", "/mountpoint", "/scratch")
+                context.syncVolumes(any(), any(), listOf(Volume("volume", emptyMap(), mapOf("mountpoint" to "/mountpoint"))),
+                        Volume("_scratch", emptyMap(), mapOf("mountpoint" to "/scratch")))
             }
         }
 
         "sync data for push succeeds" {
-            every { context.activateVolume(any(), any(), any()) } just Runs
-            every { context.deactivateVolume(any(), any(), any()) } just Runs
             every { context.createVolume(any(), any()) } returns mapOf("mountpoint" to "/mountpoint")
             every { context.createVolume(any(), "_scratch") } returns mapOf("mountpoint" to "/scratch")
-            every { context.deleteVolume(any(), any(), any()) } just Runs
 
             val data = createOperation(Operation.Type.PUSH)
             val executor = getExecutor(data)
             val remoteOperation = createRemoteOperation(RemoteOperationType.PUSH)
-            executor.syncData(nopProvider, remoteOperation)
+            executor.syncData(services.remoteProvider("nop"), remoteOperation)
 
             verify {
                 context.activateVolume(data.operation.id, "_scratch", mapOf("mountpoint" to "/scratch"))
@@ -171,16 +158,14 @@ class OperationExecutorTest : StringSpec() {
                 context.deactivateVolume(data.operation.id, "volume", mapOf("mountpoint" to "/mountpoint"))
                 context.createVolume(data.operation.id, "_scratch")
                 context.deleteVolume(data.operation.id, "_scratch", mapOf("mountpoint" to "/scratch"))
-                nopProvider.syncDataVolume(remoteOperation, any(), "volume", "volume", "/mountpoint", "/scratch")
+                context.syncVolumes(any(), any(), listOf(Volume("volume", emptyMap(), mapOf("mountpoint" to "/mountpoint"))),
+                        Volume("_scratch", emptyMap(), mapOf("mountpoint" to "/scratch")))
             }
         }
 
         "pull operation succeeds" {
-            every { context.activateVolume(any(), any(), any()) } just Runs
-            every { context.deactivateVolume(any(), any(), any()) } just Runs
             every { context.createVolume(any(), any()) } returns mapOf("mountpoint" to "/mountpoint")
             every { context.createVolume(any(), "_scratch") } returns mapOf("mountpoint" to "/scratch")
-            every { context.deleteVolume(any(), any(), any()) } just Runs
 
             val data = createOperation(Operation.Type.PULL)
             val executor = getExecutor(data)
@@ -189,18 +174,16 @@ class OperationExecutorTest : StringSpec() {
             services.operations.getOperation(vs).state shouldBe Operation.State.COMPLETE
 
             verify {
-                nopProvider.syncDataVolume(any(), any(), "volume", "volume", "/mountpoint", "/scratch")
+                context.syncVolumes(any(), any(), listOf(Volume("volume", emptyMap(), mapOf("mountpoint" to "/mountpoint"))),
+                        Volume("_scratch", emptyMap(), mapOf("mountpoint" to "/scratch")))
                 context.commitVolumeSet(data.operation.id, "id")
                 context.commitVolume(data.operation.id, "id", "volume", mapOf("mountpoint" to "/mountpoint"))
             }
         }
 
         "push operation succeeds" {
-            every { context.activateVolume(any(), any(), any()) } just Runs
-            every { context.deactivateVolume(any(), any(), any()) } just Runs
             every { context.createVolume(any(), any()) } returns mapOf("mountpoint" to "/mountpoint")
             every { context.createVolume(any(), "_scratch") } returns mapOf("mountpoint" to "/scratch")
-            every { context.deleteVolume(any(), any(), any()) } just Runs
 
             transaction {
                 services.metadata.createCommit("foo", vs, Commit("id"))
@@ -213,17 +196,15 @@ class OperationExecutorTest : StringSpec() {
             services.operations.getOperation(vs).state shouldBe Operation.State.COMPLETE
 
             verify {
-                nopProvider.syncDataVolume(any(), any(), "volume", "volume", "/mountpoint", "/scratch")
+                context.syncVolumes(any(), any(), listOf(Volume("volume", emptyMap(), mapOf("mountpoint" to "/mountpoint"))),
+                        Volume("_scratch", emptyMap(), mapOf("mountpoint" to "/scratch")))
             }
         }
 
         "interrupted operation is aborted" {
-            every { context.activateVolume(any(), any(), any()) } just Runs
-            every { context.deactivateVolume(any(), any(), any()) } just Runs
             every { context.createVolume(any(), any()) } returns mapOf("mountpoint" to "/mountpoint")
             every { context.createVolume(any(), "_scratch") } returns mapOf("mountpoint" to "/scratch")
-            every { context.deleteVolume(any(), any(), any()) } just Runs
-            every { nopProvider.syncDataVolume(any(), any(), any(), any(), any(), any()) } throws InterruptedException()
+            every { context.syncVolumes(any(), any(), any(), any()) } throws InterruptedException()
 
             val data = createOperation(Operation.Type.PULL)
             val executor = getExecutor(data)
@@ -235,7 +216,8 @@ class OperationExecutorTest : StringSpec() {
                 context.deactivateVolume(data.operation.id, "_scratch", mapOf("mountpoint" to "/scratch"))
                 context.deactivateVolume(data.operation.id, "volume", mapOf("mountpoint" to "/mountpoint"))
                 context.deleteVolume(data.operation.id, "_scratch", mapOf("mountpoint" to "/scratch"))
-                nopProvider.syncDataVolume(any(), any(), "volume", "volume", "/mountpoint", "/scratch")
+                context.syncVolumes(any(), any(), listOf(Volume("volume", emptyMap(), mapOf("mountpoint" to "/mountpoint"))),
+                        Volume("_scratch", emptyMap(), mapOf("mountpoint" to "/scratch")))
             }
 
             shouldThrow<NoSuchObjectException> {
@@ -244,12 +226,9 @@ class OperationExecutorTest : StringSpec() {
         }
 
         "failed operation is marked failed" {
-            every { context.activateVolume(any(), any(), any()) } just Runs
-            every { context.deactivateVolume(any(), any(), any()) } just Runs
             every { context.createVolume(any(), any()) } returns mapOf("mountpoint" to "/mountpoint")
             every { context.createVolume(any(), "_scratch") } returns mapOf("mountpoint" to "/scratch")
-            every { context.deleteVolume(any(), any(), any()) } just Runs
-            every { nopProvider.syncDataVolume(any(), any(), any(), any(), any(), any()) } throws Exception()
+            every { context.syncVolumes(any(), any(), any(), any()) } throws Exception()
 
             val data = createOperation(Operation.Type.PULL)
             val executor = getExecutor(data)
@@ -261,30 +240,12 @@ class OperationExecutorTest : StringSpec() {
                 context.deactivateVolume(data.operation.id, "_scratch", mapOf("mountpoint" to "/scratch"))
                 context.deactivateVolume(data.operation.id, "volume", mapOf("mountpoint" to "/mountpoint"))
                 context.deleteVolume(data.operation.id, "_scratch", mapOf("mountpoint" to "/scratch"))
-                nopProvider.syncDataVolume(any(), any(), "volume", "volume", "/mountpoint", "/scratch")
+                context.syncVolumes(any(), any(), listOf(Volume("volume", emptyMap(), mapOf("mountpoint" to "/mountpoint"))),
+                        Volume("_scratch", emptyMap(), mapOf("mountpoint" to "/scratch")))
             }
 
             shouldThrow<NoSuchObjectException> {
                 services.commits.getCommit("foo", "id")
-            }
-        }
-
-        "provider fail operation is called" {
-            every { context.activateVolume(any(), any(), any()) } just Runs
-            every { context.deactivateVolume(any(), any(), any()) } just Runs
-            every { context.createVolume(any(), any()) } returns mapOf("mountpoint" to "/mountpoint")
-            every { context.createVolume(any(), "_scratch") } returns mapOf("mountpoint" to "/scratch")
-            every { context.deleteVolume(any(), any(), any()) } just Runs
-            every { nopProvider.syncDataVolume(any(), any(), any(), any(), any(), any()) } throws Exception()
-
-            val data = createOperation(Operation.Type.PULL)
-            val executor = getExecutor(data)
-            executor.run()
-
-            services.operations.getOperation(vs).state shouldBe Operation.State.FAILED
-
-            verify {
-                nopProvider.syncDataEnd(any(), any(), false)
             }
         }
     }

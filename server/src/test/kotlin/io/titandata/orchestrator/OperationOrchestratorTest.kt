@@ -423,7 +423,7 @@ class OperationOrchestratorTest : StringSpec() {
             every { context.commitVolumeSet(any(), any()) } just Runs
             every { context.commitVolume(any(), any(), any(), any()) } just Runs
             every { context.createVolumeSet(any()) } just Runs
-            every { nopProvider.syncVolume(any(), any(), any(), any(), any()) } just Runs
+            every { nopProvider.syncDataVolume(any(), any(), any(), any(), any(), any()) } just Runs
 
             var op = services.operations.startPull("foo", "remote", "commit", params)
             op.commitId shouldBe "commit"
@@ -446,7 +446,7 @@ class OperationOrchestratorTest : StringSpec() {
             }
             every { context.createVolumeSet(any()) } just Runs
             every { context.createVolume(any(), any()) } returns mapOf("mountpoint" to "/mountpoint")
-            every { nopProvider.startOperation(any()) } throws Exception("error")
+            every { nopProvider.syncDataStart(any()) } throws Exception("error")
 
             var op = services.operations.startPull("foo", "remote", "commit", params)
             services.operations.waitForComplete(op.id)
@@ -468,7 +468,7 @@ class OperationOrchestratorTest : StringSpec() {
             }
             every { context.createVolumeSet(any()) } just Runs
             every { context.createVolume(any(), any()) } returns mapOf("mountpoint" to "/mountpoint")
-            every { nopProvider.startOperation(any()) } throws InterruptedException()
+            every { nopProvider.syncDataStart(any()) } throws InterruptedException()
 
             var op = services.operations.startPull("foo", "remote", "commit", params)
             services.operations.waitForComplete(op.id)
@@ -548,7 +548,7 @@ class OperationOrchestratorTest : StringSpec() {
             }
             every { context.cloneVolumeSet(any(), any(), any()) } just Runs
             every { context.cloneVolume(any(), any(), any(), any(), any()) } returns mapOf("mountpoint" to "/mountpoint")
-            every { nopProvider.startOperation(any()) } throws Exception("error")
+            every { nopProvider.syncDataStart(any()) } throws Exception("error")
 
             var op = services.operations.startPush("foo", "remote", "id", params)
             services.operations.waitForComplete(op.id)
@@ -571,7 +571,7 @@ class OperationOrchestratorTest : StringSpec() {
             }
             every { context.cloneVolumeSet(any(), any(), any()) } just Runs
             every { context.cloneVolume(any(), any(), any(), any(), any()) } returns mapOf("mountpoint" to "/mountpoint")
-            every { nopProvider.startOperation(any()) } throws InterruptedException()
+            every { nopProvider.syncDataStart(any()) } throws InterruptedException()
 
             var op = services.operations.startPush("foo", "remote", "id", params)
             services.operations.waitForComplete(op.id)

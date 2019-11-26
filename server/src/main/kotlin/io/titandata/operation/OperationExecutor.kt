@@ -83,42 +83,43 @@ class OperationExecutor(
     }
 
     internal fun syncData(provider: RemoteServer, operation: RemoteOperation) {
-        val data = provider.syncDataStart(operation)
+        val operationId = operation.operationId
 
-        var success = false
+        // Get list of current volumes
+        val volumes = transaction {
+            val vols = services.metadata.listVolumes(operationId)
+            services.metadata.createVolume(operationId, Volume("_scratch"))
+            vols
+        }
+
+        // Create scratch volume
+        val scratchConfig = services.context.createVolume(operationId, "_scratch")
+        transaction {
+            services.metadata.updateVolumeConfig(operationId, "_scratch", scratchConfig)
+        }
+        val scratchVolume = Volume("_scratch", emptyMap(), scratchConfig)
+
         try {
-            val operationId = operation.operationId
-            val volumes = transaction {
-                val vols = services.metadata.listVolumes(operationId)
-                services.metadata.createVolume(operationId, Volume("_scratch"))
-                vols
+            // Activate all volumes
+            services.context.activateVolume(operationId, "_scratch", scratchConfig)
+            for (volume in volumes) {
+                services.context.activateVolume(operationId, volume.name, volume.config)
             }
-            val scratchConfig = services.context.createVolume(operationId, "_scratch")
-            transaction {
-                services.metadata.updateVolumeConfig(operationId, "_scratch", scratchConfig)
-            }
-            try {
-                services.context.activateVolume(operationId, "_scratch", scratchConfig)
-                val scratch = scratchConfig["mountpoint"] as String
-                for (volume in volumes) {
-                    services.context.activateVolume(operationId, volume.name, volume.config)
-                    val mountpoint = volume.config["mountpoint"] as String
-                    try {
-                        provider.syncDataVolume(operation, data, volume.name, getVolumeDesc(volume), mountpoint, scratch)
-                    } finally {
-                        services.context.deactivateVolume(operationId, volume.name, volume.config)
-                    }
-                }
-                success = true
-            } finally {
-                services.context.deactivateVolume(operationId, "_scratch", scratchConfig)
-                services.context.deleteVolume(operationId, "_scratch", scratchConfig)
-                transaction {
-                    services.metadata.deleteVolume(operationId, "_scratch")
-                }
-            }
+
+            // Invoke context-specific sync mechanism
+            services.context.syncVolumes(provider, operation, volumes, scratchVolume)
         } finally {
-            provider.syncDataEnd(operation, data, success)
+            // Deactivate all volumes
+            services.context.deactivateVolume(operationId, "_scratch", scratchConfig)
+            for (volume in volumes) {
+                services.context.deactivateVolume(operationId, volume.name, volume.config)
+            }
+
+            // Delete scratch volume
+            services.context.deleteVolume(operationId, "_scratch", scratchConfig)
+            transaction {
+                services.metadata.deleteVolume(operationId, "_scratch")
+            }
         }
     }
 
@@ -159,10 +160,6 @@ class OperationExecutor(
         } finally {
             completionCallback?.invoke(operation.id)
         }
-    }
-
-    private fun getVolumeDesc(vol: Volume): String {
-        return vol.properties.get("path")?.toString() ?: vol.name
     }
 
     fun start() {

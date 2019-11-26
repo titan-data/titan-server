@@ -5,7 +5,10 @@
 package io.titandata.context
 
 import io.titandata.models.CommitStatus
+import io.titandata.models.Volume
 import io.titandata.models.VolumeStatus
+import io.titandata.remote.RemoteOperation
+import io.titandata.remote.RemoteServer
 
 interface RuntimeContext {
     fun getProvider(): String
@@ -27,4 +30,6 @@ interface RuntimeContext {
     fun activateVolume(volumeSet: String, volumeName: String, config: Map<String, Any>)
     fun deactivateVolume(volumeSet: String, volumeName: String, config: Map<String, Any>)
     fun deleteVolumeCommit(volumeSet: String, commitId: String, volumeName: String)
+
+    fun syncVolumes(provider: RemoteServer, operation: RemoteOperation, volumes: List<Volume>, scratchVolume: Volume)
 }

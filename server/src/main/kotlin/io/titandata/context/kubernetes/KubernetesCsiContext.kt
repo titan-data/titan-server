@@ -17,6 +17,7 @@ import io.titandata.models.CommitStatus
 import io.titandata.models.Volume
 import io.titandata.models.VolumeStatus
 import io.titandata.remote.RemoteOperation
+import io.titandata.remote.RemoteProgress
 import io.titandata.remote.RemoteServer
 import io.titandata.shell.CommandException
 import io.titandata.shell.CommandExecutor
@@ -228,9 +229,7 @@ class KubernetesCsiContext(private val properties: Map<String, String> = emptyMa
                 "size" to size)
     }
 
-    override fun getVolumeStatus(volumeSet: String, volume: String, config: Map<String, Any>): VolumeStatus {
-        val pvc = config["pvc"] as? String ?: throw IllegalStateException("missing or invalid pvc name in volume config")
-
+    fun getPvcStatus(pvc: String): Pair<Boolean, String?> {
         val claim = coreApi.readNamespacedPersistentVolumeClaimStatus(pvc, namespace, null)
 
         var okPhases = listOf("Pending", "Bound")
@@ -248,6 +247,13 @@ class KubernetesCsiContext(private val properties: Map<String, String> = emptyMa
         } else {
             "volume '$pvc' is in unknown state ${claim.status.phase}"
         }
+
+        return ready to error
+    }
+
+    override fun getVolumeStatus(volumeSet: String, volume: String, config: Map<String, Any>): VolumeStatus {
+        val pvc = config["pvc"] as? String ?: error("missing or invalid pvc name in volume config")
+        val (ready, error) = getPvcStatus(pvc)
 
         // Volumes can change size, this is just the original size
         val size = Quantity(config["size"] as String).number.toLong()
@@ -310,6 +316,24 @@ class KubernetesCsiContext(private val properties: Map<String, String> = emptyMa
     }
 
     override fun syncVolumes(provider: RemoteServer, operation: RemoteOperation, volumes: List<Volume>, scratchVolume: Volume) {
+        operation.updateProgress(RemoteProgress.START, "waiting for volumes to be ready", null)
+        while (true) {
+            val allVolumes = volumes + scratchVolume
+            var ready = true
+            for (vol in allVolumes) {
+                val pvc = vol.config["pvc"] as? String ?: error("missing or invalid pvc name in volume '${vol.name}' config")
+                val (volumeReady) = getPvcStatus(pvc)
+                if (!volumeReady) {
+                    ready = false
+                }
+            }
+            if (ready) {
+                break
+            }
+            Thread.sleep(1000)
+        }
+        operation.updateProgress(RemoteProgress.END, null, null)
+
         TODO("not implemented")
     }
 }

@@ -4,7 +4,7 @@ plugins {
     kotlin("jvm")
     jacoco
     application
-    id("com.github.johnrengelman.shadow") version("5.1.0")
+    id("com.github.johnrengelman.shadow") version("5.2.0")
 }
 
 val titanVersion: String by rootProject.extra
@@ -24,7 +24,7 @@ repositories {
     }
 }
 
-val ktorVersion = "1.2.5"
+val ktorVersion = "1.2.6"
 
 dependencies {
     compile(project(":client"))

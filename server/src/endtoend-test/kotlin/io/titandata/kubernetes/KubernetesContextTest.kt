@@ -32,6 +32,7 @@ class KubernetesContextTest : KubernetesTest() {
             waitForVolume(vs, "test", volumeConfig)
         }
 
+        /*
         "create pod succeeds" {
             launchPod("$vs-test", "$vs-test")
             waitForPod("$vs-test")
@@ -50,6 +51,8 @@ class KubernetesContextTest : KubernetesTest() {
             executor.exec("kubectl", "delete", "pod", "--grace-period=0", "--force", "$vs-test")
         }
 
+         */
+
         "syncVolumes succeeds" {
             val provider = NopRemoteServer()
             val operation = RemoteOperation(
@@ -64,6 +67,7 @@ class KubernetesContextTest : KubernetesTest() {
             context.syncVolumes(provider, operation, emptyList(), Volume("test", emptyMap(), volumeConfig))
         }
 
+        /*
         "clone volume succeeds" {
             cloneConfig = context.cloneVolume(vs, "id", vs2, "test", volumeConfig)
             waitForVolume(vs2, "test", cloneConfig)
@@ -102,6 +106,8 @@ class KubernetesContextTest : KubernetesTest() {
         "delete of non-existent commit succeeds" {
             context.deleteVolumeCommit(vs, "id", "test")
         }
+
+         */
 
         "delete volume succeeds" {
             context.deleteVolume(vs, "test", volumeConfig)

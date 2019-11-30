@@ -91,6 +91,17 @@ class KubernetesCsiContext(private val properties: Map<String, String> = emptyMa
         namespace = properties.get("namespace") ?: "default"
     }
 
+    private fun deleteObject(type: String, name: String) {
+        // Java client has issues with deletion (https://github.com/kubernetes-client/java/issues/86) so use kubectl
+        try {
+            executor.exec("kubectl", "delete", "--wait=false", type, name)
+        } catch (e: CommandException) {
+            if (!e.output.contains("NotFound")) {
+                throw e
+            }
+        }
+    }
+
     override fun getProvider(): String {
         return "kubernetes-csi"
     }
@@ -153,16 +164,7 @@ class KubernetesCsiContext(private val properties: Map<String, String> = emptyMa
 
     override fun deleteVolume(volumeSet: String, volumeName: String, config: Map<String, Any>) {
         val pvc = config["pvc"] as? String ?: throw IllegalStateException("missing or invalid pvc name in volume config")
-
-        // Java client has issues with deletion (https://github.com/kubernetes-client/java/issues/86) so use kubectl
-        try {
-            executor.exec("kubectl", "delete", "--wait=false", "pvc", pvc)
-        } catch (e: CommandException) {
-            if (!e.output.contains("NotFound")) {
-                throw e
-            }
-        }
-
+        deleteObject("pvc", pvc)
         log.info("Deleted PersistentVolumeClaim '$pvc'")
     }
 
@@ -200,14 +202,7 @@ class KubernetesCsiContext(private val properties: Map<String, String> = emptyMa
     }
 
     override fun deleteVolumeCommit(volumeSet: String, commitId: String, volumeName: String) {
-        try {
-            executor.exec("kubectl", "delete", "--wait=false", "volumesnapshot", "$volumeSet-$volumeName-$commitId")
-        } catch (e: CommandException) {
-            // Deletion is idempotent, so ignore errors if it doesn't exist
-            if (!e.output.contains("NotFound")) {
-                throw e
-            }
-        }
+        deleteObject("volumesnapshot", "$volumeSet-$volumeName-$commitId")
     }
 
     override fun cloneVolume(
@@ -361,6 +356,7 @@ class KubernetesCsiContext(private val properties: Map<String, String> = emptyMa
         }
         operation.updateProgress(RemoteProgress.END, null, null)
 
+        operation.updateProgress(RemoteProgress.START, "starting job", null)
         val metadata = V1ObjectMetaBuilder()
                 .withName("titan-operation-${operation.operationId}")
                 .build()
@@ -399,6 +395,7 @@ class KubernetesCsiContext(private val properties: Map<String, String> = emptyMa
                                             .withContainers(V1ContainerBuilder()
                                                     .withName("operation")
                                                     .withImage(image)
+                                                    .withCommand("/titan/kubernetesOperation")
                                                     .withVolumeMounts(V1VolumeMountBuilder()
                                                             .withName("x-secret")
                                                             .withReadOnly(true)
@@ -445,13 +442,40 @@ class KubernetesCsiContext(private val properties: Map<String, String> = emptyMa
                             .withBackoffLimit(1)
                             .build())
                     .build(), null, null, null)
-
-        } finally {
             try {
-                executor.exec("kubectl", "delete", "secret", metadata.name)
-            } catch (t: Throwable) {
-                log.error("error deleting secret", t)
+                operation.updateProgress(RemoteProgress.END, null, null)
+                val pods = coreApi.listNamespacedPod(namespace, null, null, null, "job-name=${metadata.name}", null, null, null, null)
+                if (pods.items.size != 1) {
+                    throw IllegalStateException("found ${pods.items.size} pods instead of 1 for job ${metadata.name}")
+                }
+                val podName = pods.items[0].metadata.name
+                var complete = false
+                while (!complete) {
+                    val job = batchApi.readNamespacedJob(metadata.name, namespace, null, null, null)
+                    if (job.status.succeeded == 1) {
+                        complete = true
+                    }
+                    if (job.status.failed == 1) {
+                        throw IllegalStateException("job failed unexpectedly")
+                    }
+
+                    val status = coreApi.readNamespacedPodStatus(podName, namespace, null)
+                    if (status.status.phase != "ContainerStarting") {
+                        val output = coreApi.readNamespacedPodLog(podName, namespace, null, null, null, null, null, null, null, true)
+                        if (output != null) {
+                            println(output)
+                        }
+                    }
+
+                    if (!complete) {
+                        Thread.sleep(1000)
+                    }
+                }
+            } finally {
+                deleteObject("job", metadata.name)
             }
+        } finally {
+            deleteObject("secret", metadata.name)
         }
     }
 }

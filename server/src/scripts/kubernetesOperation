@@ -1,0 +1,9 @@
+#!/bin/bash
+
+#
+# Entry point for running a kubernetes operation. See KubernetesRunner for how this works. We expect the TITAN_PATH
+# environment variable to point to the base path for volumes and configuration, which is then passed to the runner.
+#
+
+exec java -DbasePath=$TITAN_PATH -cp /titan/titan-server.jar io.titandata.context.kubernetes.KubernetesRunnerKt
+

@@ -1,15 +1,30 @@
 package io.titandata.context.kubernetes
 
+import com.google.gson.GsonBuilder
 import com.google.gson.JsonObject
 import com.google.gson.JsonParser
 import io.kubernetes.client.Configuration.setDefaultApiClient
+import io.kubernetes.client.apis.AppsV1Api
+import io.kubernetes.client.apis.BatchV1Api
 import io.kubernetes.client.apis.CoreV1Api
 import io.kubernetes.client.apis.StorageV1Api
 import io.kubernetes.client.custom.Quantity
+import io.kubernetes.client.models.V1ContainerBuilder
+import io.kubernetes.client.models.V1EnvVarBuilder
+import io.kubernetes.client.models.V1JobBuilder
+import io.kubernetes.client.models.V1JobSpecBuilder
 import io.kubernetes.client.models.V1ObjectMetaBuilder
 import io.kubernetes.client.models.V1PersistentVolumeClaimBuilder
 import io.kubernetes.client.models.V1PersistentVolumeClaimSpecBuilder
+import io.kubernetes.client.models.V1PersistentVolumeClaimVolumeSourceBuilder
+import io.kubernetes.client.models.V1PodSpecBuilder
+import io.kubernetes.client.models.V1PodTemplateSpec
+import io.kubernetes.client.models.V1PodTemplateSpecBuilder
 import io.kubernetes.client.models.V1ResourceRequirementsBuilder
+import io.kubernetes.client.models.V1SecretBuilder
+import io.kubernetes.client.models.V1SecretVolumeSourceBuilder
+import io.kubernetes.client.models.V1VolumeBuilder
+import io.kubernetes.client.models.V1VolumeMountBuilder
 import io.kubernetes.client.util.Config
 import io.kubernetes.client.util.KubeConfig
 import io.titandata.context.RuntimeContext
@@ -41,12 +56,18 @@ import org.slf4j.LoggerFactory
  *
  *      snapshotClass   Default snapshot class to use when createing snapshots. If unspecified, then the cluster
  *                      default is used.
+ *
+ *      titanImage      Titan image to use when running operations. This should be the same image as the current
+ *                      titan server, and defaults to "titan:latest". It must be accessible from within the
+ *                      kubernetes cluster.
  */
 class KubernetesCsiContext(private val properties: Map<String, String> = emptyMap()) : RuntimeContext {
     private val coreApi: CoreV1Api
     private val storageApi: StorageV1Api
+    private val batchApi: BatchV1Api
     val namespace: String
     private val executor = CommandExecutor()
+    private val gson = GsonBuilder().create()
 
     companion object {
         val log = LoggerFactory.getLogger(KubernetesCsiContext::class.java)
@@ -62,9 +83,11 @@ class KubernetesCsiContext(private val properties: Map<String, String> = emptyMa
         if (properties.containsKey("context")) {
             config.setContext(properties["context"])
         }
+
         setDefaultApiClient(Config.fromConfig(config))
         coreApi = CoreV1Api()
         storageApi = StorageV1Api()
+        batchApi = BatchV1Api()
         namespace = properties.get("namespace") ?: "default"
     }
 
@@ -315,6 +338,10 @@ class KubernetesCsiContext(private val properties: Map<String, String> = emptyMa
         // Nothing to do
     }
 
+    /**
+     * Within kubernetes, we need to run the operations in a separate pod in order be able to access the data
+     * volumes. We run this as a Kubernetes Job
+     */
     override fun syncVolumes(provider: RemoteServer, operation: RemoteOperation, volumes: List<Volume>, scratchVolume: Volume) {
         operation.updateProgress(RemoteProgress.START, "waiting for volumes to be ready", null)
         while (true) {
@@ -334,6 +361,97 @@ class KubernetesCsiContext(private val properties: Map<String, String> = emptyMa
         }
         operation.updateProgress(RemoteProgress.END, null, null)
 
-        TODO("not implemented")
+        val metadata = V1ObjectMetaBuilder()
+                .withName("titan-operation-${operation.operationId}")
+                .build()
+        val image = properties["titanImage"] ?: error("missing titanImage property")
+        val basePath = "/var/titan"
+
+        // Create the KubernetesObperation object that will be passed as a secret
+        val kubeOperation = KubernetesOperation(
+                commit = operation.commit,
+                commitId = operation.commitId,
+                operationId = operation.operationId,
+                remote = operation.remote,
+                parameters = operation.parameters,
+                remoteType = provider.getProvider(),
+                type = operation.type,
+                scratchVolume = scratchVolume.name,
+                volumes = volumes.map { it.name },
+                volumeDescriptions = volumes.map { it.config["mountpoint"] as? String ?: error("missing mountpoint for volume ${it.name}")}
+        )
+        val configJson = gson.toJson(kubeOperation)
+        coreApi.createNamespacedSecret(namespace, V1SecretBuilder()
+                .withMetadata(metadata)
+                .withType("Opaque")
+                .withStringData(mapOf("config" to configJson))
+                .build(), null, null, null)
+
+        try {
+            // Now create the job that will run the operation
+            batchApi.createNamespacedJob(namespace, V1JobBuilder()
+                    .withMetadata(metadata)
+                    .withSpec(V1JobSpecBuilder()
+                            .withTemplate(V1PodTemplateSpecBuilder()
+                                    .withMetadata(metadata)
+                                    .withSpec(V1PodSpecBuilder()
+                                            .withRestartPolicy("OnFailure")
+                                            .withContainers(V1ContainerBuilder()
+                                                    .withName("operation")
+                                                    .withImage(image)
+                                                    .withVolumeMounts(V1VolumeMountBuilder()
+                                                            .withName("x-secret")
+                                                            .withReadOnly(true)
+                                                            .withMountPath("$basePath/_secret")
+                                                            .build(),
+                                                            V1VolumeMountBuilder()
+                                                                    .withName("x-scratch")
+                                                                    .withMountPath("$basePath/${scratchVolume.name}")
+                                                                    .build(),
+                                                            *volumes.map {
+                                                                V1VolumeMountBuilder()
+                                                                        .withName("u-${it.name}")
+                                                                        .withMountPath("$basePath/${it.name}")
+                                                                        .build()
+                                                            }.toTypedArray())
+                                                    .withEnv(V1EnvVarBuilder()
+                                                            .withName("TITAN_PATH")
+                                                            .withValue(basePath)
+                                                            .build())
+                                                    .build())
+                                            .withVolumes(V1VolumeBuilder()
+                                                    .withName("x-secret")
+                                                    .withSecret(V1SecretVolumeSourceBuilder()
+                                                            .withSecretName(metadata.name)
+                                                            .build())
+                                                    .build(),
+                                                    V1VolumeBuilder()
+                                                            .withName("x-scratch")
+                                                            .withPersistentVolumeClaim(V1PersistentVolumeClaimVolumeSourceBuilder()
+                                                                    .withClaimName(scratchVolume.config["pvc"] as String)
+                                                                    .build())
+                                                            .build(),
+                                                    *volumes.map {
+                                                        V1VolumeBuilder()
+                                                                .withName("u-${it.name}")
+                                                                .withPersistentVolumeClaim(V1PersistentVolumeClaimVolumeSourceBuilder()
+                                                                        .withClaimName(it.config["pvc"] as String)
+                                                                        .build())
+                                                                .build()
+                                                    }.toTypedArray()
+                                            )
+                                            .build())
+                                    .build())
+                            .withBackoffLimit(1)
+                            .build())
+                    .build(), null, null, null)
+
+        } finally {
+            try {
+                executor.exec("kubectl", "delete", "secret", metadata.name)
+            } catch (t: Throwable) {
+                log.error("error deleting secret", t)
+            }
+        }
     }
 }

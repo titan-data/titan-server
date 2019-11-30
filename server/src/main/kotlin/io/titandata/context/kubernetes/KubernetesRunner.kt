@@ -42,19 +42,11 @@ data class KubernetesOperation(
     val volumeDescriptions: List<String>
 )
 
-/**
- * This progress object is printed to stdout to then be consumed by the KubernetesCsiContext syncVolumes() method.
- */
-data class KubernetesProgress(
-    val type: ProgressEntry.Type,
-    val message: String?,
-    val percent: Int?
-)
-
 class KubernetesRunner() {
     private val loader = ServiceLoader.load(RemoteServer::class.java)
     private val remoteProviders: MutableMap<String, RemoteServer>
     private val gson = GsonBuilder().create()
+    var progressId = 1
 
     init {
         val providers = mutableMapOf<String, RemoteServer>()
@@ -73,7 +65,7 @@ class KubernetesRunner() {
             RemoteProgress.PROGRESS -> ProgressEntry.Type.PROGRESS
             RemoteProgress.MESSAGE -> ProgressEntry.Type.MESSAGE
         }
-        val progress = KubernetesProgress(type = progressType, message = message, percent = percent)
+        val progress = ProgressEntry(id = progressId++, type = progressType, message = message, percent = percent)
         println(gson.toJson(progress))
     }
 
@@ -110,11 +102,12 @@ fun main(args: Array<String>) {
     val basePath = System.getProperty("basePath") ?: error("missing basePath property")
     val operation = gson.fromJson(FileReader("$basePath/_secret/config"), KubernetesOperation::class.java)
 
+    val runner = KubernetesRunner()
     try {
-        KubernetesRunner().runOperation(basePath, operation)
-        println(gson.toJson(KubernetesProgress(ProgressEntry.Type.COMPLETE, null, null)))
+        runner.runOperation(basePath, operation)
+        println(gson.toJson(ProgressEntry(id = runner.progressId++, type = ProgressEntry.Type.COMPLETE)))
     } catch (t: Throwable) {
-        println(gson.toJson(KubernetesProgress(ProgressEntry.Type.ERROR, t.message, null)))
+        println(gson.toJson(ProgressEntry(id = runner.progressId++, type = ProgressEntry.Type.ERROR, message = t.message)))
         throw t
     }
 }

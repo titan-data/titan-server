@@ -2,9 +2,9 @@ package io.titandata.context.kubernetes
 
 import com.google.gson.GsonBuilder
 import com.google.gson.JsonObject
+import com.google.gson.JsonParseException
 import com.google.gson.JsonParser
 import io.kubernetes.client.Configuration.setDefaultApiClient
-import io.kubernetes.client.apis.AppsV1Api
 import io.kubernetes.client.apis.BatchV1Api
 import io.kubernetes.client.apis.CoreV1Api
 import io.kubernetes.client.apis.StorageV1Api
@@ -13,12 +13,12 @@ import io.kubernetes.client.models.V1ContainerBuilder
 import io.kubernetes.client.models.V1EnvVarBuilder
 import io.kubernetes.client.models.V1JobBuilder
 import io.kubernetes.client.models.V1JobSpecBuilder
+import io.kubernetes.client.models.V1ObjectMeta
 import io.kubernetes.client.models.V1ObjectMetaBuilder
 import io.kubernetes.client.models.V1PersistentVolumeClaimBuilder
 import io.kubernetes.client.models.V1PersistentVolumeClaimSpecBuilder
 import io.kubernetes.client.models.V1PersistentVolumeClaimVolumeSourceBuilder
 import io.kubernetes.client.models.V1PodSpecBuilder
-import io.kubernetes.client.models.V1PodTemplateSpec
 import io.kubernetes.client.models.V1PodTemplateSpecBuilder
 import io.kubernetes.client.models.V1ResourceRequirementsBuilder
 import io.kubernetes.client.models.V1SecretBuilder
@@ -29,6 +29,7 @@ import io.kubernetes.client.util.Config
 import io.kubernetes.client.util.KubeConfig
 import io.titandata.context.RuntimeContext
 import io.titandata.models.CommitStatus
+import io.titandata.models.ProgressEntry
 import io.titandata.models.Volume
 import io.titandata.models.VolumeStatus
 import io.titandata.remote.RemoteOperation
@@ -334,10 +335,9 @@ class KubernetesCsiContext(private val properties: Map<String, String> = emptyMa
     }
 
     /**
-     * Within kubernetes, we need to run the operations in a separate pod in order be able to access the data
-     * volumes. We run this as a Kubernetes Job
+     * Wait for all the volumes associated with this operation to become ready.
      */
-    override fun syncVolumes(provider: RemoteServer, operation: RemoteOperation, volumes: List<Volume>, scratchVolume: Volume) {
+    private fun waitForVolumesReady(operation: RemoteOperation, volumes: List<Volume>, scratchVolume: Volume) {
         operation.updateProgress(RemoteProgress.START, "waiting for volumes to be ready", null)
         while (true) {
             val allVolumes = volumes + scratchVolume
@@ -355,14 +355,18 @@ class KubernetesCsiContext(private val properties: Map<String, String> = emptyMa
             Thread.sleep(1000)
         }
         operation.updateProgress(RemoteProgress.END, null, null)
+    }
 
-        operation.updateProgress(RemoteProgress.START, "starting job", null)
-        val metadata = V1ObjectMetaBuilder()
-                .withName("titan-operation-${operation.operationId}")
-                .build()
-        val image = properties["titanImage"] ?: error("missing titanImage property")
-        val basePath = "/var/titan"
-
+    /**
+     * Create the secret containing the KubernetesOperation data required for the runner.
+     */
+    private fun createSecret(
+        provider: RemoteServer,
+        operation: RemoteOperation,
+        volumes: List<Volume>,
+        scratchVolume: Volume,
+        metadata: V1ObjectMeta
+    ) {
         // Create the KubernetesObperation object that will be passed as a secret
         val kubeOperation = KubernetesOperation(
                 commit = operation.commit,
@@ -374,101 +378,184 @@ class KubernetesCsiContext(private val properties: Map<String, String> = emptyMa
                 type = operation.type,
                 scratchVolume = scratchVolume.name,
                 volumes = volumes.map { it.name },
-                volumeDescriptions = volumes.map { it.config["mountpoint"] as? String ?: error("missing mountpoint for volume ${it.name}")}
+                volumeDescriptions = volumes.map { it.config["mountpoint"] as? String ?: error("missing mountpoint for volume ${it.name}") }
         )
         val configJson = gson.toJson(kubeOperation)
+        log.info("creating secret ${metadata.name}")
         coreApi.createNamespacedSecret(namespace, V1SecretBuilder()
                 .withMetadata(metadata)
                 .withType("Opaque")
                 .withStringData(mapOf("config" to configJson))
                 .build(), null, null, null)
+    }
+
+    /**
+     * Create the runner job.
+     */
+    private fun createJob(
+        operation: RemoteOperation,
+        volumes: List<Volume>,
+        scratchVolume: Volume,
+        metadata: V1ObjectMeta
+    ) {
+        operation.updateProgress(RemoteProgress.MESSAGE, "running job", null)
+
+        val image = properties["titanImage"] ?: error("missing titanImage property")
+        val basePath = "/var/titan"
+
+        log.info("creating job ${metadata.name}")
+        // Now create the job that will run the operation
+        batchApi.createNamespacedJob(namespace, V1JobBuilder()
+                .withMetadata(metadata)
+                .withSpec(V1JobSpecBuilder()
+                        .withTemplate(V1PodTemplateSpecBuilder()
+                                .withMetadata(metadata)
+                                .withSpec(V1PodSpecBuilder()
+                                        .withRestartPolicy("OnFailure")
+                                        .withContainers(V1ContainerBuilder()
+                                                .withName("operation")
+                                                .withImage(image)
+                                                .withCommand("/titan/kubernetesOperation")
+                                                .withVolumeMounts(V1VolumeMountBuilder()
+                                                        .withName("x-secret")
+                                                        .withReadOnly(true)
+                                                        .withMountPath("$basePath/_secret")
+                                                        .build(),
+                                                        V1VolumeMountBuilder()
+                                                                .withName("x-scratch")
+                                                                .withMountPath("$basePath/${scratchVolume.name}")
+                                                                .build(),
+                                                        *volumes.map {
+                                                            V1VolumeMountBuilder()
+                                                                    .withName("u-${it.name}")
+                                                                    .withMountPath("$basePath/${it.name}")
+                                                                    .build()
+                                                        }.toTypedArray())
+                                                .withEnv(V1EnvVarBuilder()
+                                                        .withName("TITAN_PATH")
+                                                        .withValue(basePath)
+                                                        .build())
+                                                .build())
+                                        .withVolumes(V1VolumeBuilder()
+                                                .withName("x-secret")
+                                                .withSecret(V1SecretVolumeSourceBuilder()
+                                                        .withSecretName(metadata.name)
+                                                        .build())
+                                                .build(),
+                                                V1VolumeBuilder()
+                                                        .withName("x-scratch")
+                                                        .withPersistentVolumeClaim(V1PersistentVolumeClaimVolumeSourceBuilder()
+                                                                .withClaimName(scratchVolume.config["pvc"] as String)
+                                                                .build())
+                                                        .build(),
+                                                *volumes.map {
+                                                    V1VolumeBuilder()
+                                                            .withName("u-${it.name}")
+                                                            .withPersistentVolumeClaim(V1PersistentVolumeClaimVolumeSourceBuilder()
+                                                                    .withClaimName(it.config["pvc"] as String)
+                                                                    .build())
+                                                            .build()
+                                                }.toTypedArray()
+                                        )
+                                        .build())
+                                .build())
+                        .withBackoffLimit(1)
+                        .build())
+                .build(), null, null, null)
+    }
+
+    private fun getPodFromJob(name: String): String {
+        val pods = coreApi.listNamespacedPod(namespace, null, null, null, "job-name=$name", null, null, null, null)
+        if (pods.items.size != 1) {
+            throw IllegalStateException("found ${pods.items.size} pods instead of 1 for job $name")
+        }
+        return pods.items[0].metadata.name
+    }
+
+    /**
+     * Get progress entries from the output of the given pod. This will always fetch just the last three seconds of
+     * logs (since we expect to call it once a second), and ignore entries that have been seen before.
+     */
+    private fun getProgressFromPod(name: String, lastIdSeen: Int): List<ProgressEntry> {
+        val status = coreApi.readNamespacedPodStatus(name, namespace, null)
+        if (status.status.phase == "Pending") {
+            return emptyList()
+        }
+
+        val output = coreApi.readNamespacedPodLog(name, namespace, null, null, null, null, null, 3, null, null)
+        if (output == null) {
+            return emptyList()
+        }
+
+        val ret = mutableListOf<ProgressEntry>()
+        for (line in output.lines()) {
+            if (line.trim() == "") {
+                continue
+            }
+            try {
+                val progress = gson.fromJson(line, ProgressEntry::class.java)
+                if (progress.id > lastIdSeen) {
+                    ret.add(progress)
+                }
+            } catch (e: JsonParseException) {
+                // Ignore output we don't understand, such as a stack trace
+            }
+        }
+        return ret
+    }
+
+    /**
+     * Within kubernetes, we need to run the operations in a separate pod in order be able to access the data
+     * volumes. We run this as a Kubernetes Job
+     */
+    override fun syncVolumes(provider: RemoteServer, operation: RemoteOperation, volumes: List<Volume>, scratchVolume: Volume) {
+        val metadata = V1ObjectMetaBuilder()
+                .withName("titan-operation-${operation.operationId}")
+                .build()
+
+        waitForVolumesReady(operation, volumes, scratchVolume)
+        createSecret(provider, operation, volumes, scratchVolume, metadata)
+        createJob(operation, volumes, scratchVolume, metadata)
 
         try {
-            // Now create the job that will run the operation
-            batchApi.createNamespacedJob(namespace, V1JobBuilder()
-                    .withMetadata(metadata)
-                    .withSpec(V1JobSpecBuilder()
-                            .withTemplate(V1PodTemplateSpecBuilder()
-                                    .withMetadata(metadata)
-                                    .withSpec(V1PodSpecBuilder()
-                                            .withRestartPolicy("OnFailure")
-                                            .withContainers(V1ContainerBuilder()
-                                                    .withName("operation")
-                                                    .withImage(image)
-                                                    .withCommand("/titan/kubernetesOperation")
-                                                    .withVolumeMounts(V1VolumeMountBuilder()
-                                                            .withName("x-secret")
-                                                            .withReadOnly(true)
-                                                            .withMountPath("$basePath/_secret")
-                                                            .build(),
-                                                            V1VolumeMountBuilder()
-                                                                    .withName("x-scratch")
-                                                                    .withMountPath("$basePath/${scratchVolume.name}")
-                                                                    .build(),
-                                                            *volumes.map {
-                                                                V1VolumeMountBuilder()
-                                                                        .withName("u-${it.name}")
-                                                                        .withMountPath("$basePath/${it.name}")
-                                                                        .build()
-                                                            }.toTypedArray())
-                                                    .withEnv(V1EnvVarBuilder()
-                                                            .withName("TITAN_PATH")
-                                                            .withValue(basePath)
-                                                            .build())
-                                                    .build())
-                                            .withVolumes(V1VolumeBuilder()
-                                                    .withName("x-secret")
-                                                    .withSecret(V1SecretVolumeSourceBuilder()
-                                                            .withSecretName(metadata.name)
-                                                            .build())
-                                                    .build(),
-                                                    V1VolumeBuilder()
-                                                            .withName("x-scratch")
-                                                            .withPersistentVolumeClaim(V1PersistentVolumeClaimVolumeSourceBuilder()
-                                                                    .withClaimName(scratchVolume.config["pvc"] as String)
-                                                                    .build())
-                                                            .build(),
-                                                    *volumes.map {
-                                                        V1VolumeBuilder()
-                                                                .withName("u-${it.name}")
-                                                                .withPersistentVolumeClaim(V1PersistentVolumeClaimVolumeSourceBuilder()
-                                                                        .withClaimName(it.config["pvc"] as String)
-                                                                        .build())
-                                                                .build()
-                                                    }.toTypedArray()
-                                            )
-                                            .build())
-                                    .build())
-                            .withBackoffLimit(1)
-                            .build())
-                    .build(), null, null, null)
             try {
-                operation.updateProgress(RemoteProgress.END, null, null)
-                val pods = coreApi.listNamespacedPod(namespace, null, null, null, "job-name=${metadata.name}", null, null, null, null)
-                if (pods.items.size != 1) {
-                    throw IllegalStateException("found ${pods.items.size} pods instead of 1 for job ${metadata.name}")
-                }
-                val podName = pods.items[0].metadata.name
-                var complete = false
-                while (!complete) {
+                val podName = getPodFromJob(metadata.name)
+                var jobComplete = false
+                var progressComplete = false
+                var lastId = 0
+                while (!jobComplete) {
                     val job = batchApi.readNamespacedJob(metadata.name, namespace, null, null, null)
                     if (job.status.succeeded == 1) {
-                        complete = true
+                        jobComplete = true
                     }
                     if (job.status.failed == 1) {
                         throw IllegalStateException("job failed unexpectedly")
                     }
 
-                    val status = coreApi.readNamespacedPodStatus(podName, namespace, null)
-                    if (status.status.phase != "ContainerStarting") {
-                        val output = coreApi.readNamespacedPodLog(podName, namespace, null, null, null, null, null, null, null, true)
-                        if (output != null) {
-                            println(output)
+                    val entries = getProgressFromPod(podName, lastId)
+                    for (progress in entries) {
+                        lastId = progress.id
+                        if (progress.type == ProgressEntry.Type.COMPLETE) {
+                            // This is not a real completion but a way of signalling the job finished successfully
+                            progressComplete = true
+                        } else if (progress.type == ProgressEntry.Type.ERROR) {
+                            throw Exception(progress.message)
+                        } else {
+                            val progressType = when (progress.type) {
+                                ProgressEntry.Type.START -> RemoteProgress.START
+                                ProgressEntry.Type.END -> RemoteProgress.END
+                                ProgressEntry.Type.PROGRESS -> RemoteProgress.PROGRESS
+                                ProgressEntry.Type.MESSAGE -> RemoteProgress.MESSAGE
+                                else -> error("invalid progress type ${progress.type}")
+                            }
+                            operation.updateProgress(progressType, progress.message, progress.percent)
                         }
                     }
 
-                    if (!complete) {
+                    if (!jobComplete) {
                         Thread.sleep(1000)
+                    } else if (!progressComplete) {
+                        throw IllegalStateException("job completed but no completion message received")
                     }
                 }
             } finally {

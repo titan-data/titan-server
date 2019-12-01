@@ -338,8 +338,7 @@ class KubernetesCsiContext(private val properties: Map<String, String> = emptyMa
     /**
      * Wait for all the volumes associated with this operation to become ready.
      */
-    private fun waitForVolumesReady(operation: RemoteOperation, volumes: List<Volume>, scratchVolume: Volume) {
-        operation.updateProgress(RemoteProgress.START, "waiting for volumes to be ready", null)
+    private fun waitForVolumesReady(volumes: List<Volume>, scratchVolume: Volume) {
         while (true) {
             val allVolumes = volumes + scratchVolume
             var ready = true
@@ -355,7 +354,6 @@ class KubernetesCsiContext(private val properties: Map<String, String> = emptyMa
             }
             Thread.sleep(1000)
         }
-        operation.updateProgress(RemoteProgress.END, null, null)
     }
 
     /**
@@ -394,13 +392,10 @@ class KubernetesCsiContext(private val properties: Map<String, String> = emptyMa
      * Create the runner job.
      */
     private fun createJob(
-        operation: RemoteOperation,
         volumes: List<Volume>,
         scratchVolume: Volume,
         metadata: V1ObjectMeta
     ) {
-        operation.updateProgress(RemoteProgress.MESSAGE, "running job", null)
-
         val image = properties["titanImage"] ?: error("missing titanImage property")
         val basePath = "/var/titan"
 
@@ -473,21 +468,37 @@ class KubernetesCsiContext(private val properties: Map<String, String> = emptyMa
         return pods.items[0].metadata.name
     }
 
+    private fun isPodReady(name: String): Boolean {
+        try {
+            val status = coreApi.readNamespacedPodStatus(name, namespace, null)
+            if (status.status.phase == "Pending") {
+                return false
+            }
+        } catch (e: ApiException) {
+            if (e.code == 404) {
+                return false
+            }
+            throw e
+        }
+        return true
+    }
+
+    private fun waitForPod(jobName: String) {
+        val podName = getPodFromJob(jobName)
+        while (true) {
+            if (isPodReady(podName))
+                break
+            Thread.sleep(1000)
+        }
+    }
+
     /**
      * Get progress entries from the output of the given pod. This will always fetch just the last three seconds of
      * logs (since we expect to call it once a second), and ignore entries that have been seen before.
      */
     private fun getProgressFromPod(name: String, lastIdSeen: Int): List<ProgressEntry> {
-        try {
-            val status = coreApi.readNamespacedPodStatus(name, namespace, null)
-            if (status.status.phase == "Pending") {
-                return emptyList()
-            }
-        } catch (e: ApiException) {
-            if (e.code == 404) {
-                return emptyList()
-            }
-            throw e
+        if (!isPodReady(name)) {
+            return emptyList()
         }
 
         val output = coreApi.readNamespacedPodLog(name, namespace, null, null, null, null, null, 3, null, null)
@@ -519,9 +530,16 @@ class KubernetesCsiContext(private val properties: Map<String, String> = emptyMa
                 .withName("titan-operation-${operation.operationId}")
                 .build()
 
-        waitForVolumesReady(operation, volumes, scratchVolume)
+        operation.updateProgress(RemoteProgress.START, "Waiting for volumes to be ready", null)
+        waitForVolumesReady(volumes, scratchVolume)
+        operation.updateProgress(RemoteProgress.END, null, null)
+
         createSecret(provider, operation, volumes, scratchVolume, metadata)
-        createJob(operation, volumes, scratchVolume, metadata)
+
+        operation.updateProgress(RemoteProgress.START, "Starting job", null)
+        createJob(volumes, scratchVolume, metadata)
+        waitForPod(metadata.name)
+        operation.updateProgress(RemoteProgress.END, null, null)
 
         try {
             try {

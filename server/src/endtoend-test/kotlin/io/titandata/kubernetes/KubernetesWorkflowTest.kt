@@ -141,7 +141,6 @@ class KubernetesWorkflowTest : KubernetesTest() {
             executor.exec("kubectl", "delete", "pod", "--grace-period=0", "--force", "$uuid-test")
         }
 
-        /*
         "checkout commit" {
             commitApi.checkoutCommit("foo", "id")
         }
@@ -160,7 +159,6 @@ class KubernetesWorkflowTest : KubernetesTest() {
         "delete cloned pod succeeds" {
             executor.exec("kubectl", "delete", "pod", "--grace-period=0", "--force", "$uuid-test2")
         }
-         */
 
         "add s3 remote succeeds" {
             val remote = getRemote()
@@ -174,6 +172,11 @@ class KubernetesWorkflowTest : KubernetesTest() {
 
         "delete commit" {
             commitApi.deleteCommit("foo", "id")
+        }
+
+        "pull original commit succeeds" {
+            val op = operationApi.pull("foo", "origin", "id", params)
+            waitForOperation(op.id)
         }
 
         "delete volume" {

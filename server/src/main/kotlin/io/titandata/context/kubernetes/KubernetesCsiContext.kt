@@ -377,7 +377,7 @@ class KubernetesCsiContext(private val properties: Map<String, String> = emptyMa
                 type = operation.type,
                 scratchVolume = scratchVolume.name,
                 volumes = volumes.map { it.name },
-                volumeDescriptions = volumes.map { it.properties["mountpoint"] as? String ?: it.name }
+                volumeDescriptions = volumes.map { it.properties["path"] as? String ?: it.name }
         )
         val configJson = gson.toJson(kubeOperation)
         log.info("creating secret ${metadata.name}")

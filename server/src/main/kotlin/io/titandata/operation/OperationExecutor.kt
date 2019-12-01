@@ -4,6 +4,8 @@
 
 package io.titandata.operation
 
+import com.google.gson.JsonParser
+import io.kubernetes.client.ApiException
 import io.titandata.ServiceLocator
 import io.titandata.metadata.table.Tags.commit
 import io.titandata.models.Commit
@@ -88,20 +90,20 @@ class OperationExecutor(
         // Get list of current volumes
         val volumes = transaction {
             val vols = services.metadata.listVolumes(operationId)
-            services.metadata.createVolume(operationId, Volume("_scratch"))
+            services.metadata.createVolume(operationId, Volume("x-scratch"))
             vols
         }
 
         // Create scratch volume
-        val scratchConfig = services.context.createVolume(operationId, "_scratch")
+        val scratchConfig = services.context.createVolume(operationId, "x-scratch")
         transaction {
-            services.metadata.updateVolumeConfig(operationId, "_scratch", scratchConfig)
+            services.metadata.updateVolumeConfig(operationId, "x-scratch", scratchConfig)
         }
-        val scratchVolume = Volume("_scratch", emptyMap(), scratchConfig)
+        val scratchVolume = Volume("x-scratch", emptyMap(), scratchConfig)
 
         try {
             // Activate all volumes
-            services.context.activateVolume(operationId, "_scratch", scratchConfig)
+            services.context.activateVolume(operationId, "x-scratch", scratchConfig)
             for (volume in volumes) {
                 services.context.activateVolume(operationId, volume.name, volume.config)
             }
@@ -110,15 +112,15 @@ class OperationExecutor(
             services.context.syncVolumes(provider, operation, volumes, scratchVolume)
         } finally {
             // Deactivate all volumes
-            services.context.deactivateVolume(operationId, "_scratch", scratchConfig)
+            services.context.deactivateVolume(operationId, "x-scratch", scratchConfig)
             for (volume in volumes) {
                 services.context.deactivateVolume(operationId, volume.name, volume.config)
             }
 
             // Delete scratch volume
-            services.context.deleteVolume(operationId, "_scratch", scratchConfig)
+            services.context.deleteVolume(operationId, "x-scratch", scratchConfig)
             transaction {
-                services.metadata.deleteVolume(operationId, "_scratch")
+                services.metadata.deleteVolume(operationId, "x-scratch")
             }
         }
     }
@@ -153,8 +155,22 @@ class OperationExecutor(
             }
             log.info("${operation.type} operation ${operation.id} interrupted", t)
         } catch (t: Throwable) {
+            val message = if (t is ApiException) {
+                val kubeError = try {
+                    val json = JsonParser.parseString(t.responseBody)
+                    // Try to parse API exception message
+                    json.asJsonObject?.get("message")?.asString
+                } catch (e: Throwable) {
+                    // Otherwise just return whole response body
+                    t.responseBody
+                }
+                log.error(kubeError)
+                kubeError
+            } else {
+                t.message
+            }
             transaction {
-                services.metadata.addProgressEntry(operation.id, ProgressEntry(ProgressEntry.Type.FAILED, t.message))
+                services.metadata.addProgressEntry(operation.id, ProgressEntry(ProgressEntry.Type.FAILED, message))
             }
             log.error("${operation.type} operation ${operation.id} failed", t)
         } finally {

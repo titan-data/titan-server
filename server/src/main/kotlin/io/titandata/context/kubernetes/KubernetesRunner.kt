@@ -16,8 +16,8 @@ import java.util.ServiceLoader
  * The runner is passed the base path to the directory tree with the data and configuration. This should look like:
  *
  *      /var/titan/
- *          _secret/config      Operation configuration (serialized KubernetesParameters)
- *          _scratch/           Scratch space
+ *          x-secret/config      Operation configuration (serialized KubernetesParameters)
+ *          x-scratch/           Scratch space
  *          <volume>/           One or more volumes
  *
  * Progress reporting is sent to the console as a JSON data (KubernetesProgress). The KubernetesCsiContext driver will
@@ -100,7 +100,7 @@ fun main(args: Array<String>) {
     val gson = GsonBuilder().create()
 
     val basePath = System.getProperty("basePath") ?: error("missing basePath property")
-    val operation = gson.fromJson(FileReader("$basePath/_secret/config"), KubernetesOperation::class.java)
+    val operation = gson.fromJson(FileReader("$basePath/x-secret/config"), KubernetesOperation::class.java)
 
     val runner = KubernetesRunner()
     try {

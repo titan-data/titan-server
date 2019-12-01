@@ -123,7 +123,7 @@ class OperationExecutorTest : StringSpec() {
 
         "sync data for pull succeeds" {
             every { context.createVolume(any(), any()) } returns mapOf("mountpoint" to "/mountpoint")
-            every { context.createVolume(any(), "_scratch") } returns mapOf("mountpoint" to "/scratch")
+            every { context.createVolume(any(), "x-scratch") } returns mapOf("mountpoint" to "/scratch")
 
             val data = createOperation()
             val executor = getExecutor(data)
@@ -131,20 +131,20 @@ class OperationExecutorTest : StringSpec() {
             executor.syncData(services.remoteProvider("nop"), remoteOperation)
 
             verify {
-                context.activateVolume(data.operation.id, "_scratch", mapOf("mountpoint" to "/scratch"))
+                context.activateVolume(data.operation.id, "x-scratch", mapOf("mountpoint" to "/scratch"))
                 context.activateVolume(data.operation.id, "volume", mapOf("mountpoint" to "/mountpoint"))
-                context.deactivateVolume(data.operation.id, "_scratch", mapOf("mountpoint" to "/scratch"))
+                context.deactivateVolume(data.operation.id, "x-scratch", mapOf("mountpoint" to "/scratch"))
                 context.deactivateVolume(data.operation.id, "volume", mapOf("mountpoint" to "/mountpoint"))
-                context.createVolume(data.operation.id, "_scratch")
-                context.deleteVolume(data.operation.id, "_scratch", mapOf("mountpoint" to "/scratch"))
+                context.createVolume(data.operation.id, "x-scratch")
+                context.deleteVolume(data.operation.id, "x-scratch", mapOf("mountpoint" to "/scratch"))
                 context.syncVolumes(any(), any(), listOf(Volume("volume", emptyMap(), mapOf("mountpoint" to "/mountpoint"))),
-                        Volume("_scratch", emptyMap(), mapOf("mountpoint" to "/scratch")))
+                        Volume("x-scratch", emptyMap(), mapOf("mountpoint" to "/scratch")))
             }
         }
 
         "sync data for push succeeds" {
             every { context.createVolume(any(), any()) } returns mapOf("mountpoint" to "/mountpoint")
-            every { context.createVolume(any(), "_scratch") } returns mapOf("mountpoint" to "/scratch")
+            every { context.createVolume(any(), "x-scratch") } returns mapOf("mountpoint" to "/scratch")
 
             val data = createOperation(Operation.Type.PUSH)
             val executor = getExecutor(data)
@@ -152,20 +152,20 @@ class OperationExecutorTest : StringSpec() {
             executor.syncData(services.remoteProvider("nop"), remoteOperation)
 
             verify {
-                context.activateVolume(data.operation.id, "_scratch", mapOf("mountpoint" to "/scratch"))
+                context.activateVolume(data.operation.id, "x-scratch", mapOf("mountpoint" to "/scratch"))
                 context.activateVolume(data.operation.id, "volume", mapOf("mountpoint" to "/mountpoint"))
-                context.deactivateVolume(data.operation.id, "_scratch", mapOf("mountpoint" to "/scratch"))
+                context.deactivateVolume(data.operation.id, "x-scratch", mapOf("mountpoint" to "/scratch"))
                 context.deactivateVolume(data.operation.id, "volume", mapOf("mountpoint" to "/mountpoint"))
-                context.createVolume(data.operation.id, "_scratch")
-                context.deleteVolume(data.operation.id, "_scratch", mapOf("mountpoint" to "/scratch"))
+                context.createVolume(data.operation.id, "x-scratch")
+                context.deleteVolume(data.operation.id, "x-scratch", mapOf("mountpoint" to "/scratch"))
                 context.syncVolumes(any(), any(), listOf(Volume("volume", emptyMap(), mapOf("mountpoint" to "/mountpoint"))),
-                        Volume("_scratch", emptyMap(), mapOf("mountpoint" to "/scratch")))
+                        Volume("x-scratch", emptyMap(), mapOf("mountpoint" to "/scratch")))
             }
         }
 
         "pull operation succeeds" {
             every { context.createVolume(any(), any()) } returns mapOf("mountpoint" to "/mountpoint")
-            every { context.createVolume(any(), "_scratch") } returns mapOf("mountpoint" to "/scratch")
+            every { context.createVolume(any(), "x-scratch") } returns mapOf("mountpoint" to "/scratch")
 
             val data = createOperation(Operation.Type.PULL)
             val executor = getExecutor(data)
@@ -175,7 +175,7 @@ class OperationExecutorTest : StringSpec() {
 
             verify {
                 context.syncVolumes(any(), any(), listOf(Volume("volume", emptyMap(), mapOf("mountpoint" to "/mountpoint"))),
-                        Volume("_scratch", emptyMap(), mapOf("mountpoint" to "/scratch")))
+                        Volume("x-scratch", emptyMap(), mapOf("mountpoint" to "/scratch")))
                 context.commitVolumeSet(data.operation.id, "id")
                 context.commitVolume(data.operation.id, "id", "volume", mapOf("mountpoint" to "/mountpoint"))
             }
@@ -183,7 +183,7 @@ class OperationExecutorTest : StringSpec() {
 
         "push operation succeeds" {
             every { context.createVolume(any(), any()) } returns mapOf("mountpoint" to "/mountpoint")
-            every { context.createVolume(any(), "_scratch") } returns mapOf("mountpoint" to "/scratch")
+            every { context.createVolume(any(), "x-scratch") } returns mapOf("mountpoint" to "/scratch")
 
             transaction {
                 services.metadata.createCommit("foo", vs, Commit("id"))
@@ -197,13 +197,13 @@ class OperationExecutorTest : StringSpec() {
 
             verify {
                 context.syncVolumes(any(), any(), listOf(Volume("volume", emptyMap(), mapOf("mountpoint" to "/mountpoint"))),
-                        Volume("_scratch", emptyMap(), mapOf("mountpoint" to "/scratch")))
+                        Volume("x-scratch", emptyMap(), mapOf("mountpoint" to "/scratch")))
             }
         }
 
         "interrupted operation is aborted" {
             every { context.createVolume(any(), any()) } returns mapOf("mountpoint" to "/mountpoint")
-            every { context.createVolume(any(), "_scratch") } returns mapOf("mountpoint" to "/scratch")
+            every { context.createVolume(any(), "x-scratch") } returns mapOf("mountpoint" to "/scratch")
             every { context.syncVolumes(any(), any(), any(), any()) } throws InterruptedException()
 
             val data = createOperation(Operation.Type.PULL)
@@ -213,11 +213,11 @@ class OperationExecutorTest : StringSpec() {
             services.operations.getOperation(vs).state shouldBe Operation.State.ABORTED
 
             verify {
-                context.deactivateVolume(data.operation.id, "_scratch", mapOf("mountpoint" to "/scratch"))
+                context.deactivateVolume(data.operation.id, "x-scratch", mapOf("mountpoint" to "/scratch"))
                 context.deactivateVolume(data.operation.id, "volume", mapOf("mountpoint" to "/mountpoint"))
-                context.deleteVolume(data.operation.id, "_scratch", mapOf("mountpoint" to "/scratch"))
+                context.deleteVolume(data.operation.id, "x-scratch", mapOf("mountpoint" to "/scratch"))
                 context.syncVolumes(any(), any(), listOf(Volume("volume", emptyMap(), mapOf("mountpoint" to "/mountpoint"))),
-                        Volume("_scratch", emptyMap(), mapOf("mountpoint" to "/scratch")))
+                        Volume("x-scratch", emptyMap(), mapOf("mountpoint" to "/scratch")))
             }
 
             shouldThrow<NoSuchObjectException> {
@@ -227,7 +227,7 @@ class OperationExecutorTest : StringSpec() {
 
         "failed operation is marked failed" {
             every { context.createVolume(any(), any()) } returns mapOf("mountpoint" to "/mountpoint")
-            every { context.createVolume(any(), "_scratch") } returns mapOf("mountpoint" to "/scratch")
+            every { context.createVolume(any(), "x-scratch") } returns mapOf("mountpoint" to "/scratch")
             every { context.syncVolumes(any(), any(), any(), any()) } throws Exception()
 
             val data = createOperation(Operation.Type.PULL)
@@ -237,11 +237,11 @@ class OperationExecutorTest : StringSpec() {
             services.operations.getOperation(vs).state shouldBe Operation.State.FAILED
 
             verify {
-                context.deactivateVolume(data.operation.id, "_scratch", mapOf("mountpoint" to "/scratch"))
+                context.deactivateVolume(data.operation.id, "x-scratch", mapOf("mountpoint" to "/scratch"))
                 context.deactivateVolume(data.operation.id, "volume", mapOf("mountpoint" to "/mountpoint"))
-                context.deleteVolume(data.operation.id, "_scratch", mapOf("mountpoint" to "/scratch"))
+                context.deleteVolume(data.operation.id, "x-scratch", mapOf("mountpoint" to "/scratch"))
                 context.syncVolumes(any(), any(), listOf(Volume("volume", emptyMap(), mapOf("mountpoint" to "/mountpoint"))),
-                        Volume("_scratch", emptyMap(), mapOf("mountpoint" to "/scratch")))
+                        Volume("x-scratch", emptyMap(), mapOf("mountpoint" to "/scratch")))
             }
 
             shouldThrow<NoSuchObjectException> {

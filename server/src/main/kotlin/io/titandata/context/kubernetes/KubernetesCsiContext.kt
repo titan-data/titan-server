@@ -4,6 +4,7 @@ import com.google.gson.GsonBuilder
 import com.google.gson.JsonObject
 import com.google.gson.JsonParseException
 import com.google.gson.JsonParser
+import io.kubernetes.client.ApiException
 import io.kubernetes.client.Configuration.setDefaultApiClient
 import io.kubernetes.client.apis.BatchV1Api
 import io.kubernetes.client.apis.CoreV1Api
@@ -378,7 +379,7 @@ class KubernetesCsiContext(private val properties: Map<String, String> = emptyMa
                 type = operation.type,
                 scratchVolume = scratchVolume.name,
                 volumes = volumes.map { it.name },
-                volumeDescriptions = volumes.map { it.config["mountpoint"] as? String ?: error("missing mountpoint for volume ${it.name}") }
+                volumeDescriptions = volumes.map { it.properties["mountpoint"] as? String ?: it.name }
         )
         val configJson = gson.toJson(kubeOperation)
         log.info("creating secret ${metadata.name}")
@@ -419,15 +420,15 @@ class KubernetesCsiContext(private val properties: Map<String, String> = emptyMa
                                                 .withVolumeMounts(V1VolumeMountBuilder()
                                                         .withName("x-secret")
                                                         .withReadOnly(true)
-                                                        .withMountPath("$basePath/_secret")
+                                                        .withMountPath("$basePath/x-secret")
                                                         .build(),
                                                         V1VolumeMountBuilder()
-                                                                .withName("x-scratch")
+                                                                .withName(scratchVolume.name)
                                                                 .withMountPath("$basePath/${scratchVolume.name}")
                                                                 .build(),
                                                         *volumes.map {
                                                             V1VolumeMountBuilder()
-                                                                    .withName("u-${it.name}")
+                                                                    .withName(it.name)
                                                                     .withMountPath("$basePath/${it.name}")
                                                                     .build()
                                                         }.toTypedArray())
@@ -443,14 +444,14 @@ class KubernetesCsiContext(private val properties: Map<String, String> = emptyMa
                                                         .build())
                                                 .build(),
                                                 V1VolumeBuilder()
-                                                        .withName("x-scratch")
+                                                        .withName(scratchVolume.name)
                                                         .withPersistentVolumeClaim(V1PersistentVolumeClaimVolumeSourceBuilder()
                                                                 .withClaimName(scratchVolume.config["pvc"] as String)
                                                                 .build())
                                                         .build(),
                                                 *volumes.map {
                                                     V1VolumeBuilder()
-                                                            .withName("u-${it.name}")
+                                                            .withName(it.name)
                                                             .withPersistentVolumeClaim(V1PersistentVolumeClaimVolumeSourceBuilder()
                                                                     .withClaimName(it.config["pvc"] as String)
                                                                     .build())
@@ -477,15 +478,20 @@ class KubernetesCsiContext(private val properties: Map<String, String> = emptyMa
      * logs (since we expect to call it once a second), and ignore entries that have been seen before.
      */
     private fun getProgressFromPod(name: String, lastIdSeen: Int): List<ProgressEntry> {
-        val status = coreApi.readNamespacedPodStatus(name, namespace, null)
-        if (status.status.phase == "Pending") {
-            return emptyList()
+        try {
+            val status = coreApi.readNamespacedPodStatus(name, namespace, null)
+            if (status.status.phase == "Pending") {
+                return emptyList()
+            }
+        } catch (e: ApiException) {
+            if (e.code == 404) {
+                return emptyList()
+            }
+            throw e
         }
 
         val output = coreApi.readNamespacedPodLog(name, namespace, null, null, null, null, null, 3, null, null)
-        if (output == null) {
-            return emptyList()
-        }
+                ?: return emptyList()
 
         val ret = mutableListOf<ProgressEntry>()
         for (line in output.lines()) {
@@ -529,6 +535,15 @@ class KubernetesCsiContext(private val properties: Map<String, String> = emptyMa
                         jobComplete = true
                     }
                     if (job.status.failed == 1) {
+                        try {
+                            // Try to log what we can
+                            val output = coreApi.readNamespacedPodLog(podName, namespace, null, null, null, null, null, null, null, null)
+                            if (output != null) {
+                                log.error(output)
+                            }
+                        } catch (t: Throwable) {
+                            // Ignore
+                        }
                         throw IllegalStateException("job failed unexpectedly")
                     }
 

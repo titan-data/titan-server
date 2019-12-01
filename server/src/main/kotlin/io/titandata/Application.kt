@@ -28,6 +28,7 @@ import io.ktor.routing.Routing
 import io.ktor.server.cio.CIO
 import io.ktor.server.engine.embeddedServer
 import io.ktor.util.KtorExperimentalAPI
+import io.kubernetes.client.ApiException
 import io.titandata.apis.CommitsApi
 import io.titandata.apis.ContextApi
 import io.titandata.apis.DockerVolumeApi
@@ -43,6 +44,7 @@ import io.titandata.models.Error
 import io.titandata.models.docker.DockerVolumeResponse
 import java.io.PrintWriter
 import java.io.StringWriter
+import org.slf4j.LoggerFactory
 import org.slf4j.event.Level
 
 fun exceptionToError(request: ApplicationRequest, t: Throwable): Any {
@@ -111,6 +113,7 @@ fun Application.main() {
 
 @KtorExperimentalAPI
 fun Application.mainProvider(services: ServiceLocator) {
+    val log = LoggerFactory.getLogger(Application::class.java)
     install(DefaultHeaders)
     val gsonConverter = GsonConverter(GsonBuilder().create())
     install(ContentNegotiation) {
@@ -148,6 +151,11 @@ fun Application.mainProvider(services: ServiceLocator) {
         exception<JsonSyntaxException> { cause ->
             call.respond(HttpStatusCode.BadRequest, exceptionToError(call.request, cause))
             call.application.log.info(cause.message)
+        }
+        exception<ApiException> { cause ->
+            // Kubernetes API exceptions don't often provide useful messages, so log the response body instead
+            call.respond(HttpStatusCode.InternalServerError, exceptionToError(call.request, cause))
+            log.error(cause.responseBody, cause)
         }
         exception<Throwable> { cause ->
             call.respond(HttpStatusCode.InternalServerError, exceptionToError(call.request, cause))

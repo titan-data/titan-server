@@ -260,7 +260,7 @@ class DockerZfsContextTest : StringSpec() {
             val op = createRemoteOperation()
             context.syncVolumes(nopProvider, op,
                     listOf(Volume("vol", mapOf("path" to "/path"), mapOf("mountpoint" to "/vol"))),
-                    Volume("_scratch", emptyMap(), mapOf("mountpoint" to "/scratch")))
+                    Volume("x-scratch", emptyMap(), mapOf("mountpoint" to "/scratch")))
             verify {
                 nopProvider.syncDataStart(op)
                 nopProvider.syncDataEnd(op, any(), true)
@@ -274,7 +274,7 @@ class DockerZfsContextTest : StringSpec() {
             shouldThrow<Exception> {
                 context.syncVolumes(nopProvider, op,
                         listOf(Volume("vol", mapOf("path" to "/path"), mapOf("mountpoint" to "/vol"))),
-                        Volume("_scratch", emptyMap(), mapOf("mountpoint" to "/scratch")))
+                        Volume("x-scratch", emptyMap(), mapOf("mountpoint" to "/scratch")))
             }
             verify {
                 nopProvider.syncDataEnd(op, any(), false)

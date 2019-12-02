@@ -4,6 +4,11 @@ import io.kotlintest.matchers.string.shouldContain
 import io.kotlintest.shouldBe
 import io.kotlintest.shouldThrow
 import io.kubernetes.client.ApiException
+import io.titandata.models.Volume
+import io.titandata.remote.RemoteOperation
+import io.titandata.remote.RemoteOperationType
+import io.titandata.remote.RemoteProgress
+import io.titandata.remote.nop.server.NopRemoteServer
 import io.titandata.shell.CommandException
 import java.util.UUID
 
@@ -43,6 +48,20 @@ class KubernetesContextTest : KubernetesTest() {
 
         "delete pod succeeds" {
             executor.exec("kubectl", "delete", "pod", "--grace-period=0", "--force", "$vs-test")
+        }
+
+        "syncVolumes succeeds" {
+            val provider = NopRemoteServer()
+            val operation = RemoteOperation(
+                    updateProgress = { _: RemoteProgress, _: String?, _: Int? -> Unit },
+                    operationId = vs,
+                    commitId = "commit",
+                    commit = emptyMap(),
+                    remote = emptyMap(),
+                    parameters = emptyMap(),
+                    type = RemoteOperationType.PUSH
+            )
+            context.syncVolumes(provider, operation, emptyList(), Volume("test", emptyMap(), volumeConfig))
         }
 
         "clone volume succeeds" {

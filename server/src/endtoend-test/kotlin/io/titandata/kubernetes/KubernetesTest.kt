@@ -24,7 +24,19 @@ abstract class KubernetesTest : EndToEndTest("kubernetes-csi") {
     internal val executor = CommandExecutor()
 
     init {
-        context = KubernetesCsiContext()
+        val config = if (System.getProperty("kubernetes.config") != null) {
+            val configValues = System.getProperty("kubernetes.config")
+            val configMap = mutableMapOf<String, String>()
+            for (nameval in configValues.split(",")) {
+                val name = nameval.substringBefore("=")
+                val value = nameval.substringAfter("=")
+                configMap[name] = value
+            }
+            configMap
+        } else {
+            emptyMap<String, String>()
+        }
+        context = KubernetesCsiContext(config)
         coreApi = CoreV1Api()
     }
 

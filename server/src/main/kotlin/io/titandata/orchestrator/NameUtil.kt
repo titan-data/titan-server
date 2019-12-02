@@ -18,6 +18,10 @@ import java.util.UUID
  * For our names, we take the subset of those two groups (basically the kubernetes restrictions), but limit them to
  * 63 characters. 253 is just way more than we reasonably need, and by limiting it to 63 we can ensure that we can
  * concatenate multiple names and still remain under that 253 limit.
+ *
+ * There are time when we need special volume names that won't conflict with any user-defined volumes. However, they
+ * must remain otherwise valid volume names (lest we're unable to use them in kubernetes names, for example). So we
+ * reserve the "x-" namespace and don't allow
  */
 class NameUtil {
 
@@ -52,6 +56,9 @@ class NameUtil {
 
         fun validateVolumeName(volumeName: String) {
             validateCommon(volumeName, "volume")
+            if (volumeName.startsWith("x-")) {
+                throw IllegalArgumentException("invalid volume name, cannot start with 'x-'")
+            }
         }
 
         fun validateOperationId(operationId: String) {

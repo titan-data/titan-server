@@ -5,13 +5,14 @@
 # docker containers or kubernetes pods. The behavior is controlled via the TITAN_CONTEXT environemnt variable.
 # We currently support two contexts:
 #
-#   docker-zfs      Controls local containers on your laptops, backing storage via ZFS. The TITAN_POOL
-#                   environment variable must be set, and the container must be run via the 'launch' script
-#                   to ensure that ZFS is properly configured.
+#   docker-zfs      Controls local containers on your laptops, backing storage via ZFS. The TITAN_IDENTITY
+#                   environment variable must be set, which must also match the name of the corresponding storage
+#                   pool, and the container must be run via the 'launch' script to ensure that ZFS is properly
+#                   configured.
 #
 #   kubernetes-csi  Controls remote containers running in a kubernetes cluster, backing storage via a CSI
-#                   driver. The TITAN_DATA variable must be set to determine where to place the persistent
-#                   database in /var/lib/$TITAN_DATA, which should be backed by a persistent volume. Unlike
+#                   driver. The TITAN_IDENTITY variable must be set to determine where to place the persistent
+#                   database in /var/lib/$TITAN_IDENTITY, which should be backed by a persistent volume. Unlike
 #                   the docker-zfs context, the server doesn't need to be run via 'launch', and can operate
 #                   in any docker environment even if kernel ZFS support isn't present. Additional context
 #                   can be passed through the TITAN_CONFIG variable, which is a list of name=value pairs,
@@ -30,11 +31,11 @@ function log_error {
 #
 function mount_database() {
   local db_dir=$1
-  mount | grep ^$TITAN_POOL/db > /dev/null
+  mount | grep ^$TITAN_IDENTITY/db > /dev/null
   if [[ $? != 0 ]]; then
-    echo "Mounting $TITAN_POOL/db at $db_dir"
+    echo "Mounting $TITAN_IDENTITY/db at $db_dir"
     mkdir -p $db_dir
-    mount -t zfs $TITAN_POOL/db $db_dir || log_error "failed to mount database directory"
+    mount -t zfs $TITAN_IDENTITY/db $db_dir || log_error "failed to mount database directory"
   fi
 }
 
@@ -68,25 +69,21 @@ function start_database() {
 # Check that our context is configured correctly
 #
 [[ -z $TITAN_CONTEXT ]] && log_error "TITAN_CONTEXT must be set"
+[[ -z $TITAN_IDENTITY ]] && log_error "TITAN_IDENTITY must be set"
 
 #
 # Check or configure any context-specific configuration.
 #
+DB_DIR=/var/lib/$TITAN_IDENTITY/mnt/_db
 if [[ $TITAN_CONTEXT = "docker-zfs" ]]; then
-  [[ -z $TITAN_POOL ]] && log_error "TITAN_POOL must be set"
-  DB_DIR=/var/lib/$TITAN_POOL/mnt/_db
-
   mount_database $DB_DIR
   start_database $DB_DIR
 
   # Run socat to pipe from unix socket to server port
-  socat -v -d -lf /var/log/socat.log UNIX-LISTEN:/run/docker/plugins/$IDENTITY.sock,reuseaddr,fork TCP:localhost:5001 2>/var/log/socat.trace &
+  socat -v -d -lf /var/log/socat.log UNIX-LISTEN:/run/docker/plugins/$TITAN_IDENTITY.sock,reuseaddr,fork TCP:localhost:5001 2>/var/log/socat.trace &
 
-  exec java -Dtitan.context=$TITAN_CONTEXT -Dtitan.pool=$TITAN_POOL -jar /titan/titan-server.jar
+  exec java -Dtitan.context=$TITAN_CONTEXT -Dtitan.contextConfig=pool=$TITAN_IDENTITY -jar /titan/titan-server.jar
 elif [[ $TITAN_CONTEXT = "kubernetes-csi" ]]; then
-  [[ -z $TITAN_DATA ]] && log_error "TITAN_DATA must be set"
-  DB_DIR=/var/lib/$TITAN_DATA/mnt/_db
-
   start_database $DB_DIR
 
   exec java -Dtitan.context=$TITAN_CONTEXT -Dtitan.contextConfig=$TITAN_CONFIG -jar /titan/titan-server.jar

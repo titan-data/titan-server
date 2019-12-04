@@ -41,7 +41,7 @@ import org.jetbrains.exposed.sql.transactions.transaction
 class RepositoriesApiTest : StringSpec() {
 
     @MockK
-    var context = DockerZfsContext("test")
+    var context = DockerZfsContext(mapOf("pool" to "test"))
 
     @InjectMockKs
     @OverrideMockKs

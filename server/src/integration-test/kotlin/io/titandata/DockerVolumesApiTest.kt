@@ -42,7 +42,7 @@ class DockerVolumesApiTest : StringSpec() {
     lateinit var vs: String
 
     @MockK
-    var context = DockerZfsContext("test")
+    var context = DockerZfsContext(mapOf("pool" to "test"))
 
     @InjectMockKs
     @OverrideMockKs

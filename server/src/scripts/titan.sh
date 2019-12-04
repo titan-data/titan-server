@@ -129,7 +129,7 @@ function launch_server() {
       -v /run/docker/plugins:/run/docker/plugins \
       -v $mount:$mount:rshared \
       -e TITAN_CONTEXT=docker-zfs \
-      -e TITAN_POOL=$pool \
+      -e TITAN_IDENTITY=$identity \
       -p $port:5001 \
       --network $identity \
       $image \

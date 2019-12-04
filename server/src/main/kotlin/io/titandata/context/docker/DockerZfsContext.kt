@@ -24,9 +24,9 @@ import org.slf4j.LoggerFactory
  *      pool/data/volumeSet@commit      Recursive snapshot of a particular commit
  *      pool/data/volumeSet/volume      Volume within a volume set
  */
-class DockerZfsContext(
-    val poolName: String = "titan"
-) : RuntimeContext {
+class DockerZfsContext(private val properties: Map<String, String> = emptyMap()) : RuntimeContext {
+
+    val poolName = properties.get("pool") ?: "titan"
 
     companion object {
         val log = LoggerFactory.getLogger(DockerZfsContext::class.java)
@@ -39,7 +39,7 @@ class DockerZfsContext(
     }
 
     override fun getProperties(): Map<String, String> {
-        return mapOf("pool" to poolName)
+        return properties
     }
 
     /**
@@ -217,7 +217,7 @@ class DockerZfsContext(
         try {
             executor.exec("umount", config["mountpoint"] as String)
         } catch (e: CommandException) {
-            if ("not mounted" in e.output) {
+            if ("not mounted" in e.output || "no mount point specified" in e.output) {
                 return // Ignore
             } else if ("target is busy" in e.output) {
                 try {

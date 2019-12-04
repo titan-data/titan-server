@@ -52,7 +52,7 @@ import org.jetbrains.exposed.sql.transactions.transaction
 class OperationsApiTest : StringSpec() {
 
     @SpyK
-    var context = DockerZfsContext("test")
+    var context = DockerZfsContext(mapOf("pool" to "test"))
 
     lateinit var vs1: String
     lateinit var vs2: String

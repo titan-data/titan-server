@@ -38,7 +38,7 @@ class DockerZfsContextTest : StringSpec() {
 
     @InjectMockKs
     @OverrideMockKs
-    private var context = DockerZfsContext("test")
+    private var context = DockerZfsContext(mapOf("pool" to "test"))
 
     override fun beforeTest(testCase: TestCase) {
         return MockKAnnotations.init(this)

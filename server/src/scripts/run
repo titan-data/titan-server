@@ -1,4 +1,7 @@
 #!/bin/bash
+#
+# Copyright The Titan Project Contributors.
+#
 
 #
 # Main entry point for the titan server. This server can be run in different contexts, such as managing local

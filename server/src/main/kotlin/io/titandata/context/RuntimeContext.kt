@@ -19,6 +19,7 @@ interface RuntimeContext {
     fun deleteVolumeSet(volumeSet: String)
     fun deleteVolumeSetCommit(volumeSet: String, commitId: String)
     fun commitVolumeSet(volumeSet: String, commitId: String)
+    fun getVolumePrefix(): String
 
     fun getCommitStatus(volumeSet: String, commitId: String, volumeNames: List<String>): CommitStatus
 

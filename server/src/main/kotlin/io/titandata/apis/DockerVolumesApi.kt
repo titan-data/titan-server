@@ -27,21 +27,25 @@ import io.titandata.models.docker.DockerVolumeResponse
 fun Route.DockerVolumeApi(services: ServiceLocator) {
 
     /**
-     * Volumes names are expressed as "repo/vol". This is a helper method to separate the
+     * Volumes names are expressed as "context/repo/vol". This is a helper method to separate the
      * repository name and the volume name, throwing an exception if it's not well formed.
+     * We ignore the context portion here, it's assumed that the client has requested the volume relevant to
+     * their driver. The context is just used to create a unique name so two different contexts can share the
+     * same repository.
      */
     fun getVolumeName(name: String?): Pair<String, String> {
         name ?: throw IllegalArgumentException("volume name must be specified")
         val components = name.split("/")
-        if (components.size != 2) {
+        if (components.size != 3) {
             throw IllegalArgumentException("volume must name be of the form 'repository/volume'")
         }
-        return Pair(components[0], components[1])
+        return Pair(components[1], components[2])
     }
 
     fun convertVolume(repo: String, volume: Volume): DockerVolume {
+        val prefix = services.context.getVolumePrefix()
         return DockerVolume(
-                name = "$repo/${volume.name}",
+                name = "$prefix/$repo/${volume.name}",
                 properties = volume.properties,
                 mountpoint = volume.config["mountpoint"] as String,
                 status = mapOf<String, Any>()
@@ -75,7 +79,7 @@ fun Route.DockerVolumeApi(services: ServiceLocator) {
             val request = call.receive(DockerVolumeRequest::class)
             val (repo, volname) = getVolumeName(request.name)
             val result = convertVolume(repo, services.volumes.getVolume(repo, volname))
-            call.respond(DockerVolumeGetResponse(volume = result.copy(name = "$repo/$volname")))
+            call.respond(DockerVolumeGetResponse(volume = result))
         }
     }
 

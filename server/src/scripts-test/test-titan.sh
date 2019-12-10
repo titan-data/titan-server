@@ -1,4 +1,7 @@
 #!/usr/bin/env bats
+#
+# Copyright The Titan Project Contributors.
+#
 
 titan_script=/test/src/scripts/titan.sh
 util_script=/test/src/scripts/util.sh

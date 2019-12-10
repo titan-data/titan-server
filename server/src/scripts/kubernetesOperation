@@ -1,4 +1,7 @@
 #!/bin/bash
+#
+# Copyright The Titan Project Contributors.
+#
 
 #
 # Entry point for running a kubernetes operation. See KubernetesRunner for how this works. We expect the TITAN_PATH

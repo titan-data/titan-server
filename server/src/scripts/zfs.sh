@@ -1,4 +1,7 @@
 #!/bin/bash
+#
+# Copyright The Titan Project Contributors.
+#
 
 #
 # Minimum ZFS version. Starting in version 0.8.0, the community is going to attempt to maintain

@@ -1,4 +1,7 @@
 #!/bin/bash
+#
+# Copyright The Titan Project Contributors.
+#
 
 #
 # This script will teardown any underlying ZFS infrastructure that we may have installed on the

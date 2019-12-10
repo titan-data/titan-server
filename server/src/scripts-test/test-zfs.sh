@@ -1,4 +1,7 @@
 #!/usr/bin/env bats
+#
+# Copyright The Titan Project Contributors.
+#
 
 zfs_script=/test/src/scripts/zfs.sh
 util_script=/test/src/scripts/util.sh

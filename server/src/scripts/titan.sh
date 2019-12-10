@@ -1,4 +1,7 @@
 #!/bin/bash
+#
+# Copyright The Titan Project Contributors.
+#
 
 #
 # Get the desired size of the pool. Since the pool will be built on a sparse file, this is really

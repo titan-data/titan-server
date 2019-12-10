@@ -85,7 +85,7 @@ class DockerVolumesApiTest : StringSpec() {
         "create volume succeeds" {
             every { context.createVolume(any(), any()) } returns emptyMap()
             with(engine.handleRequest(HttpMethod.Post, "/VolumeDriver.Create") {
-                setBody("{\"Name\":\"foo/vol\",\"Opts\":{\"a\":\"b\"}}")
+                setBody("{\"Name\":\"test/foo/vol\",\"Opts\":{\"a\":\"b\"}}")
             }) {
                 response.status() shouldBe HttpStatusCode.OK
                 response.contentType().toString() shouldBe "application/json; charset=UTF-8"
@@ -99,7 +99,7 @@ class DockerVolumesApiTest : StringSpec() {
 
         "create volume for unknown repo fails" {
             with(engine.handleRequest(HttpMethod.Post, "/VolumeDriver.Create") {
-                setBody("{\"Name\":\"bar/vol\",\"Opts\":{\"a\":\"b\"}}")
+                setBody("{\"Name\":\"test/bar/vol\",\"Opts\":{\"a\":\"b\"}}")
             }) {
                 response.status() shouldBe HttpStatusCode.NotFound
                 response.contentType().toString() shouldBe "application/json; charset=UTF-8"
@@ -136,7 +136,7 @@ class DockerVolumesApiTest : StringSpec() {
                 services.metadata.createVolume(vs, Volume("vol"))
             }
             with(engine.handleRequest(HttpMethod.Post, "/VolumeDriver.Remove") {
-                setBody("{\"Name\":\"foo/vol\"}")
+                setBody("{\"Name\":\"test/foo/vol\"}")
             }) {
                 response.status() shouldBe HttpStatusCode.OK
                 response.contentType().toString() shouldBe "application/json; charset=UTF-8"
@@ -150,7 +150,7 @@ class DockerVolumesApiTest : StringSpec() {
             }
             every { context.activateVolume(any(), any(), any()) } just Runs
             with(engine.handleRequest(HttpMethod.Post, "/VolumeDriver.Mount") {
-                setBody("{\"Name\":\"foo/vol\"}")
+                setBody("{\"Name\":\"test/foo/vol\"}")
             }) {
                 response.status() shouldBe HttpStatusCode.OK
                 response.contentType().toString() shouldBe "application/json; charset=UTF-8"
@@ -168,7 +168,7 @@ class DockerVolumesApiTest : StringSpec() {
             }
             every { context.deactivateVolume(any(), any(), any()) } just Runs
             with(engine.handleRequest(HttpMethod.Post, "/VolumeDriver.Unmount") {
-                setBody("{\"Name\":\"foo/vol\"}")
+                setBody("{\"Name\":\"test/foo/vol\"}")
             }) {
                 response.status() shouldBe HttpStatusCode.OK
                 response.contentType().toString() shouldBe "application/json; charset=UTF-8"
@@ -185,7 +185,7 @@ class DockerVolumesApiTest : StringSpec() {
                 services.metadata.createVolume(vs, Volume(name = "vol", config = mapOf("mountpoint" to "/mountpoint")))
             }
             with(engine.handleRequest(HttpMethod.Post, "/VolumeDriver.Path") {
-                setBody("{\"Name\":\"foo/vol\"}")
+                setBody("{\"Name\":\"test/foo/vol\"}")
             }) {
                 response.status() shouldBe HttpStatusCode.OK
                 response.contentType().toString() shouldBe "application/json; charset=UTF-8"
@@ -194,17 +194,18 @@ class DockerVolumesApiTest : StringSpec() {
         }
 
         "get volume succeeds" {
+            every { context.getVolumePrefix() } returns "test"
             transaction {
                 services.metadata.createVolume(vs, Volume(name = "vol", properties = mapOf("a" to "b"), config = mapOf("mountpoint" to "/mountpoint")))
             }
             with(engine.handleRequest(HttpMethod.Post, "/VolumeDriver.Get") {
-                setBody("{\"Name\":\"foo/vol\"}")
+                setBody("{\"Name\":\"test/foo/vol\"}")
             }) {
                 response.status() shouldBe HttpStatusCode.OK
                 response.contentType().toString() shouldBe "application/json; charset=UTF-8"
                 response.content shouldBe "{\"Err\":\"\"," +
                         "\"Volume\":{" +
-                        "\"Name\":\"foo/vol\"," +
+                        "\"Name\":\"test/foo/vol\"," +
                         "\"Mountpoint\":\"/mountpoint\"," +
                         "\"Status\":{}," +
                         "\"properties\":{\"a\":\"b\"}" +
@@ -213,6 +214,7 @@ class DockerVolumesApiTest : StringSpec() {
         }
 
         "list volumes succeeds" {
+            every { context.getVolumePrefix() } returns "test"
             transaction {
                 services.metadata.createVolume(vs, Volume(name = "one", properties = mapOf("a" to "b"), config = mapOf("mountpoint" to "/mountpoint")))
                 services.metadata.createVolume(vs, Volume(name = "two", properties = mapOf("c" to "d"), config = mapOf("mountpoint" to "/mountpoint")))
@@ -223,12 +225,12 @@ class DockerVolumesApiTest : StringSpec() {
                 response.contentType().toString() shouldBe "application/json; charset=UTF-8"
                 response.content shouldBe "{\"Err\":\"\"," +
                         "\"Volumes\":[{" +
-                        "\"Name\":\"foo/one\"," +
+                        "\"Name\":\"test/foo/one\"," +
                         "\"Mountpoint\":\"/mountpoint\"," +
                         "\"Status\":{}," +
                         "\"properties\":{\"a\":\"b\"}" +
                         "},{" +
-                        "\"Name\":\"foo/two\"," +
+                        "\"Name\":\"test/foo/two\"," +
                         "\"Mountpoint\":\"/mountpoint\"," +
                         "\"Status\":{}," +
                         "\"properties\":{\"c\":\"d\"}" +

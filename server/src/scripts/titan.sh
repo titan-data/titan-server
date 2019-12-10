@@ -36,6 +36,9 @@ function create_import_pool() {
       log_start "Creating storage pool"
       local size=$(get_pool_size $pool_dir)
       truncate -s $size $data || log_error "Failed to create $size data file for storage pool"
+      # Clean up any stale mounts
+      unmount_filesystems $pool
+      rm -rf $mnt_dir
       if ! create_pool $pool $data $mnt_dir $cachefile; then
         rm -f $data
         log_error "Failed to create storage pool"

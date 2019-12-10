@@ -130,10 +130,6 @@ class KubernetesCsiContext(private val properties: Map<String, String> = emptyMa
         // Nothing to do
     }
 
-    override fun getVolumePrefix(): String {
-        error("volume prefix not supported for kubernetes context")
-    }
-
     override fun deleteVolumeSetCommit(volumeSet: String, commitId: String) {
         // Nothing to do
     }

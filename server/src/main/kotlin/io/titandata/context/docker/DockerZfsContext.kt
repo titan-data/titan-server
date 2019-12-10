@@ -43,14 +43,6 @@ class DockerZfsContext(private val properties: Map<String, String> = emptyMap())
     }
 
     /**
-     * The volume prefix is used only for docker when returning volumes through the docker volume API. It is
-     * equivalent to the pool name.
-     */
-    override fun getVolumePrefix(): String {
-        return poolName
-    }
-
-    /**
      * Create a new volume set. This is simply an empty placeholder volumeset.
      */
     override fun createVolumeSet(volumeSet: String) {

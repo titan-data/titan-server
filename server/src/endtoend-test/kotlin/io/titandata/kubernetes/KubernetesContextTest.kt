@@ -3,7 +3,7 @@ package io.titandata.kubernetes
 import io.kotlintest.matchers.string.shouldContain
 import io.kotlintest.shouldBe
 import io.kotlintest.shouldThrow
-import io.kubernetes.client.ApiException
+import io.kubernetes.client.openapi.ApiException
 import io.titandata.models.Volume
 import io.titandata.remote.RemoteOperation
 import io.titandata.remote.RemoteOperationType

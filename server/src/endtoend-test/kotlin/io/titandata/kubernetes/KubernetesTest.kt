@@ -1,13 +1,13 @@
 package io.titandata.kubernetes
 
-import io.kubernetes.client.apis.CoreV1Api
-import io.kubernetes.client.models.V1ContainerBuilder
-import io.kubernetes.client.models.V1ObjectMetaBuilder
-import io.kubernetes.client.models.V1PersistentVolumeClaimVolumeSourceBuilder
-import io.kubernetes.client.models.V1PodBuilder
-import io.kubernetes.client.models.V1PodSpecBuilder
-import io.kubernetes.client.models.V1VolumeBuilder
-import io.kubernetes.client.models.V1VolumeMountBuilder
+import io.kubernetes.client.openapi.apis.CoreV1Api
+import io.kubernetes.client.openapi.models.V1ContainerBuilder
+import io.kubernetes.client.openapi.models.V1ObjectMetaBuilder
+import io.kubernetes.client.openapi.models.V1PersistentVolumeClaimVolumeSourceBuilder
+import io.kubernetes.client.openapi.models.V1PodBuilder
+import io.kubernetes.client.openapi.models.V1PodSpecBuilder
+import io.kubernetes.client.openapi.models.V1VolumeBuilder
+import io.kubernetes.client.openapi.models.V1VolumeMountBuilder
 import io.titandata.EndToEndTest
 import io.titandata.context.kubernetes.KubernetesCsiContext
 import io.titandata.shell.CommandExecutor
@@ -99,7 +99,7 @@ abstract class KubernetesTest : EndToEndTest("kubernetes-csi") {
             if (container.restartCount != 0) {
                 throw Exception("container ${container.name} restarted ${container.restartCount} times")
             }
-            if (!container.isReady) {
+            if (!container.ready) {
                 return false
             }
         }

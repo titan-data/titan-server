@@ -5,7 +5,7 @@
 package io.titandata.operation
 
 import com.google.gson.JsonParser
-import io.kubernetes.client.ApiException
+import io.kubernetes.client.openapi.ApiException
 import io.titandata.ServiceLocator
 import io.titandata.metadata.table.Tags.commit
 import io.titandata.models.Commit

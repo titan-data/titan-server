@@ -1,4 +1,7 @@
 #!/bin/bash
+#
+# Copyright The Titan Project Contributors.
+#
 
 #
 # Main entry point for launching the titan server. The responsibility of this script is to ensure

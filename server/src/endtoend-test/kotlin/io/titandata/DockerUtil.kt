@@ -67,7 +67,7 @@ class DockerUtil(
         val args = arrayOf("docker", "run",
                 "-d", "--restart", "always", "--name", "$identity-server",
                 "-v", "$home/.kube:/root/.kube", "-v", "$identity-data:/var/lib/$identity",
-                "-e", "TITAN_CONTEXT=kubernetes-csi", "-e", "TITAN_DATA=$identity",
+                "-e", "TITAN_CONTEXT=kubernetes-csi", "-e", "TITAN_IDENTITY=$identity",
                 "-e", "TITAN_CONFIG=$config",
                 "-p", "$port:5001", image, "/bin/bash", "/titan/$entryPoint")
         return executor.exec(*args).trim()

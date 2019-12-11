@@ -78,27 +78,27 @@ fun Application.main() {
     val context = System.getProperty("titan.context")
             ?: throw IllegalArgumentException("titan.context property must be set")
     log.info("Running with context $context")
+
+    val configProperty = System.getProperty("titan.contextConfig")
+    val contextConfig = if (!configProperty.isNullOrEmpty()) {
+        val map = mutableMapOf<String, String>()
+        for (propval in configProperty.split(",")) {
+            val components = propval.split("=")
+            if (components.size != 2) {
+                throw IllegalArgumentException("invalid configuration property '$propval'")
+            }
+            map[components[0]] = components[1]
+        }
+        map
+    } else {
+        emptyMap<String, String>()
+    }
+
     val runtimeContext = when (context) {
         "docker-zfs" -> {
-            val pool = System.getProperty("titan.pool")
-                    ?: throw IllegalArgumentException("titan.pool property must be set")
-            DockerZfsContext(pool)
+            DockerZfsContext(contextConfig)
         }
         "kubernetes-csi" -> {
-            val configProperty = System.getProperty("titan.contextConfig")
-            val contextConfig = if (!configProperty.isNullOrEmpty()) {
-                val map = mutableMapOf<String, String>()
-                for (propval in configProperty.split(",")) {
-                    val components = propval.split("=")
-                    if (components.size != 2) {
-                        throw IllegalArgumentException("invalid configuration property '$propval'")
-                    }
-                    map[components[0]] = components[1]
-                }
-                map
-            } else {
-                emptyMap<String, String>()
-            }
             KubernetesCsiContext(contextConfig)
         }
         else -> throw IllegalArgumentException("unknown context '$context', must be one of ('docker-zfs', 'kubernetes-csi')")

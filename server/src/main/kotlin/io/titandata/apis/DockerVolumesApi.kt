@@ -75,7 +75,7 @@ fun Route.DockerVolumeApi(services: ServiceLocator) {
             val request = call.receive(DockerVolumeRequest::class)
             val (repo, volname) = getVolumeName(request.name)
             val result = convertVolume(repo, services.volumes.getVolume(repo, volname))
-            call.respond(DockerVolumeGetResponse(volume = result.copy(name = "$repo/$volname")))
+            call.respond(DockerVolumeGetResponse(volume = result))
         }
     }
 

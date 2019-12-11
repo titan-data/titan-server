@@ -1,4 +1,7 @@
 #!/bin/bash
+#
+# Copyright The Titan Project Contributors.
+#
 
 #
 # Utility script used during the docker build process to download and extract ZFS userland, using the same shell

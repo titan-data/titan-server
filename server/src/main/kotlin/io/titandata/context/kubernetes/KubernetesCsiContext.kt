@@ -51,6 +51,8 @@ import org.slf4j.LoggerFactory
  *      configFile      Path, relative to ~/.kube, for the kubernetes configuration file. If not specified, then the
  *                      the default ("config") is used.
  *
+ *      context         The context to use for all operations.
+ *
  *      namespace       Cluster namespace, defaults to "default".
  *
  *      storageClass    Default volume storage class to use when creating volumes. If unspecified, then the

@@ -1,4 +1,7 @@
 #!/bin/bash
+#
+# Copyright The Titan Project Contributors.
+#
 
 #
 # Get the desired size of the pool. Since the pool will be built on a sparse file, this is really
@@ -33,6 +36,9 @@ function create_import_pool() {
       log_start "Creating storage pool"
       local size=$(get_pool_size $pool_dir)
       truncate -s $size $data || log_error "Failed to create $size data file for storage pool"
+      # Clean up any stale mounts
+      unmount_filesystems $pool
+      rm -rf $mnt_dir
       if ! create_pool $pool $data $mnt_dir $cachefile; then
         rm -f $data
         log_error "Failed to create storage pool"
@@ -129,7 +135,7 @@ function launch_server() {
       -v /run/docker/plugins:/run/docker/plugins \
       -v $mount:$mount:rshared \
       -e TITAN_CONTEXT=docker-zfs \
-      -e TITAN_POOL=$pool \
+      -e TITAN_IDENTITY=$identity \
       -p $port:5001 \
       --network $identity \
       $image \

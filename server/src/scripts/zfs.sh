@@ -1,4 +1,7 @@
 #!/bin/bash
+#
+# Copyright The Titan Project Contributors.
+#
 
 #
 # Minimum ZFS version. Starting in version 0.8.0, the community is going to attempt to maintain
@@ -363,7 +366,7 @@ function unload_zfs() {
 #
 function unmount_filesystems() {
   local pool=$1
-  local dirs=$(mount -t zfs | grep ^$pool | awk '{print $3}')
+  local dirs=$(mount -t zfs | grep ^$pool | awk '{print $3}' | sort -r)
   for dir in $dirs; do
      nsenter -m -u -t 1 -n -i umount $dir
   done

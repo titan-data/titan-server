@@ -36,3 +36,5 @@ echo "Unloading ZFS"
 unload_zfs $INSTALL_DIR || log_error "failed to unload ZFS module"
 echo "Removing any lingering mountpoints"
 rm -rf $MNT_DIR || log_error "failed to remove $MNT_DIR"
+echo "Removing docker plugin socket"
+rm -f /run/docker/plugins/$IDENTITY.sock

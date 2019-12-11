@@ -29,7 +29,7 @@ task endtoendTest(type: Test) {
 
     binResultsDir = file("$buildDir/endtoend-test-results/binary/endtoendTest")
 
-    systemProperties project.properties.subMap(["engine.connection", "s3.location"])
+    systemProperties project.properties.subMap(["kubernetes.config", "s3.location"])
 
     reports {
         html.destination = file("$buildDir/reports/endtoend-test")

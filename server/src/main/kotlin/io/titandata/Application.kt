@@ -28,7 +28,7 @@ import io.ktor.routing.Routing
 import io.ktor.server.cio.CIO
 import io.ktor.server.engine.embeddedServer
 import io.ktor.util.KtorExperimentalAPI
-import io.kubernetes.client.ApiException
+import io.kubernetes.client.openapi.ApiException
 import io.titandata.apis.CommitsApi
 import io.titandata.apis.ContextApi
 import io.titandata.apis.DockerVolumeApi

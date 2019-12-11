@@ -4,28 +4,28 @@ import com.google.gson.GsonBuilder
 import com.google.gson.JsonObject
 import com.google.gson.JsonParseException
 import com.google.gson.JsonParser
-import io.kubernetes.client.ApiException
-import io.kubernetes.client.Configuration.setDefaultApiClient
-import io.kubernetes.client.apis.BatchV1Api
-import io.kubernetes.client.apis.CoreV1Api
-import io.kubernetes.client.apis.StorageV1Api
 import io.kubernetes.client.custom.Quantity
-import io.kubernetes.client.models.V1ContainerBuilder
-import io.kubernetes.client.models.V1EnvVarBuilder
-import io.kubernetes.client.models.V1JobBuilder
-import io.kubernetes.client.models.V1JobSpecBuilder
-import io.kubernetes.client.models.V1ObjectMeta
-import io.kubernetes.client.models.V1ObjectMetaBuilder
-import io.kubernetes.client.models.V1PersistentVolumeClaimBuilder
-import io.kubernetes.client.models.V1PersistentVolumeClaimSpecBuilder
-import io.kubernetes.client.models.V1PersistentVolumeClaimVolumeSourceBuilder
-import io.kubernetes.client.models.V1PodSpecBuilder
-import io.kubernetes.client.models.V1PodTemplateSpecBuilder
-import io.kubernetes.client.models.V1ResourceRequirementsBuilder
-import io.kubernetes.client.models.V1SecretBuilder
-import io.kubernetes.client.models.V1SecretVolumeSourceBuilder
-import io.kubernetes.client.models.V1VolumeBuilder
-import io.kubernetes.client.models.V1VolumeMountBuilder
+import io.kubernetes.client.openapi.ApiException
+import io.kubernetes.client.openapi.Configuration.setDefaultApiClient
+import io.kubernetes.client.openapi.apis.BatchV1Api
+import io.kubernetes.client.openapi.apis.CoreV1Api
+import io.kubernetes.client.openapi.apis.StorageV1Api
+import io.kubernetes.client.openapi.models.V1ContainerBuilder
+import io.kubernetes.client.openapi.models.V1EnvVarBuilder
+import io.kubernetes.client.openapi.models.V1JobBuilder
+import io.kubernetes.client.openapi.models.V1JobSpecBuilder
+import io.kubernetes.client.openapi.models.V1ObjectMeta
+import io.kubernetes.client.openapi.models.V1ObjectMetaBuilder
+import io.kubernetes.client.openapi.models.V1PersistentVolumeClaimBuilder
+import io.kubernetes.client.openapi.models.V1PersistentVolumeClaimSpecBuilder
+import io.kubernetes.client.openapi.models.V1PersistentVolumeClaimVolumeSourceBuilder
+import io.kubernetes.client.openapi.models.V1PodSpecBuilder
+import io.kubernetes.client.openapi.models.V1PodTemplateSpecBuilder
+import io.kubernetes.client.openapi.models.V1ResourceRequirementsBuilder
+import io.kubernetes.client.openapi.models.V1SecretBuilder
+import io.kubernetes.client.openapi.models.V1SecretVolumeSourceBuilder
+import io.kubernetes.client.openapi.models.V1VolumeBuilder
+import io.kubernetes.client.openapi.models.V1VolumeMountBuilder
 import io.kubernetes.client.util.Config
 import io.kubernetes.client.util.KubeConfig
 import io.titandata.context.RuntimeContext
@@ -156,10 +156,10 @@ class KubernetesCsiContext(private val properties: Map<String, String> = emptyMa
                                 .build())
                 .build()
         if (properties["storageClass"] != null) {
-            request.spec.storageClassName = properties["storageClass"]
+            request.spec!!.storageClassName = properties["storageClass"]
         }
         val claim = coreApi.createNamespacedPersistentVolumeClaim(namespace, request, null, null, null)
-        log.info("Created PersistentVolumeClaim '$name', status = ${claim.status.phase}")
+        log.info("Created PersistentVolumeClaim '$name', status = ${claim.status?.phase}")
         return mapOf(
                 "pvc" to name,
                 "namespace" to namespace,
@@ -254,20 +254,20 @@ class KubernetesCsiContext(private val properties: Map<String, String> = emptyMa
     fun getPvcStatus(pvc: String): Pair<Boolean, String?> {
         val claim = coreApi.readNamespacedPersistentVolumeClaimStatus(pvc, namespace, null)
 
-        var okPhases = listOf("Pending", "Bound")
+        val okPhases = listOf("Pending", "Bound")
         var readyPhases = listOf("Pending", "Bound")
-        if (claim.spec.storageClassName != null) {
-            val storageClass = storageApi.readStorageClass(claim.spec.storageClassName, null, null, null)
+        if (claim.spec?.storageClassName != null) {
+            val storageClass = storageApi.readStorageClass(claim.spec?.storageClassName, null, null, null)
             if (storageClass.volumeBindingMode == "Immediate") {
                 readyPhases = listOf("Bound")
             }
         }
 
-        val ready = claim.status.phase in readyPhases
-        val error = if (claim.status.phase in okPhases) {
+        val ready = claim.status?.phase in readyPhases
+        val error = if (claim.status?.phase in okPhases) {
             null
         } else {
-            "volume '$pvc' is in unknown state ${claim.status.phase}"
+            "volume '$pvc' is in unknown state ${claim.status?.phase}"
         }
 
         return ready to error
@@ -463,17 +463,17 @@ class KubernetesCsiContext(private val properties: Map<String, String> = emptyMa
     }
 
     private fun getPodFromJob(name: String): String {
-        val pods = coreApi.listNamespacedPod(namespace, null, null, null, "job-name=$name", null, null, null, null)
+        val pods = coreApi.listNamespacedPod(namespace, null, null, null, null, "job-name=$name", null, null, null, null)
         if (pods.items.size != 1) {
             throw IllegalStateException("found ${pods.items.size} pods instead of 1 for job $name")
         }
-        return pods.items[0].metadata.name
+        return pods.items[0].metadata?.name ?: error("pod does not have an associated name")
     }
 
     private fun isPodReady(name: String): Boolean {
         try {
             val status = coreApi.readNamespacedPodStatus(name, namespace, null)
-            if (status.status.phase == "Pending") {
+            if (status.status?.phase == "Pending") {
                 return false
             }
         } catch (e: ApiException) {
@@ -528,8 +528,9 @@ class KubernetesCsiContext(private val properties: Map<String, String> = emptyMa
      * volumes. We run this as a Kubernetes Job
      */
     override fun syncVolumes(provider: RemoteServer, operation: RemoteOperation, volumes: List<Volume>, scratchVolume: Volume) {
+        val name = "titan-operation-${operation.operationId}"
         val metadata = V1ObjectMetaBuilder()
-                .withName("titan-operation-${operation.operationId}")
+                .withName(name)
                 .build()
 
         operation.updateProgress(RemoteProgress.START, "Waiting for volumes to be ready", null)
@@ -540,21 +541,21 @@ class KubernetesCsiContext(private val properties: Map<String, String> = emptyMa
 
         operation.updateProgress(RemoteProgress.START, "Starting job", null)
         createJob(volumes, scratchVolume, metadata)
-        waitForPod(metadata.name)
+        waitForPod(name)
         operation.updateProgress(RemoteProgress.END, null, null)
 
         try {
             try {
-                val podName = getPodFromJob(metadata.name)
+                val podName = getPodFromJob(name)
                 var jobComplete = false
                 var progressComplete = false
                 var lastId = 0
                 while (!jobComplete) {
-                    val job = batchApi.readNamespacedJob(metadata.name, namespace, null, null, null)
-                    if (job.status.succeeded == 1) {
+                    val job = batchApi.readNamespacedJob(name, namespace, null, null, null)
+                    if (job.status?.succeeded == 1) {
                         jobComplete = true
                     }
-                    if (job.status.failed == 1) {
+                    if (job.status?.failed == 1) {
                         try {
                             // Try to log what we can
                             val output = coreApi.readNamespacedPodLog(podName, namespace, null, null, null, null, null, null, null, null)
@@ -594,10 +595,10 @@ class KubernetesCsiContext(private val properties: Map<String, String> = emptyMa
                     }
                 }
             } finally {
-                deleteObject("job", metadata.name)
+                deleteObject("job", name)
             }
         } finally {
-            deleteObject("secret", metadata.name)
+            deleteObject("secret", name)
         }
     }
 }

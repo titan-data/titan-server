@@ -131,16 +131,14 @@ class RemotesApiTest : StringSpec() {
             transaction {
                 services.metadata.createRepository(Repository(name = "repo", properties = mapOf()))
                 services.metadata.addRemote("repo", Remote("nop", "foo"))
-                services.metadata.addRemote("repo", Remote("engine", "bar", mapOf("address" to "a", "username" to "u", "password" to "p", "repository" to "r")))
+                services.metadata.addRemote("repo", Remote("s3", "bar", mapOf("bucket" to "bucket")))
             }
             with(engine.handleRequest(HttpMethod.Post, "/v1/repositories/repo/remotes/bar") {
                 addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
-                setBody("{\"provider\":\"engine\",\"name\":\"bar\",\"properties\":{\"address\":\"b\"," +
-                        "\"username\":\"u\",\"password\":\"p\",\"repository\":\"r\"}}")
+                setBody("{\"provider\":\"s3\",\"name\":\"bar\",\"properties\":{\"bucket\":\"bocket\"}}")
             }) {
                 response.status() shouldBe HttpStatusCode.OK
-                response.content shouldBe "{\"provider\":\"engine\",\"name\":\"bar\",\"properties\":{\"address\":\"b\"," +
-                        "\"username\":\"u\",\"password\":\"p\",\"repository\":\"r\"}}"
+                response.content shouldBe "{\"provider\":\"s3\",\"name\":\"bar\",\"properties\":{\"bucket\":\"bocket\"}}"
             }
         }
 

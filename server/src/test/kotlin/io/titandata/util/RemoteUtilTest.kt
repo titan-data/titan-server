@@ -44,13 +44,5 @@ class RemoteUtilTest : StringSpec() {
             remote.provider shouldBe "s3web"
             remote.properties["url"] shouldBe "http://host/path"
         }
-
-        "parse engine URI succeeds" {
-            val remote = util.parseUri("engine://user@host/repo", "origin", emptyMap())
-            remote.provider shouldBe "engine"
-            remote.properties["username"] shouldBe "user"
-            remote.properties["address"] shouldBe "host"
-            remote.properties["repository"] shouldBe "repo"
-        }
     }
 }

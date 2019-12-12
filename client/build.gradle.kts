@@ -58,7 +58,7 @@ dependencies {
     compile("com.google.code.gson:gson:2.8.6")
     compile("io.titandata:remote-sdk:0.2.0")
     compile("io.titandata:nop-remote-client:0.2.0")
-    compile("io.titandata:ssh-remote-client:0.2.0")
+    compile("io.titandata:ssh-remote-client:0.2.1")
     compile("io.titandata:s3-remote-client:0.2.0")
     compile("io.titandata:s3web-remote-client:0.2.0")
 }

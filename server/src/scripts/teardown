@@ -33,7 +33,7 @@ remove_network $IDENTITY
 echo "Unbinding mounts"
 unbind_mounts $MNT_DIR
 echo "Unloading ZFS"
-unload_zfs $INSTALL_DIR || log_error "failed to unload ZFS module"
+unload_zfs $INSTALL_DIR
 echo "Removing any lingering mountpoints"
 rm -rf $MNT_DIR || log_error "failed to remove $MNT_DIR"
 echo "Removing docker plugin socket"

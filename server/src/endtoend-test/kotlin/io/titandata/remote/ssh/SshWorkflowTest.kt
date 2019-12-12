@@ -78,8 +78,8 @@ class SshWorkflowTest : EndToEndTest() {
 
             val remote = RemoteUtil().parseUri("${dockerUtil.getSshUri()}/bar", "origin", mapOf())
             remote.properties["address"] shouldBe dockerUtil.getSshHost()
-            remote.properties["password"] shouldBe "root"
-            remote.properties["username"] shouldBe "root"
+            remote.properties["password"] shouldBe "test"
+            remote.properties["username"] shouldBe "test"
             remote.properties["port"] shouldBe 22
             remote.name shouldBe "origin"
 
@@ -201,11 +201,11 @@ class SshWorkflowTest : EndToEndTest() {
         }
 
         "add remote without password succeeds" {
-            val remote = Remote("ssh", "origin", mapOf("address" to dockerUtil.getSshHost(), "username" to "root",
+            val remote = Remote("ssh", "origin", mapOf("address" to dockerUtil.getSshHost(), "username" to "test",
                     "path" to "/bar"))
             remote.properties["address"] shouldBe dockerUtil.getSshHost()
             remote.properties["password"] shouldBe null
-            remote.properties["username"] shouldBe "root"
+            remote.properties["username"] shouldBe "test"
             remote.properties["port"] shouldBe null
             remote.name shouldBe "origin"
 
@@ -213,7 +213,7 @@ class SshWorkflowTest : EndToEndTest() {
         }
 
         "list commits with password succeeds" {
-            val commits = remoteApi.listRemoteCommits("foo", "origin", RemoteParameters("ssh", mapOf("password" to "root")))
+            val commits = remoteApi.listRemoteCommits("foo", "origin", RemoteParameters("ssh", mapOf("password" to "test")))
             commits.size shouldBe 1
             commits[0].id shouldBe "id"
         }
@@ -234,7 +234,7 @@ class SshWorkflowTest : EndToEndTest() {
 
         "copy SSH key to server succeeds" {
             val key = getResource("/id_rsa.pub")
-            dockerUtil.writeFileSsh("/root/.ssh/authorized_keys", key)
+            dockerUtil.writeFileSsh("/home/test/.ssh/authorized_keys", key)
         }
 
         "list commits with key succeeds" {

@@ -29,8 +29,8 @@ class DockerUtil(
     private val executor = CommandExecutor()
     private val retries = 60
     private val timeout = 1000L
-    private val sshUser = "root"
-    private val sshPassword = "root"
+    private val sshUser = "test"
+    private val sshPassword = "test"
     private val url = "http://localhost:$port"
     private val volumeApi = VolumesApi(url)
 
@@ -191,8 +191,9 @@ class DockerUtil(
         return executor.exec("docker", "exec", "$identity-ssh", "cat", path)
     }
 
-    fun mkdirSsh(path: String): String {
-        return executor.exec("docker", "exec", "$identity-ssh", "mkdir", "-p", path)
+    fun mkdirSsh(path: String) {
+        executor.exec("docker", "exec", "$identity-ssh", "mkdir", "-p", path)
+        executor.exec("docker", "exec", "$identity-ssh", "chown", sshUser, path)
     }
 
     fun startSsh() {
@@ -240,6 +241,6 @@ class DockerUtil(
 
     fun getSshUri(): String {
         // We explicitly add the port even though it's superfluous, as it helps validate serialization
-        return "ssh://root:root@${getSshHost()}:22"
+        return "ssh://$sshUser:$sshPassword@${getSshHost()}:22"
     }
 }

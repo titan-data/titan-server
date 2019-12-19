@@ -11,7 +11,7 @@ import io.ktor.routing.Route
 import io.ktor.routing.post
 import io.ktor.routing.route
 import io.titandata.ServiceLocator
-import io.titandata.models.PluginDescription
+import io.titandata.models.docker.PluginDescription
 import io.titandata.models.Volume
 import io.titandata.models.docker.DockerVolume
 import io.titandata.models.docker.DockerVolumeCapabilities

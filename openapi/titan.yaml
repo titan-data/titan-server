@@ -68,13 +68,13 @@ paths:
         default:
           $ref: "#/components/responses/error"
   /v1/repositories/{repositoryName}:
+    parameters:
+      - $ref: "#/components/parameters/repositoryName"
     get:
       summary: Get info for a repository
       operationId: getRepository
       tags:
         - repositories
-      parameters:
-        - $ref: "#/components/parameters/repositoryName"
       responses:
         "200":
           description: Repository info
@@ -91,10 +91,6 @@ paths:
       operationId: updateRepository
       tags:
         - repositories
-      description: Update any properties of the repository. If the repository name
-                   is changed, this will rename the repository.
-      parameters:
-        - $ref: "#/components/parameters/repositoryName"
       requestBody:
         description: New repository
         required: true
@@ -120,8 +116,6 @@ paths:
       operationId: deleteRepository
       tags:
         - repositories
-      parameters:
-        - $ref: "#/components/parameters/repositoryName"
       responses:
         "204":
           description: Repository deleted
@@ -130,13 +124,13 @@ paths:
         default:
           $ref: "#/components/responses/error"
   /v1/repositories/{repositoryName}/status:
+    parameters:
+      - $ref: "#/components/parameters/repositoryName"
     get:
       summary: Get current status of a repository
       operationId: getRepositoryStatus
       tags:
         - repositories
-      parameters:
-        - $ref: "#/components/parameters/repositoryName"
       responses:
         "200":
           description: Repository status
@@ -153,6 +147,8 @@ paths:
   # Volume APIs.
   #
   /v1/repositories/{repositoryName}/volumes:
+    parameters:
+      - $ref: "#/components/parameters/repositoryName"
     get:
       summary: List volumes
       operationId: listVolumes
@@ -193,18 +189,18 @@ paths:
         "401":
           $ref: "#/components/responses/badinput"
         "404":
-          $ref: "#/components/responses/nosuchobjct"
+          $ref: "#/components/responses/nosuchobject"
         default:
           $ref: "#/components/responses/error"
   /v1/repositories/{repositoryName}/volumes/{volumeName}:
+    parameters:
+      - $ref: "#/components/parameters/repositoryName"
+      - $ref: "#/components/parameters/volumeName"
     get:
       summary: Get info for a volume
       operationId: getVolume
       tags:
         - volumes
-      parameters:
-        - $ref: "#/components/parameters/repositoryName"
-        - $ref: "#/components/parameters/volumeName"
       responses:
         "200":
           description: Volume info
@@ -221,9 +217,6 @@ paths:
       operationId: deleteVolume
       tags:
         - volumes
-      parameters:
-        - $ref: "#/components/parameters/repositoryName"
-        - $ref: "#/components/parameters/volumeName"
       responses:
         "204":
           description: Volume deleted
@@ -232,14 +225,14 @@ paths:
         default:
           $ref: "#/components/responses/error"
   /v1/repositories/{repositoryName}/volumes/{volumeName}/activate:
+    parameters:
+      - $ref: "#/components/parameters/repositoryName"
+      - $ref: "#/components/parameters/volumeName"
     post:
       summary: Activate a volume for use by a repository (e.g. mount)
       operationId: activateVolume
       tags:
         - volumes
-      parameters:
-        - $ref: "#/components/parameters/repositoryName"
-        - $ref: "#/components/parameters/volumeName"
       responses:
         "204":
           description: Activated repository
@@ -248,14 +241,14 @@ paths:
         default:
           $ref: "#/components/responses/error"
   /v1/repositories/{repositoryName}/volumes/{volumeName}/deactivate:
+    parameters:
+      - $ref: "#/components/parameters/repositoryName"
+      - $ref: "#/components/parameters/volumeName"
     post:
       summary: Deactivate a volume prior to its deletion (e.g. unmount)
       operationId: deactivateVolume
       tags:
         - volumes
-      parameters:
-        - $ref: "#/components/parameters/repositoryName"
-        - $ref: "#/components/parameters/volumeName"
       responses:
         "204":
           description: Deactivated repository
@@ -264,14 +257,14 @@ paths:
         default:
           $ref: "#/components/responses/error"
   /v1/repositories/{repositoryName}/volumes/{volumeName}/status:
+    parameters:
+      - $ref: "#/components/parameters/repositoryName"
+      - $ref: "#/components/parameters/volumeName"
     get:
       summary: Get status of a volume
       operationId: getVolumeStatus
       tags:
         - volumes
-      parameters:
-        - $ref: "#/components/parameters/repositoryName"
-        - $ref: "#/components/parameters/volumeName"
       responses:
         "200":
           description: Volume status
@@ -288,13 +281,15 @@ paths:
   # Commit APIs
   #
   /v1/repositories/{repositoryName}/commits:
+    parameters:
+      - $ref: "#/components/parameters/repositoryName"
     get:
       summary: Get commit history for a repository
       operationId: listCommits
       tags:
         - commits
       parameters:
-        - $ref: "#/components/parameters/repositoryName"
+        - $ref: "#/components/parameters/tagQuery"
       responses:
         "200":
           description: List of commits
@@ -307,14 +302,12 @@ paths:
         "404":
           $ref: "#/components/responses/nosuchobject"
         default:
-          $ref: "#/components/responses/default"
+          $ref: "#/components/responses/error"
     post:
       summary: Create new commit
       operationId: createCommit
       tags:
         - commits
-      parameters:
-        - $ref: "#/components/parameters/repositoryName"
       requestBody:
         description: "New commit to create"
         required: true
@@ -334,16 +327,16 @@ paths:
         "404":
           $ref: "#/components/responses/nosuchobject"
         default:
-          $ref: "#/components/responses/default"
+          $ref: "#/components/responses/error"
   /v1/repositories/{repositoryName}/commits/{commitId}:
+    parameters:
+      - $ref: "#/components/parameters/repositoryName"
+      - $ref: "#/components/parameters/commitId"
     get:
       summary: Get information for a specific commit
       operationId: getCommit
       tags:
         - commits
-      parameters:
-        - $ref: "#/components/parameters/repositoryName"
-        - $ref: "#/components/parameters/commitId"
       responses:
         "200":
           description: Commit information
@@ -354,30 +347,24 @@ paths:
         "404":
           $ref: "#/components/responses/nosuchobject"
         default:
-          $ref: "#/components/responses/default"
+          $ref: "#/components/responses/error"
     delete:
       summary: Discard a past commit
       operationId: deleteCommit
       tags:
         - commits
-      parameters:
-        - $ref: "#/components/parameters/repositoryName"
-        - $ref: "#/components/parameters/commitId"
       responses:
         "204":
           description: Commit discarded
         "404":
           $ref: "#/components/responses/nosuchobject"
         default:
-          $ref: "#/components/responses/default"
+          $ref: "#/components/responses/error"
     post:
       summary: Update tags for a previous commit
       operationId: updateCommit
       tags:
         - commits
-      parameters:
-        - $ref: "#/components/parameters/repositoryName"
-        - $ref: "#/components/parameters/commitId"
       requestBody:
         description: "Commit contents to update"
         required: true
@@ -395,16 +382,16 @@ paths:
         "404":
           $ref: "#/components/responses/nosuchobject"
         default:
-          $ref: "#/components/responses/default"
+          $ref: "#/components/responses/error"
   /v1/repositories/{repositoryName}/commits/{commitId}/status:
+    parameters:
+      - $ref: "#/components/parameters/repositoryName"
+      - $ref: "#/components/parameters/commitId"
     post:
       summary: Get commit status
       operationId: getCommitStatus
       tags:
         - commits
-      parameters:
-        - $ref: "#/components/parameters/repositoryName"
-        - $ref: "#/components/parameters/commitId"
       responses:
         "200":
           description: Commit status
@@ -415,35 +402,35 @@ paths:
         "404":
           $ref: "#/components/responses/nosuchobject"
         default:
-          $ref: "#/components/responses/default"
+          $ref: "#/components/responses/error"
   /v1/repositories/{repositoryName}/commits/{commitId}/checkout:
+    parameters:
+      - $ref: "#/components/parameters/repositoryName"
+      - $ref: "#/components/parameters/commitId"
     post:
       summary: Checkout the given commit
       operationId: checkoutCommit
       tags:
         - commits
-      parameters:
-        - $ref: "#/components/parameters/repositoryName"
-        - $ref: "#/components/parameters/commitId"
       responses:
         "204":
           description: Commit checked out
         "404":
           $ref: "#/components/responses/nosuchobject"
         default:
-          $ref: "#/components/responses/default"
+          $ref: "#/components/responses/error"
 
   #
   # Remote APIs.
   #
   /v1/repositories/{repositoryName}/remotes:
+    parameters:
+      - $ref: "#/components/parameters/repositoryName"
     get:
       summary: Get list of remotes
       operationId: listRemotes
       tags:
         - remotes
-      parameters:
-        - $ref: "#/components/parameters/repositoryName"
       responses:
         "200":
           description: List of remotes
@@ -456,14 +443,12 @@ paths:
         "404":
           $ref: "#/components/responses/nosuchobject"
         default:
-          $ref: "#/components/responses/default"
+          $ref: "#/components/responses/error"
     post:
       summary: Create new remote
       operationId: createRemote
       tags:
         - remotes
-      parameters:
-        - $ref: "#/components/parameters/repositoryName"
       requestBody:
         description: "Remote to create"
         required: true
@@ -483,17 +468,17 @@ paths:
         "404":
           $ref: "#/components/responses/nosuchobject"
         default:
-          $ref: "#/components/responses/default"
+          $ref: "#/components/responses/error"
 
   /v1/repositories/{repositoryName}/remotes/{remoteName}:
+    parameters:
+      - $ref: "#/components/parameters/repositoryName"
+      - $ref: "#/components/parameters/remoteName"
     get:
       summary: Get information about a particular remote
       operationId: getRemote
       tags:
         - remotes
-      parameters:
-        - $ref: "#/components/parameters/repositoryName"
-        - $ref: "#/components/parameters/remoteName"
       responses:
         "200":
           description: Remote information
@@ -504,15 +489,12 @@ paths:
         "404":
           $ref: "#/components/responses/nosuchobject"
         default:
-          $ref: "#/components/responses/default"
+          $ref: "#/components/responses/error"
     post:
       summary: Update remote information
       operationId: updateRemote
       tags:
         - remotes
-      parameters:
-        - $ref: "#/components/parameters/repositoryName"
-        - $ref: "#/components/parameters/remoteName"
       requestBody:
         description: "Remote information to update"
         required: true
@@ -532,33 +514,32 @@ paths:
         "404":
           $ref: "#/components/responses/nosuchobject"
         default:
-          $ref: "#/components/responses/default"
+          $ref: "#/components/responses/error"
     delete:
       summary: Delete remote
       operationId: deleteRemote
       tags:
         - remotes
-      parameters:
-        - $ref: "#/components/parameters/repositoryName"
-        - $ref: "#/components/parameters/remoteName"
       responses:
         "204":
           description: Remote deleted
         "404":
           $ref: "#/components/responses/nosuchobject"
         default:
-          $ref: "#/components/responses/default"
+          $ref: "#/components/responses/error"
 
   /v1/repositories/{repositoryName}/remotes/{remoteName}/commits:
+    parameters:
+      - $ref: "#/components/parameters/repositoryName"
+      - $ref: "#/components/parameters/remoteName"
+      - $ref: "#/components/parameters/remoteParameters"
     get:
       summary: List remote commits
       operationId: listRemoteCommits
       tags:
         - remotes
       parameters:
-        - $ref: "#/components/parameters/repositoryName"
-        - $ref: "#/components/parameters/remoteName"
-        - $ref: "#/components/parameters/remoteParameters"
+        - $ref: "#/components/parameters/tagQuery"
       responses:
         "200":
           description: List of commits
@@ -573,18 +554,18 @@ paths:
         "404":
           $ref: "#/components/responses/nosuchobject"
         default:
-          $ref: "#/components/responses/default"
+          $ref: "#/components/responses/error"
   /v1/repositories/{repositoryName}/remotes/{remoteName}/commits/{commitId}:
+    parameters:
+      - $ref: "#/components/parameters/repositoryName"
+      - $ref: "#/components/parameters/remoteName"
+      - $ref: "#/components/parameters/commitId"
+      - $ref: "#/components/parameters/remoteParameters"
     get:
       summary: Get a remote commit
       operationId: getRemoteCommit
       tags:
         - remotes
-      parameters:
-        - $ref: "#/components/parameters/repositoryName"
-        - $ref: "#/components/parameters/remoteName"
-        - $ref: "#/components/parameters/commitId"
-        - $ref: "#/components/parameters/remoteParameters"
       responses:
         "200":
           description: Remote commit
@@ -597,7 +578,7 @@ paths:
         "404":
           $ref: "#/components/responses/nosuchobject"
         default:
-          $ref: "#/components/responses/default"
+          $ref: "#/components/responses/error"
 
   #
   # Operation APIs.
@@ -609,7 +590,11 @@ paths:
       tags:
         - operations
       parameters:
-        - $ref: "#/components/parameters/repositoryQuery"
+        - name: repository
+          description: Limit to the given repository
+          in: query
+          schema:
+            type: string
       responses:
         "200":
           description: List of operations
@@ -620,15 +605,15 @@ paths:
                 items:
                   $ref: "#/components/schemas/operation"
         default:
-          $ref: "#/components/responses/default"
+          $ref: "#/components/responses/error"
   /v1/operations/{operationId}:
+    parameters:
+      - $ref: "#/components/parameters/operationId"
     get:
       summary: Get operation
       operationId: getOperation
       tags:
         - operations
-      paramters:
-        - $ref: "#/components/parameters/operationId"
       responses:
         "200":
           description: Operation information
@@ -645,7 +630,7 @@ paths:
       operationId: abortOperation
       tags:
         - operations
-      paramters:
+      parameters:
         - $ref: "#/components/parameters/operationId"
       responses:
         "204":
@@ -655,13 +640,19 @@ paths:
         default:
           $ref: "#/components/responses/error"
   /v1/operations/{operationId}/progress:
+    parameters:
+      - $ref: "#/components/parameters/operationId"
     get:
       summary: Get operation progress
       operationId: getOperationProgress
       tags:
         - operations
-      paramters:
-        - $ref: "#/components/parameters/operationId"
+      parameters:
+        - name: lastId
+          in: query
+          schema:
+            type: integer
+            description: Only return entries with an id greater than this value
       responses:
         "200":
           description: Operation progress information
@@ -676,15 +667,16 @@ paths:
         default:
           $ref: "#/components/responses/error"
   /v1/repositories/{repositoryName}/remotes/{remoteName}/commits/{commitId}/pull:
+    parameters:
+      - $ref: "#/components/parameters/repositoryName"
+      - $ref: "#/components/parameters/remoteName"
+      - $ref: "#/components/parameters/commitId"
     post:
       summary: Start a pull operation
       operationId: pull
       tags:
         - operations
       parameters:
-        - $ref: "#/components/parameters/repositoryName"
-        - $ref: "#/components/parameters/remoteName"
-        - $ref: "#/components/parameters/commitId"
         - $ref: "#/components/parameters/metadataOnlyQuery"
       requestBody:
         description: Provider specific parameters
@@ -705,17 +697,18 @@ paths:
         "404":
           $ref: "#/components/responses/nosuchobject"
         default:
-          $ref: "#/components/responses/default"
+          $ref: "#/components/responses/error"
   /v1/repositories/{repositoryName}/remotes/{remoteName}/commits/{commitId}/push:
+    parameters:
+      - $ref: "#/components/parameters/repositoryName"
+      - $ref: "#/components/parameters/remoteName"
+      - $ref: "#/components/parameters/commitId"
     post:
       summary: Start a push operation
       operationId: push
       tags:
         - operations
       parameters:
-        - $ref: "#/components/parameters/repositoryName"
-        - $ref: "#/components/parameters/remoteName"
-        - $ref: "#/components/parameters/commitId"
         - $ref: "#/components/parameters/metadataOnlyQuery"
       requestBody:
         description: Provider specific parameters
@@ -736,7 +729,7 @@ paths:
         "404":
           $ref: "#/components/responses/nosuchobject"
         default:
-          $ref: "#/components/responses/default"
+          $ref: "#/components/responses/error"
 
 components:
   schemas:
@@ -772,7 +765,7 @@ components:
           description: Whether this commit can be used as the source of an operation or whether it's still being created
         error:
           type: string
-          decription: If commit failed to be created, error string explaining why
+          description: If commit failed to be created, error string explaining why
       required:
         - logicalSize
         - actualSize
@@ -840,7 +833,7 @@ components:
       type: object
       properties:
         id:
-          type: int
+          type: integer
           description: Sequenced entry identifier
         type:
           type: string
@@ -858,10 +851,10 @@ components:
           type: string
           description: Optional message for progress step
         percent:
-          type: int
+          type: integer
           description: Optional percent for step
-          minValue: 0
-          maxValue: 100
+          minimum: 0
+          maximum: 100
       required:
         - id
         - type
@@ -960,7 +953,7 @@ components:
         - ready
 
   responses:
-    default:
+    error:
       description: An internal error occurred
       content:
         application/json:
@@ -1017,18 +1010,24 @@ components:
         type: string
 
     remoteParameters:
-      name: titan-remote-request
+      name: titan-remote-parameters
+      description: Remote-specific parameters
+      required: true
       in: header
       schema:
         $ref: "#/components/schemas/remoteParameters"
 
-    repositoryQuery:
-      name: repository
+    tagQuery:
+      name: tag
+      description: Tags (name or name=value) to search for
       in: query
       schema:
-        type: string
+        type: array
+        items:
+          type: string
     metadataOnlyQuery:
       name: metadataOnly
+      description: Transfer only tag metadata
       in: query
       schema:
         type: boolean

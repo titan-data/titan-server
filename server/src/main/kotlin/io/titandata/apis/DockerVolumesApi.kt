@@ -11,7 +11,6 @@ import io.ktor.routing.Route
 import io.ktor.routing.post
 import io.ktor.routing.route
 import io.titandata.ServiceLocator
-import io.titandata.models.docker.PluginDescription
 import io.titandata.models.Volume
 import io.titandata.models.docker.DockerVolume
 import io.titandata.models.docker.DockerVolumeCapabilities
@@ -23,6 +22,7 @@ import io.titandata.models.docker.DockerVolumeMountRequest
 import io.titandata.models.docker.DockerVolumePathResponse
 import io.titandata.models.docker.DockerVolumeRequest
 import io.titandata.models.docker.DockerVolumeResponse
+import io.titandata.models.docker.PluginDescription
 
 fun Route.DockerVolumeApi(services: ServiceLocator) {
 

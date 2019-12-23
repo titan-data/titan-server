@@ -60,7 +60,7 @@ fun Route.VolumesApi(services: ServiceLocator) {
             val repo = getRepoName(call)
             val volumeName = getVolumeName(call)
             services.volumes.activateVolume(repo, volumeName)
-            call.respond(HttpStatusCode.OK)
+            call.respond(HttpStatusCode.NoContent)
         }
     }
 
@@ -69,7 +69,7 @@ fun Route.VolumesApi(services: ServiceLocator) {
             val repo = getRepoName(call)
             val volumeName = getVolumeName(call)
             services.volumes.deactivateVolume(repo, volumeName)
-            call.respond(HttpStatusCode.OK)
+            call.respond(HttpStatusCode.NoContent)
         }
     }
 

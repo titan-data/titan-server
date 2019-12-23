@@ -11,7 +11,6 @@ import io.titandata.client.infrastructure.RequestMethod
 import io.titandata.client.infrastructure.ResponseType
 import io.titandata.client.infrastructure.ServerException
 import io.titandata.client.infrastructure.Success
-import io.titandata.models.PluginDescription
 import io.titandata.models.docker.DockerVolumeCapabilitiesResponse
 import io.titandata.models.docker.DockerVolumeCreateRequest
 import io.titandata.models.docker.DockerVolumeGetResponse
@@ -20,6 +19,7 @@ import io.titandata.models.docker.DockerVolumeMountRequest
 import io.titandata.models.docker.DockerVolumePathResponse
 import io.titandata.models.docker.DockerVolumeRequest
 import io.titandata.models.docker.DockerVolumeResponse
+import io.titandata.models.docker.PluginDescription
 
 class DockerVolumeApi(basePath: String = "http://localhost:5001") : ApiClient(basePath) {
 

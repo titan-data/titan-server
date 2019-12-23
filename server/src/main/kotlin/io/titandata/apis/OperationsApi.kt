@@ -57,7 +57,7 @@ fun Route.OperationsApi(services: ServiceLocator) {
             } else {
                 false
             }
-            call.respond(services.operations.startPull(repo, remote, commitId, params, metadataOnly))
+            call.respond(HttpStatusCode.Created, services.operations.startPull(repo, remote, commitId, params, metadataOnly))
         }
     }
 
@@ -72,7 +72,7 @@ fun Route.OperationsApi(services: ServiceLocator) {
             } else {
                 false
             }
-            call.respond(services.operations.startPush(repo, remote, commitId, params, metadataOnly))
+            call.respond(HttpStatusCode.Created, services.operations.startPush(repo, remote, commitId, params, metadataOnly))
         }
     }
 }

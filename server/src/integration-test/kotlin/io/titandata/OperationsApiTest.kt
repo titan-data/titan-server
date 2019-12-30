@@ -255,7 +255,7 @@ class OperationsApiTest : StringSpec() {
                 addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
                 setBody("{\"provider\":\"nop\",\"properties\":{}}")
             }
-            result.response.status() shouldBe HttpStatusCode.OK
+            result.response.status() shouldBe HttpStatusCode.Created
             val operation = gson.fromJson(result.response.content, Operation::class.java)
 
             operation.commitId shouldBe "commit"
@@ -271,7 +271,7 @@ class OperationsApiTest : StringSpec() {
                 addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
                 setBody("{\"provider\":\"nop\",\"properties\":{}}")
             }
-            result.response.status() shouldBe HttpStatusCode.OK
+            result.response.status() shouldBe HttpStatusCode.Created
             val operation = gson.fromJson(result.response.content, Operation::class.java)
 
             operation.commitId shouldBe "commit"

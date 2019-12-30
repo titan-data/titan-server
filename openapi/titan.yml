@@ -43,7 +43,7 @@ paths:
                 items:
                   $ref: "#/components/schemas/repository"
         default:
-          $ref: "#/components/responses/error"
+          $ref: "#/components/responses/apiError"
     post:
       summary: Create new repository
       operationId: createRepository
@@ -64,9 +64,9 @@ paths:
               schema:
                 $ref: "#/components/schemas/repository"
         "401":
-          $ref: "#/components/responses/badinput"
+          $ref: "#/components/responses/badInput"
         default:
-          $ref: "#/components/responses/error"
+          $ref: "#/components/responses/apiError"
   /v1/repositories/{repositoryName}:
     parameters:
       - $ref: "#/components/parameters/repositoryName"
@@ -83,9 +83,9 @@ paths:
               schema:
                 $ref: "#/components/schemas/repository"
         "404":
-          $ref: "#/components/responses/nosuchobject"
+          $ref: "#/components/responses/noSuchObject"
         default:
-          $ref: "#/components/responses/error"
+          $ref: "#/components/responses/apiError"
     post:
       summary: Update or rename a repository
       operationId: updateRepository
@@ -106,11 +106,11 @@ paths:
               schema:
                 $ref: "#/components/schemas/repository"
         "401":
-          $ref: "#/components/responses/badinput"
+          $ref: "#/components/responses/badInput"
         "404":
-          $ref: "#/components/responses/nosuchobject"
+          $ref: "#/components/responses/noSuchObject"
         default:
-          $ref: "#/components/responses/error"
+          $ref: "#/components/responses/apiError"
     delete:
       summary: Remove a repository
       operationId: deleteRepository
@@ -120,9 +120,9 @@ paths:
         "204":
           description: Repository deleted
         "404":
-          $ref: "#/components/responses/nosuchobject"
+          $ref: "#/components/responses/noSuchObject"
         default:
-          $ref: "#/components/responses/error"
+          $ref: "#/components/responses/apiError"
   /v1/repositories/{repositoryName}/status:
     parameters:
       - $ref: "#/components/parameters/repositoryName"
@@ -139,9 +139,9 @@ paths:
               schema:
                 $ref: "#/components/schemas/repositoryStatus"
         "404":
-          $ref: "#/components/responses/nosuchobject"
+          $ref: "#/components/responses/noSuchObject"
         default:
-          $ref: "#/components/responses/error"
+          $ref: "#/components/responses/apiError"
 
   #
   # Volume APIs.
@@ -164,9 +164,9 @@ paths:
                 items:
                   $ref: "#/components/schemas/volume"
         "404":
-          $ref: "#/components/responses/nosuchobject"
+          $ref: "#/components/responses/noSuchObject"
         default:
-          $ref: "#/components/responses/error"
+          $ref: "#/components/responses/apiError"
     post:
       summary: Create new volume
       operationId: createVolume
@@ -187,11 +187,11 @@ paths:
               schema:
                 $ref: "#/components/schemas/volume"
         "401":
-          $ref: "#/components/responses/badinput"
+          $ref: "#/components/responses/badInput"
         "404":
-          $ref: "#/components/responses/nosuchobject"
+          $ref: "#/components/responses/noSuchObject"
         default:
-          $ref: "#/components/responses/error"
+          $ref: "#/components/responses/apiError"
   /v1/repositories/{repositoryName}/volumes/{volumeName}:
     parameters:
       - $ref: "#/components/parameters/repositoryName"
@@ -209,9 +209,9 @@ paths:
               schema:
                 $ref: "#/components/schemas/volume"
         "404":
-          $ref: "#/components/responses/nosuchobject"
+          $ref: "#/components/responses/noSuchObject"
         default:
-          $ref: "#/components/responses/error"
+          $ref: "#/components/responses/apiError"
     delete:
       summary: Remove a volume
       operationId: deleteVolume
@@ -221,9 +221,9 @@ paths:
         "204":
           description: Volume deleted
         "404":
-          $ref: "#/components/responses/nosuchobject"
+          $ref: "#/components/responses/noSuchObject"
         default:
-          $ref: "#/components/responses/error"
+          $ref: "#/components/responses/apiError"
   /v1/repositories/{repositoryName}/volumes/{volumeName}/activate:
     parameters:
       - $ref: "#/components/parameters/repositoryName"
@@ -237,9 +237,9 @@ paths:
         "204":
           description: Activated repository
         "404":
-          $ref: "#/components/responses/nosuchobject"
+          $ref: "#/components/responses/noSuchObject"
         default:
-          $ref: "#/components/responses/error"
+          $ref: "#/components/responses/apiError"
   /v1/repositories/{repositoryName}/volumes/{volumeName}/deactivate:
     parameters:
       - $ref: "#/components/parameters/repositoryName"
@@ -253,9 +253,9 @@ paths:
         "204":
           description: Deactivated repository
         "404":
-          $ref: "#/components/responses/nosuchobject"
+          $ref: "#/components/responses/noSuchObject"
         default:
-          $ref: "#/components/responses/error"
+          $ref: "#/components/responses/apiError"
   /v1/repositories/{repositoryName}/volumes/{volumeName}/status:
     parameters:
       - $ref: "#/components/parameters/repositoryName"
@@ -273,9 +273,9 @@ paths:
               schema:
                 $ref: "#/components/schemas/volumeStatus"
         "404":
-          $ref: "#/components/responses/nosuchobject"
+          $ref: "#/components/responses/noSuchObject"
         default:
-          $ref: "#/components/responses/error"
+          $ref: "#/components/responses/apiError"
 
   #
   # Commit APIs
@@ -300,9 +300,9 @@ paths:
                 items:
                   $ref: "#/components/schemas/commit"
         "404":
-          $ref: "#/components/responses/nosuchobject"
+          $ref: "#/components/responses/noSuchObject"
         default:
-          $ref: "#/components/responses/error"
+          $ref: "#/components/responses/apiError"
     post:
       summary: Create new commit
       operationId: createCommit
@@ -323,11 +323,11 @@ paths:
               schema:
                 $ref: "#/components/schemas/commit"
         "401":
-          $ref: "#/components/responses/badinput"
+          $ref: "#/components/responses/badInput"
         "404":
-          $ref: "#/components/responses/nosuchobject"
+          $ref: "#/components/responses/noSuchObject"
         default:
-          $ref: "#/components/responses/error"
+          $ref: "#/components/responses/apiError"
   /v1/repositories/{repositoryName}/commits/{commitId}:
     parameters:
       - $ref: "#/components/parameters/repositoryName"
@@ -345,9 +345,9 @@ paths:
               schema:
                 $ref: "#/components/schemas/commit"
         "404":
-          $ref: "#/components/responses/nosuchobject"
+          $ref: "#/components/responses/noSuchObject"
         default:
-          $ref: "#/components/responses/error"
+          $ref: "#/components/responses/apiError"
     delete:
       summary: Discard a past commit
       operationId: deleteCommit
@@ -357,9 +357,9 @@ paths:
         "204":
           description: Commit discarded
         "404":
-          $ref: "#/components/responses/nosuchobject"
+          $ref: "#/components/responses/noSuchObject"
         default:
-          $ref: "#/components/responses/error"
+          $ref: "#/components/responses/apiError"
     post:
       summary: Update tags for a previous commit
       operationId: updateCommit
@@ -380,9 +380,9 @@ paths:
               schema:
                 $ref: "#/components/schemas/commit"
         "404":
-          $ref: "#/components/responses/nosuchobject"
+          $ref: "#/components/responses/noSuchObject"
         default:
-          $ref: "#/components/responses/error"
+          $ref: "#/components/responses/apiError"
   /v1/repositories/{repositoryName}/commits/{commitId}/status:
     parameters:
       - $ref: "#/components/parameters/repositoryName"
@@ -400,9 +400,9 @@ paths:
               schema:
                 $ref: "#/components/schemas/commitStatus"
         "404":
-          $ref: "#/components/responses/nosuchobject"
+          $ref: "#/components/responses/noSuchObject"
         default:
-          $ref: "#/components/responses/error"
+          $ref: "#/components/responses/apiError"
   /v1/repositories/{repositoryName}/commits/{commitId}/checkout:
     parameters:
       - $ref: "#/components/parameters/repositoryName"
@@ -416,9 +416,9 @@ paths:
         "204":
           description: Commit checked out
         "404":
-          $ref: "#/components/responses/nosuchobject"
+          $ref: "#/components/responses/noSuchObject"
         default:
-          $ref: "#/components/responses/error"
+          $ref: "#/components/responses/apiError"
 
   #
   # Remote APIs.
@@ -441,9 +441,9 @@ paths:
                 items:
                   $ref: "#/components/schemas/remote"
         "404":
-          $ref: "#/components/responses/nosuchobject"
+          $ref: "#/components/responses/noSuchObject"
         default:
-          $ref: "#/components/responses/error"
+          $ref: "#/components/responses/apiError"
     post:
       summary: Create new remote
       operationId: createRemote
@@ -464,11 +464,11 @@ paths:
               schema:
                 $ref: "#/components/schemas/remote"
         "401":
-          $ref: "#/components/responses/badinput"
+          $ref: "#/components/responses/badInput"
         "404":
-          $ref: "#/components/responses/nosuchobject"
+          $ref: "#/components/responses/noSuchObject"
         default:
-          $ref: "#/components/responses/error"
+          $ref: "#/components/responses/apiError"
 
   /v1/repositories/{repositoryName}/remotes/{remoteName}:
     parameters:
@@ -487,9 +487,9 @@ paths:
               schema:
                 $ref: "#/components/schemas/remote"
         "404":
-          $ref: "#/components/responses/nosuchobject"
+          $ref: "#/components/responses/noSuchObject"
         default:
-          $ref: "#/components/responses/error"
+          $ref: "#/components/responses/apiError"
     post:
       summary: Update remote information
       operationId: updateRemote
@@ -510,11 +510,11 @@ paths:
               schema:
                 $ref: "#/components/schemas/remote"
         "401":
-          $ref: "#/components/responses/badinput"
+          $ref: "#/components/responses/badInput"
         "404":
-          $ref: "#/components/responses/nosuchobject"
+          $ref: "#/components/responses/noSuchObject"
         default:
-          $ref: "#/components/responses/error"
+          $ref: "#/components/responses/apiError"
     delete:
       summary: Delete remote
       operationId: deleteRemote
@@ -524,9 +524,9 @@ paths:
         "204":
           description: Remote deleted
         "404":
-          $ref: "#/components/responses/nosuchobject"
+          $ref: "#/components/responses/noSuchObject"
         default:
-          $ref: "#/components/responses/error"
+          $ref: "#/components/responses/apiError"
 
   /v1/repositories/{repositoryName}/remotes/{remoteName}/commits:
     parameters:
@@ -550,11 +550,11 @@ paths:
                 items:
                   $ref: "#/components/schemas/commit"
         "401":
-          $ref: "#/components/responses/badinput"
+          $ref: "#/components/responses/badInput"
         "404":
-          $ref: "#/components/responses/nosuchobject"
+          $ref: "#/components/responses/noSuchObject"
         default:
-          $ref: "#/components/responses/error"
+          $ref: "#/components/responses/apiError"
   /v1/repositories/{repositoryName}/remotes/{remoteName}/commits/{commitId}:
     parameters:
       - $ref: "#/components/parameters/repositoryName"
@@ -574,11 +574,11 @@ paths:
               schema:
                 $ref: "#/components/schemas/commit"
         "401":
-          $ref: "#/components/responses/badinput"
+          $ref: "#/components/responses/badInput"
         "404":
-          $ref: "#/components/responses/nosuchobject"
+          $ref: "#/components/responses/noSuchObject"
         default:
-          $ref: "#/components/responses/error"
+          $ref: "#/components/responses/apiError"
 
   #
   # Operation APIs.
@@ -605,7 +605,7 @@ paths:
                 items:
                   $ref: "#/components/schemas/operation"
         default:
-          $ref: "#/components/responses/error"
+          $ref: "#/components/responses/apiError"
   /v1/operations/{operationId}:
     parameters:
       - $ref: "#/components/parameters/operationId"
@@ -622,9 +622,9 @@ paths:
               schema:
                 $ref: "#/components/schemas/operation"
         "404":
-          $ref: "#/components/responses/nosuchobject"
+          $ref: "#/components/responses/noSuchObject"
         default:
-          $ref: "#/components/responses/error"
+          $ref: "#/components/responses/apiError"
     delete:
       summary: Abort operation
       operationId: abortOperation
@@ -636,9 +636,9 @@ paths:
         "204":
           description: Operation aborted
         "404":
-          $ref: "#/components/responses/nosuchobject"
+          $ref: "#/components/responses/noSuchObject"
         default:
-          $ref: "#/components/responses/error"
+          $ref: "#/components/responses/apiError"
   /v1/operations/{operationId}/progress:
     parameters:
       - $ref: "#/components/parameters/operationId"
@@ -663,9 +663,9 @@ paths:
                 items:
                   $ref: "#/components/schemas/progressEntry"
         "404":
-          $ref: "#/components/responses/nosuchobject"
+          $ref: "#/components/responses/noSuchObject"
         default:
-          $ref: "#/components/responses/error"
+          $ref: "#/components/responses/apiError"
   /v1/repositories/{repositoryName}/remotes/{remoteName}/commits/{commitId}/pull:
     parameters:
       - $ref: "#/components/parameters/repositoryName"
@@ -693,11 +693,11 @@ paths:
               schema:
                 $ref: "#/components/schemas/operation"
         "401":
-          $ref: "#/components/responses/badinput"
+          $ref: "#/components/responses/badInput"
         "404":
-          $ref: "#/components/responses/nosuchobject"
+          $ref: "#/components/responses/noSuchObject"
         default:
-          $ref: "#/components/responses/error"
+          $ref: "#/components/responses/apiError"
   /v1/repositories/{repositoryName}/remotes/{remoteName}/commits/{commitId}/push:
     parameters:
       - $ref: "#/components/parameters/repositoryName"
@@ -725,11 +725,11 @@ paths:
               schema:
                 $ref: "#/components/schemas/operation"
         "401":
-          $ref: "#/components/responses/badinput"
+          $ref: "#/components/responses/badInput"
         "404":
-          $ref: "#/components/responses/nosuchobject"
+          $ref: "#/components/responses/noSuchObject"
         default:
-          $ref: "#/components/responses/error"
+          $ref: "#/components/responses/apiError"
 
 components:
   schemas:
@@ -783,7 +783,7 @@ components:
       required:
         - provider
         - properties
-    error:
+    apiError:
       type: object
       properties:
         code:
@@ -953,24 +953,24 @@ components:
         - ready
 
   responses:
-    error:
+    apiError:
       description: An internal error occurred
       content:
         application/json:
           schema:
-            $ref: "#/components/schemas/error"
-    badinput:
+            $ref: "#/components/schemas/apiError"
+    badInput:
       description: Malformed user input
       content:
         application/json:
           schema:
-            $ref: "#/components/schemas/error"
-    nosuchobject:
+            $ref: "#/components/schemas/apiError"
+    noSuchObject:
       description: No such object
       content:
         application/json:
           schema:
-            $ref: "#/components/schemas/error"
+            $ref: "#/components/schemas/apiError"
 
   parameters:
     repositoryName:

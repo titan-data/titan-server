@@ -82,6 +82,7 @@ class VolumeOrchestrator(val services: ServiceLocator) {
     }
 
     fun listVolumes(repo: String): List<Volume> {
+        services.repositories.getRepository(repo)
         return transaction {
             val vs = services.metadata.getActiveVolumeSet(repo)
             services.metadata.listVolumes(vs)

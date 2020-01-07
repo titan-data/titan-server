@@ -34,7 +34,7 @@ RUN apt-get -y update --fix-missing
 ################################################
 
 RUN apt-get -y install kmod iproute2
-RUN apt-get -y install socat vim rsync sshpass jq
+RUN apt-get -y install vim rsync sshpass jq
 RUN apt-get -y install openjdk-11-jre-headless
 RUN apt-get -y install lsof
 RUN apt-get -y install docker-ce
@@ -52,6 +52,9 @@ COPY build/libs/titan-server.jar /titan/
 COPY src/scripts/* /titan/
 
 RUN /titan/get-userland
+
+RUN curl -o /titan/docker-volume-proxy -LO https://github.com/titan-data/titan-docker-proxy/releases/download/v0.0.1/docker-volume-proxy
+RUN chmod 755 /titan/docker-volume-proxy
 
 RUN echo 'alias psql="psql postgres://postgres:postgres@localhost/titan"' >> /etc/bash.bashrc
 

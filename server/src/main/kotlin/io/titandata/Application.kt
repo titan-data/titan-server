@@ -21,8 +21,6 @@ import io.ktor.features.minimumSize
 import io.ktor.gson.GsonConverter
 import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
-import io.ktor.request.ApplicationRequest
-import io.ktor.request.path
 import io.ktor.response.respond
 import io.ktor.routing.Routing
 import io.ktor.server.cio.CIO
@@ -31,7 +29,6 @@ import io.ktor.util.KtorExperimentalAPI
 import io.kubernetes.client.openapi.ApiException
 import io.titandata.apis.CommitsApi
 import io.titandata.apis.ContextApi
-import io.titandata.apis.DockerVolumeApi
 import io.titandata.apis.OperationsApi
 import io.titandata.apis.RemotesApi
 import io.titandata.apis.RepositoriesApi
@@ -41,24 +38,19 @@ import io.titandata.context.kubernetes.KubernetesCsiContext
 import io.titandata.exception.NoSuchObjectException
 import io.titandata.exception.ObjectExistsException
 import io.titandata.models.Error
-import io.titandata.models.docker.DockerVolumeResponse
 import java.io.PrintWriter
 import java.io.StringWriter
 import org.slf4j.LoggerFactory
 import org.slf4j.event.Level
 
-fun exceptionToError(request: ApplicationRequest, t: Throwable): Any {
-    if (request.path().startsWith("/VolumeDriver.")) {
-        return DockerVolumeResponse(err = t.message ?: "unknown error")
-    } else {
-        val sw = StringWriter()
-        t.printStackTrace(PrintWriter(sw))
-        return Error(
-                code = t.javaClass.simpleName,
-                message = t.message ?: "unknown error",
-                details = sw.toString()
-        )
-    }
+fun exceptionToError(t: Throwable): Any {
+    val sw = StringWriter()
+    t.printStackTrace(PrintWriter(sw))
+    return Error(
+            code = t.javaClass.simpleName,
+            message = t.message ?: "unknown error",
+            details = sw.toString()
+    )
 }
 
 internal fun ApplicationCompressionConfiguration(): Compression.Configuration.() -> Unit {
@@ -129,7 +121,6 @@ fun Application.mainProvider(services: ServiceLocator) {
     install(Routing) {
         CommitsApi(services)
         ContextApi(services)
-        DockerVolumeApi(services)
         OperationsApi(services)
         RemotesApi(services)
         RepositoriesApi(services)
@@ -137,28 +128,28 @@ fun Application.mainProvider(services: ServiceLocator) {
     }
     install(StatusPages) {
         exception<NoSuchObjectException> { cause ->
-            call.respond(HttpStatusCode.NotFound, exceptionToError(call.request, cause))
+            call.respond(HttpStatusCode.NotFound, exceptionToError(cause))
             call.application.log.info(cause.message)
         }
         exception<ObjectExistsException> { cause ->
-            call.respond(HttpStatusCode.Conflict, exceptionToError(call.request, cause))
+            call.respond(HttpStatusCode.Conflict, exceptionToError(cause))
             call.application.log.info(cause.message)
         }
         exception<IllegalArgumentException> { cause ->
-            call.respond(HttpStatusCode.BadRequest, exceptionToError(call.request, cause))
+            call.respond(HttpStatusCode.BadRequest, exceptionToError(cause))
             call.application.log.info(cause.message)
         }
         exception<JsonSyntaxException> { cause ->
-            call.respond(HttpStatusCode.BadRequest, exceptionToError(call.request, cause))
+            call.respond(HttpStatusCode.BadRequest, exceptionToError(cause))
             call.application.log.info(cause.message)
         }
         exception<ApiException> { cause ->
             // Kubernetes API exceptions don't often provide useful messages, so log the response body instead
-            call.respond(HttpStatusCode.InternalServerError, exceptionToError(call.request, cause))
+            call.respond(HttpStatusCode.InternalServerError, exceptionToError(cause))
             log.error(cause.responseBody, cause)
         }
         exception<Throwable> { cause ->
-            call.respond(HttpStatusCode.InternalServerError, exceptionToError(call.request, cause))
+            call.respond(HttpStatusCode.InternalServerError, exceptionToError(cause))
             // For internal errors, log the whole exception and stack trace
             throw cause
         }

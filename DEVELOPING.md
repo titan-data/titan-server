@@ -17,6 +17,10 @@ There are a few key components of the overall architecture:
 Of these, the docker image is by far the most complicated, as we have to go through several
 different hoops to get ZFS usable within containers on arbitrary host systems.
 
+Note that the project is in the process of being migrated from Kotlin to golang. During this
+process, you will see some less than elegant worts, such as some tests in golang but others
+in Kotlin, plugins in golang being loaded from Kotlin, etc.
+
 ### Titan server and client
 
 The titan server is built from `server/src`. It is a web server wrapped around a storage
@@ -114,6 +118,10 @@ resources, such as:
 ./gradlew endtoendTest -P s3.location=bucket/path
 ```
 
+The endtoend tests have been rewritten in golang as part of the migration, so you must have go installed
+in order to run them. The gradle target still exists, but will invoke the appropriate golang version of
+the tests as part of the transition.
+
 ## Testing
 
 There are three types of tests:
@@ -126,9 +134,9 @@ There are three types of tests:
     can be run as part of `./gradlew integrationTest`. They should be fast and are run as part of each pull
     request.
   * End to end tests - These tests run against the complete docker container, and hence are able to test the full
-    stack, including ZFS. These tests live under `src/endtoendTest` and can be run as part of
-    `./gradlew endtoendTest`. These tests may be slow, may depend on external resources (like S3 buckets), but
-    should remain runnable through CI/CD automation during the release process.
+    stack, including ZFS. These tests live under `test/endtoendTest` and are written in golang. They can
+    be invoked via `go test` or `./gradlew endtoendTest`. These tests may be slow, may depend on external resources
+    (like S3 buckets), but should remain runnable through CI/CD automation during the release process.
     
 These tests do generate coverage reports, but test coverage is not yet rigorously integrated into the development
 process.

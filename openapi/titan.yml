@@ -387,7 +387,7 @@ paths:
     parameters:
       - $ref: "#/components/parameters/repositoryName"
       - $ref: "#/components/parameters/commitId"
-    post:
+    get:
       summary: Get commit status
       operationId: getCommitStatus
       tags:

@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	titan "github.com/titan-data/titan-client-go"
+	"golang.org/x/crypto/ssh"
 	"os/exec"
 	"os/user"
 	"strings"
@@ -56,7 +57,7 @@ func (u *dockerUtil) RunTitanDocker(entryPoint string, daemon bool) error {
 	args := []string{"run", "--privileged", "--pid=host", "--network=host",
 		"-v", "/var/lib:/var/lib", "-v", "/run/docker:/run/docker"}
 	if daemon {
-		args = append(args, "-d", "--restart", "always", "--name", fmt.Sprintf("%s-launch", u.Identity),
+		args = append(args, "-d", "--restart", "always", "--name", u.GetPrimaryContainer(),
 			"-v", fmt.Sprintf("/lib:/var/lib/%s/system", u.Identity))
 	} else {
 		args = append(args, "--rm")
@@ -82,13 +83,13 @@ func (u *dockerUtil) RunTitanKubernetes(entryPoint string, parameters ...string)
 		return errors.New("failed to determine user home directory")
 	}
 	args := []string{
-		"run", "-d", "--restart", "always", "--name", fmt.Sprintf("%s-server", u.Identity),
+		"run", "-d", "--restart", "always", "--name", u.GetPrimaryContainer(),
 		"-v", fmt.Sprintf("%s/.kube:/root/.kube", homeDir),
 		"-v", fmt.Sprintf("%s-data:/var/lib/%s", u.Identity, u.Identity),
 		"-e", "TITAN_CONTEXT=kubernetes-csi",
 		"-e", fmt.Sprintf("TITAN_IDENTITY=%s", u.Identity),
 		"-e", fmt.Sprintf("TITAN_CONFIG=%s", strings.Join(parameters, ",")),
-		"-p", fmt.Sprintf("$s:5001", u.Port), u.Image, "/bin/bash",
+		"-p", fmt.Sprintf("%d:5001", u.Port), u.Image, "/bin/bash",
 		fmt.Sprintf("/titan/%s", entryPoint),
 	}
 
@@ -107,14 +108,18 @@ func (u *dockerUtil) StartServer(parameters ...string) error {
 	}
 }
 
-func (u *dockerUtil) GetContainerName() string {
-	var containerName string
+func (u *dockerUtil) GetContainer(t string) string {
+	return fmt.Sprintf("%s-%s", u.Identity, t)
+}
+
+func (u *dockerUtil) GetPrimaryContainer() string {
+	var containerType string
 	if u.Context == "docker-zfs" {
-		containerName = "launch"
+		containerType = "launch"
 	} else {
-		containerName = "sever"
+		containerType = "sever"
 	}
-	return fmt.Sprintf("%s-%s", u.Identity, containerName)
+	return u.GetContainer(containerType)
 }
 
 func (u *dockerUtil) WaitForServer() error {
@@ -127,7 +132,7 @@ func (u *dockerUtil) WaitForServer() error {
 		} else {
 			tried++
 			if tried == waitRetries {
-				logs, err := exec.Command("docker", "logs", u.GetContainerName()).Output()
+				logs, err := exec.Command("docker", "logs", u.GetPrimaryContainer()).CombinedOutput()
 				if err != nil {
 					return err
 				}
@@ -140,17 +145,17 @@ func (u *dockerUtil) WaitForServer() error {
 }
 
 func (u *dockerUtil) RestartServer() error {
-	return exec.Command("docker", "rm", "-f", u.GetContainerName()).Run()
+	return exec.Command("docker", "rm", "-f", u.GetPrimaryContainer()).Run()
 }
 
 func (u *dockerUtil) StopServer(ignoreErrors bool) error {
 	if u.Context == "docker-zfs" {
-		err := exec.Command("docker", "rm", "-f", fmt.Sprintf("%s-launch", u.Identity)).Run()
+		err := exec.Command("docker", "rm", "-f", u.GetContainer("launch")).Run()
 		if err != nil && !ignoreErrors {
 			return err
 		}
 	}
-	err := exec.Command("docker", "rm", "-f", fmt.Sprintf("%s-server", u.Identity)).Run()
+	err := exec.Command("docker", "rm", "-f", u.GetContainer("server")).Run()
 	if err != nil && !ignoreErrors {
 		return err
 	}
@@ -173,13 +178,13 @@ func (u *dockerUtil) StopServer(ignoreErrors bool) error {
 func (u *dockerUtil) GetVolumePath(repo string, volume string) (string, error) {
 	v, _, err := u.Client.VolumesApi.GetVolume(context.Background(), repo, volume)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 	return v.Config["mountpoint"].(string), nil
 }
 
 func (u *dockerUtil) ExecServer(args ...string) (string, error) {
-	fullArgs := []string{"exec", fmt.Sprintf("%s-server", u.Identity)}
+	fullArgs := []string{"exec", u.GetContainer("server")}
 	fullArgs = append(fullArgs, args...)
 	out, err := exec.Command("docker", fullArgs...).Output()
 	if err != nil {
@@ -188,90 +193,114 @@ func (u *dockerUtil) ExecServer(args ...string) (string, error) {
 	return string(out), nil
 }
 
-/*
+func (u *dockerUtil) WriteFile(repo string, volume string, filename string, content string) error {
+	mountpoint, err := u.GetVolumePath(repo, volume)
+	if err != nil {
+		return err
+	}
+	path := fmt.Sprintf("%s/%s", mountpoint, filename)
+	return exec.Command("docker", "exec", u.GetContainer("server"), "sh", "-c",
+		fmt.Sprintf("echo \"%s\" > %s", content, path)).Run()
+}
 
-   fun writeFile(repo: String, volume: String, filename: String, content: String) {
-       val mountpoint = getVolumePath(repo, volume)
-       val path = "$mountpoint/$filename"
-       // Using 'docker cp' can mess with volume mounts, leave this as simple as possible
-       executor.exec("docker", "exec", "$identity-server", "sh", "-c",
-               "echo \"$content\" > $path")
-   }
+func (u *dockerUtil) ReadFile(repo string, volume string, filename string) (string, error) {
+	mountpoint, err := u.GetVolumePath(repo, volume)
+	if err != nil {
+		return "", err
+	}
+	path := fmt.Sprintf("%s/%s", mountpoint, filename)
+	out, err := exec.Command("docker", "exec", u.GetContainer("server"), "cat", path).Output()
+	if err != nil {
+		return "", err
+	}
+	return string(out), nil
+}
 
-   fun readFile(repo: String, volume: String, filename: String): String {
-       val mountpoint = getVolumePath(repo, volume)
-       val path = "$mountpoint/$filename"
-       return executor.exec("docker", "exec", "$identity-server", "cat", path)
-   }
+func (u *dockerUtil) PathExists(path string) bool {
+	err := exec.Command("docker", "exec", u.GetContainer("server"), "ls", path).Run()
+	return err != nil
+}
 
-   fun pathExists(path: String): Boolean {
-       try {
-           executor.exec("docker", "exec", "$identity-server", "ls", path)
-       } catch (e: CommandException) {
-           return false
-       }
-       return true
-   }
+func (u *dockerUtil) WriteFileSssh(path string, content string) error {
+	return exec.Command("docker", "exec", u.GetContainer("ssh"), "sh", "-c",
+		fmt.Sprintf("echo \"%s\" > %s", content, path)).Run()
+}
 
-   fun writeFileSsh(path: String, content: String) {
-       executor.exec("docker", "exec", "$identity-ssh", "sh", "-c",
-               "echo \"$content\" > $path")
-   }
+func (u *dockerUtil) ReadFileSsh(path string) (string, error) {
+	out, err := exec.Command("docker", "exec", u.GetContainer("ssh"), "cat", path).Output()
+	if err != nil {
+		return "", err
+	}
+	return string(out), nil
+}
 
-   fun readFileSsh(path: String): String {
-       return executor.exec("docker", "exec", "$identity-ssh", "cat", path)
-   }
+func (u *dockerUtil) MkdirSsh(path string) error {
+	err := exec.Command("docker", "exec", u.GetContainer("ssh"), "mkdir", "-p", path).Run()
+	if err != nil {
+		return err
+	}
+	return exec.Command("docker", "exec", u.GetContainer("ssh"), "chown", sshUser, path).Run()
+}
 
-   fun mkdirSsh(path: String) {
-       executor.exec("docker", "exec", "$identity-ssh", "mkdir", "-p", path)
-       executor.exec("docker", "exec", "$identity-ssh", "chown", sshUser, path)
-   }
+func (u *dockerUtil) StartSsh() error {
+	return exec.Command("docker", "run", "-p", fmt.Sprintf("%d:22", u.Port), "-d", "--name", u.GetContainer("ssh"),
+		"--network", u.Identity, "titandata/ssh-test-server:latest").Run()
 
-   fun startSsh() {
-       executor.exec("docker", "run", "-p", "$sshPort:22", "-d", "--name", "$identity-ssh",
-               "--network", "$identity", "titandata/ssh-test-server:latest")
-   }
+}
 
-   fun testSsh(): Boolean {
-       val jsch = JSch()
-       try {
-           val session = jsch.getSession(sshUser, "localhost", sshPort)
-           session.setPassword(sshPassword)
-           session.setConfig("StrictHostKeyChecking", "no")
-           session.connect(timeout.toInt())
-       } catch (e: Exception) {
-           return false
-       }
-       return true
-   }
+func (u *dockerUtil) StopSsh() error {
+	return exec.Command("docker", "rm", "-f", u.GetContainer("ssh")).Run()
+}
 
-   fun waitForSsh() {
-       var tried = 1
-       while (!testSsh()) {
-           if (tried++ == retries) {
-               throw Exception("Timed out waiting for SSH server to start")
-           }
-           Thread.sleep(timeout)
-       }
-   }
+func (u *dockerUtil) GetSshHost() (string, error) {
+	out, err := exec.Command("docker", "inspect", "-f", "{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}",
+		u.GetContainer("ssh")).Output()
+	if err != nil {
+		return "", err
+	}
+	return string(out), nil
+}
 
-   fun stopSsh(ignoreExceptions: Boolean = true) {
-       try {
-           executor.exec("docker", "rm", "-f", "$identity-ssh")
-       } catch (e: CommandException) {
-           if (!ignoreExceptions) {
-               throw e
-           }
-       }
-   }
+func (u *dockerUtil) GetSshUrl() (string, error) {
+	host, err := u.GetSshHost()
+	if err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("ssh://%s:%s@%s:22", sshUser, sshPassword, host), nil
 
-   fun getSshHost(): String {
-       return executor.exec("docker", "inspect", "-f", "{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}",
-               "$identity-ssh").trim()
-   }
+}
 
-   fun getSshUri(): String {
-       // We explicitly add the port even though it's superfluous, as it helps validate serialization
-       return "ssh://$sshUser:$sshPassword@${getSshHost()}:22"
-   }
-*/
+func (u *dockerUtil) WaitForSsh() error {
+	success := false
+	tried := 1
+	for ok := true; ok; ok = !success {
+		sshConfig := &ssh.ClientConfig{
+			User: sshUser,
+			Auth: []ssh.AuthMethod{
+				ssh.Password(sshPassword),
+			},
+		}
+		connection, err := ssh.Dial("tcp", fmt.Sprintf("localhost:%d", u.SshPort), sshConfig)
+		if err == nil {
+			session, err := connection.NewSession()
+			if err == nil {
+				success = true
+				_ = session.Close()
+			}
+			_ = connection.Close()
+		}
+
+		if !success {
+			tried++
+			if tried == waitRetries {
+				logs, err := exec.Command("docker", "logs", u.GetPrimaryContainer()).CombinedOutput()
+				if err != nil {
+					return err
+				}
+				return errors.New(fmt.Sprintf("timeoed out waiting for server to start: %s", logs))
+			}
+			time.Sleep(time.Duration(waitTimeout) * time.Second)
+		}
+	}
+	return nil
+}

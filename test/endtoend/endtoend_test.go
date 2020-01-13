@@ -246,9 +246,8 @@ func (e *EndToEndTest) MkdirSsh(path string) error {
 }
 
 func (e *EndToEndTest) StartSsh() error {
-	return exec.Command("docker", "run", "-p", fmt.Sprintf("%d:22", e.Port), "-e", "--name", e.GetContainer("ssh"),
+	return exec.Command("docker", "run", "-p", fmt.Sprintf("%d:22", e.SshPort), "-d", "--name", e.GetContainer("ssh"),
 		"--network", e.Identity, "titandata/ssh-test-server:latest").Run()
-
 }
 
 func (e *EndToEndTest) StopSsh() error {
@@ -278,7 +277,8 @@ func (e *EndToEndTest) WaitForSsh() error {
 	tried := 1
 	for ok := true; ok; ok = !success {
 		sshConfig := &ssh.ClientConfig{
-			User: sshUser,
+			User:            sshUser,
+			HostKeyCallback: ssh.InsecureIgnoreHostKey(),
 			Auth: []ssh.AuthMethod{
 				ssh.Password(sshPassword),
 			},
@@ -296,23 +296,21 @@ func (e *EndToEndTest) WaitForSsh() error {
 		if !success {
 			tried++
 			if tried == waitRetries {
-				logs, err := exec.Command("docker", "logs", e.GetPrimaryContainer()).CombinedOutput()
+				logs, err := exec.Command("docker", "logs", e.GetContainer("test-ssh")).CombinedOutput()
 				if err != nil {
 					return err
 				}
-				return errors.New(fmt.Sprintf("timeoed out waiting for server to start: %s", logs))
+				return errors.New(fmt.Sprintf("timed out waiting for SSH server to start: %s", logs))
 			}
 			time.Sleep(time.Duration(waitTimeout) * time.Second)
 		}
 	}
 	return nil
 }
+
 func (e *EndToEndTest) SetupStandardDocker() {
-	err := e.StopServer(true)
-	if err != nil {
-		panic(err)
-	}
-	err = e.StartServer()
+	_ = e.StopServer(true)
+	err := e.StartServer()
 	if err != nil {
 		panic(err)
 	}
@@ -323,10 +321,23 @@ func (e *EndToEndTest) SetupStandardDocker() {
 }
 
 func (e *EndToEndTest) TeardownStandardDocker() {
-	err := e.StopServer(false)
+	_ = e.StopServer(false)
+}
+
+func (e *EndToEndTest) SetupStandardSsh() {
+	_ = e.StopSsh()
+	err := e.StartSsh()
 	if err != nil {
 		panic(err)
 	}
+	err = e.WaitForSsh()
+	if err != nil {
+		panic(err)
+	}
+}
+
+func (e *EndToEndTest) TeardownStandardSsh() {
+	_ = e.StopSsh()
 }
 
 func (e *EndToEndTest) APIError(err error, code string) bool {

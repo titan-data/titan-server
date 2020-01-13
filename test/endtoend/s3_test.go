@@ -1,5 +1,5 @@
 /*
- * Copyright The Titan Project Contributors
+ * Copyright The Titan Project Contributors.
  */
 package endtoend
 
@@ -314,33 +314,27 @@ func (s *S3TestSuite) TestS3_050_RemoveRemote() {
 	s.e.NoError(err)
 }
 
-/*
-func (s *S3TestSuite) TestS3_051_AddRemoteNoPassword() {
-	res, _, err := s.remoteApi.CreateRemote(s.ctx, "foo", titanclient.Remote{
-		Provider: "ssh",
+func (s *S3TestSuite) TestS3_051_AddRemoteNoKeys() {
+	_, _, err := s.remoteApi.CreateRemote(s.ctx, "foo", titanclient.Remote{
+		Provider: "s3",
 		Name:     "origin",
 		Properties: map[string]interface{}{
-			"address":  s.e.S3Host,
-			"username": "test",
-			"port":     22,
-			"path":     "/bar",
+			"bucket": s.s3bucket,
+			"path":   s.s3path,
 		},
 	})
-	if s.e.NoError(err) {
-		s.Equal("origin", res.Name)
-		s.Equal(s.e.S3Host, res.Properties["address"])
-		s.Equal("test", res.Properties["username"])
-		s.Nil(res.Properties["password"])
-		s.Equal(22.0, res.Properties["port"])
-		s.Equal("/bar", res.Properties["path"])
-	}
+	s.e.NoError(err)
 }
 
-func (s *S3TestSuite) TestS3_052_ListCommitsPassword() {
+func (s *S3TestSuite) TestS3_052_ListCommitsKeys() {
 	res, _, err := s.remoteApi.ListRemoteCommits(s.ctx, "foo", "origin",
 		titanclient.RemoteParameters{
-			Provider:   "ssh",
-			Properties: map[string]interface{}{"password": "test"},
+			Provider: "s3",
+			Properties: map[string]interface{}{
+				"accessKey": s.remote.Properties["accessKey"],
+				"secretKey": s.remote.Properties["secretKey"],
+				"region":    s.remote.Properties["region"],
+			},
 		}, nil)
 	if s.e.NoError(err) {
 		s.Len(res, 1)
@@ -348,59 +342,42 @@ func (s *S3TestSuite) TestS3_052_ListCommitsPassword() {
 	}
 }
 
-func (s *S3TestSuite) TestS3_053_ListCommitsNoPassword() {
+func (s *S3TestSuite) TestS3_053_ListCommitsNoKeys() {
 	_, _, err := s.remoteApi.ListRemoteCommits(s.ctx, "foo", "origin", s.remoteParams, nil)
 	s.e.APIError(err, "IllegalArgumentException")
 }
 
-func (s *S3TestSuite) TestS3_054_ListCommitsBadPassword() {
+func (s *S3TestSuite) TestS3_054_ListCommitsIncorrectKeys() {
 	_, _, err := s.remoteApi.ListRemoteCommits(s.ctx, "foo", "origin",
 		titanclient.RemoteParameters{
-			Provider:   "ssh",
-			Properties: map[string]interface{}{"password": "r00t"},
+			Provider: "s3",
+			Properties: map[string]interface{}{
+				"accessKey": "ACCESS",
+				"secretKey": "SECRET",
+				"region":    s.remote.Properties["region"],
+			},
 		}, nil)
-	s.e.APIError(err, "CommandException")
+	s.e.APIError(err, "AmazonS3Exception")
 }
 
-func (s *S3TestSuite) TestS3_060_CopyKey() {
-	key, err := ioutil.ReadFile("id_rsa.pub")
+func (s *S3TestSuite) TestS3_055_PullKeys() {
+	_, err := s.commitApi.DeleteCommit(s.ctx, "foo", "id")
 	if s.e.NoError(err) {
-		err = s.e.WriteFileSssh("/home/test/.ssh/authorized_keys", string(key))
-		s.e.NoError(err)
-	}
-}
-
-func (s *S3TestSuite) TestS3_061_ListCommitsKey() {
-	key, err := ioutil.ReadFile("id_rsa")
-	if s.e.NoError(err) {
-		res, _, err := s.remoteApi.ListRemoteCommits(s.ctx, "foo", "origin", titanclient.RemoteParameters{
-			Provider:   "ssh",
-			Properties: map[string]interface{}{"key": string(key)},
-		}, nil)
-		if s.e.NoError(err) {
-			s.Len(res, 1)
-			s.Equal("id", res[0].Id)
-		}
-	}
-}
-
-func (s *S3TestSuite) TestS3_062_PullCommitKey() {
-	key, err := ioutil.ReadFile("id_rsa")
-	if s.e.NoError(err) {
-		_, err := s.commitApi.DeleteCommit(s.ctx, "foo", "id")
-		if s.e.NoError(err) {
-			res, _, err := s.operationsApi.Pull(s.ctx, "foo", "origin", "id", titanclient.RemoteParameters{
-				Provider:   "ssh",
-				Properties: map[string]interface{}{"key": string(key)},
+		res, _, err := s.operationsApi.Pull(s.ctx, "foo", "origin", "id",
+			titanclient.RemoteParameters{
+				Provider: "s3",
+				Properties: map[string]interface{}{
+					"accessKey": s.remote.Properties["accessKey"],
+					"secretKey": s.remote.Properties["secretKey"],
+					"region":    s.remote.Properties["region"],
+				},
 			}, nil)
-			if s.e.NoError(err) {
-				_, err = s.e.WaitForOperation(res.Id)
-				s.e.NoError(err)
-			}
+		if s.e.NoError(err) {
+			_, err = s.e.WaitForOperation(res.Id)
+			s.e.NoError(err)
 		}
 	}
 }
-*/
 
 func (s *S3TestSuite) TestS3_070_DeleteVolume() {
 	_, err := s.volumeApi.DeactivateVolume(s.ctx, "foo", "vol")

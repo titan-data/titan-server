@@ -1,5 +1,5 @@
 /*
- * Copyright The Titan Project Contributors
+ * Copyright The Titan Project Contributors.
  */
 package endtoend
 

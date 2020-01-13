@@ -680,7 +680,7 @@ paths:
         - $ref: "#/components/parameters/metadataOnlyQuery"
       requestBody:
         description: Provider specific parameters
-        required: false
+        required: true
         content:
           application/json:
             schema:
@@ -712,7 +712,7 @@ paths:
         - $ref: "#/components/parameters/metadataOnlyQuery"
       requestBody:
         description: Provider specific parameters
-        required: false
+        required: true
         content:
           application/json:
             schema:
@@ -1008,7 +1008,6 @@ components:
       description: Name of the volume
       schema:
         type: string
-
     remoteParameters:
       name: titan-remote-parameters
       description: Remote-specific parameters
@@ -1016,7 +1015,6 @@ components:
       in: header
       schema:
         $ref: "#/components/schemas/remoteParameters"
-
     tagQuery:
       name: tag
       description: Tags (name or name=value) to search for

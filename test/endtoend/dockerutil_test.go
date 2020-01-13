@@ -145,7 +145,7 @@ func (u *dockerUtil) WaitForServer() error {
 }
 
 func (u *dockerUtil) RestartServer() error {
-	return exec.Command("docker", "rm", "-f", u.GetPrimaryContainer()).Run()
+	return exec.Command("docker", "rm", "-f", u.GetContainer("server")).Run()
 }
 
 func (u *dockerUtil) StopServer(ignoreErrors bool) error {

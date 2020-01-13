@@ -31,6 +31,7 @@ type EndToEndTest struct {
 	Port     int
 	Image    string
 	SshPort  int
+	SshHost  string
 
 	Client *titan.APIClient
 }
@@ -255,24 +256,6 @@ func (e *EndToEndTest) StopSsh() error {
 	return exec.Command("docker", "rm", "-f", e.GetContainer("ssh")).Run()
 }
 
-func (e *EndToEndTest) GetSshHost() (string, error) {
-	out, err := exec.Command("docker", "inspect", "-f", "{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}",
-		e.GetContainer("ssh")).Output()
-	if err != nil {
-		return "", err
-	}
-	return string(out), nil
-}
-
-func (e *EndToEndTest) GetSshUrl() (string, error) {
-	host, err := e.GetSshHost()
-	if err != nil {
-		return "", err
-	}
-	return fmt.Sprintf("ssh://%s:%s@%s:22", sshUser, sshPassword, host), nil
-
-}
-
 func (e *EndToEndTest) WaitForSsh() error {
 	success := false
 	tried := 1
@@ -306,6 +289,13 @@ func (e *EndToEndTest) WaitForSsh() error {
 			time.Sleep(time.Duration(waitTimeout) * time.Second)
 		}
 	}
+
+	out, err := exec.Command("docker", "inspect", "-f", "{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}",
+		e.GetContainer("ssh")).Output()
+	if err != nil {
+		return err
+	}
+	e.SshHost = string(out)
 	return nil
 }
 

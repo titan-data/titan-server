@@ -8,6 +8,7 @@ import (
 	"github.com/antihax/optional"
 	"github.com/stretchr/testify/suite"
 	titanclient "github.com/titan-data/titan-client-go"
+	"io/ioutil"
 	"testing"
 )
 
@@ -16,9 +17,9 @@ type SshTestSuite struct {
 	e   *EndToEndTest
 	ctx context.Context
 
-	volumeMountpoint string
-	remoteParams     titanclient.RemoteParameters
-	currentOp        titanclient.Operation
+	sshHost      string
+	remoteParams titanclient.RemoteParameters
+	currentOp    titanclient.Operation
 
 	repoApi       *titanclient.RepositoriesApiService
 	remoteApi     *titanclient.RemotesApiService
@@ -99,14 +100,13 @@ func (s *SshTestSuite) TestSsh_004_CreateCommit() {
 }
 
 func (s *SshTestSuite) TestSsh_005_AddRemote() {
-	s.e.MkdirSsh("/bar")
-	host, err := s.e.GetSshHost()
+	err := s.e.MkdirSsh("/bar")
 	if s.e.NoError(err) {
 		res, _, err := s.remoteApi.CreateRemote(s.ctx, "foo", titanclient.Remote{
 			Provider: "ssh",
 			Name:     "origin",
 			Properties: map[string]interface{}{
-				"address":  host,
+				"address":  s.e.SshHost,
 				"password": "test",
 				"username": "test",
 				"port":     22,
@@ -115,7 +115,7 @@ func (s *SshTestSuite) TestSsh_005_AddRemote() {
 		})
 		if s.e.NoError(err) {
 			s.Equal("origin", res.Name)
-			s.Equal(host, res.Properties["address"])
+			s.Equal(s.e.SshHost, res.Properties["address"])
 			s.Equal("test", res.Properties["username"])
 			s.Equal("test", res.Properties["password"])
 			s.Equal(22.0, res.Properties["port"])
@@ -256,76 +256,116 @@ func (s *SshTestSuite) TestSsh_045_PullMetadata() {
 	}
 }
 
-/*
-   "checkout commit succeeds" {
-       volumeApi.deactivateVolume("foo", "vol")
-       commitApi.checkoutCommit("foo", "id")
-       volumeApi.activateVolume("foo", "vol")
-   }
+func (s *SshTestSuite) TestSsh_046_CheckoutCommit() {
+	_, err := s.volumeApi.DeactivateVolume(s.ctx, "foo", "vol")
+	if s.e.NoError(err) {
+		_, err := s.commitApi.CheckoutCommit(s.ctx, "foo", "id")
+		if s.e.NoError(err) {
+			_, err = s.volumeApi.ActivateVolume(s.ctx, "foo", "vol")
+			s.e.NoError(err)
+		}
+	}
+}
 
-   "original file contents are present" {
-       val result = dockerUtil.readFile("foo", "vol", "testfile")
-       result shouldBe "Hello\n"
-   }
+func (s *SshTestSuite) TestSsh_047_OriginalContents() {
+	res, err := s.e.ReadFile("foo", "vol", "testfile")
+	if s.e.NoError(err) {
+		s.Equal("Hello", res)
+	}
+}
 
-   "remove remote succeeds" {
-       remoteApi.deleteRemote("foo", "origin")
-   }
+func (s *SshTestSuite) TestSsh_050_RemoveRemote() {
+	_, err := s.remoteApi.DeleteRemote(s.ctx, "foo", "origin")
+	s.e.NoError(err)
+}
 
-   "add remote without password succeeds" {
-       val remote = Remote("ssh", "origin", mapOf("address" to dockerUtil.getSshHost(), "username" to "test",
-               "path" to "/bar"))
-       remote.properties["address"] shouldBe dockerUtil.getSshHost()
-       remote.properties["password"] shouldBe null
-       remote.properties["username"] shouldBe "test"
-       remote.properties["port"] shouldBe null
-       remote.name shouldBe "origin"
+func (s *SshTestSuite) TestSsh_051_AddRemoteNoPassword() {
+	res, _, err := s.remoteApi.CreateRemote(s.ctx, "foo", titanclient.Remote{
+		Provider: "ssh",
+		Name:     "origin",
+		Properties: map[string]interface{}{
+			"address":  s.e.SshHost,
+			"username": "test",
+			"port":     22,
+			"path":     "/bar",
+		},
+	})
+	if s.e.NoError(err) {
+		s.Equal("origin", res.Name)
+		s.Equal(s.e.SshHost, res.Properties["address"])
+		s.Equal("test", res.Properties["username"])
+		s.Nil(res.Properties["password"])
+		s.Equal(22.0, res.Properties["port"])
+		s.Equal("/bar", res.Properties["path"])
+	}
+}
 
-       remoteApi.createRemote("foo", remote)
-   }
+func (s *SshTestSuite) TestSsh_052_ListCommitsPassword() {
+	res, _, err := s.remoteApi.ListRemoteCommits(s.ctx, "foo", "origin",
+		titanclient.RemoteParameters{
+			Provider:   "ssh",
+			Properties: map[string]interface{}{"password": "test"},
+		}, nil)
+	if s.e.NoError(err) {
+		s.Len(res, 1)
+		s.Equal("id", res[0].Id)
+	}
+}
 
-   "list commits with password succeeds" {
-       val commits = remoteApi.listRemoteCommits("foo", "origin", RemoteParameters("ssh", mapOf("password" to "test")))
-       commits.size shouldBe 1
-       commits[0].id shouldBe "id"
-   }
+func (s *SshTestSuite) TestSsh_053_ListCommitsNoPassword() {
+	_, _, err := s.remoteApi.ListRemoteCommits(s.ctx, "foo", "origin", s.remoteParams, nil)
+	s.e.APIError(err, "IllegalArgumentException")
+}
 
-   "list commits without password fails" {
-       val exception = shouldThrow<ClientException> {
-           remoteApi.listRemoteCommits("foo", "origin", params)
-       }
-       exception.code shouldBe "IllegalArgumentException"
-   }
+func (s *SshTestSuite) TestSsh_054_ListCommitsBadPassword() {
+	_, _, err := s.remoteApi.ListRemoteCommits(s.ctx, "foo", "origin",
+		titanclient.RemoteParameters{
+			Provider:   "ssh",
+			Properties: map[string]interface{}{"password": "r00t"},
+		}, nil)
+	s.e.APIError(err, "CommandException")
+}
 
-   "list commits with incorrect password fails" {
-       val exception = shouldThrow<ServerException> {
-           remoteApi.listRemoteCommits("foo", "origin", RemoteParameters("ssh", mapOf("password" to "r00t")))
-       }
-       exception.code shouldBe "CommandException"
-   }
+func (s *SshTestSuite) TestSsh_060_CopyKey() {
+	key, err := ioutil.ReadFile("id_rsa.pub")
+	if s.e.NoError(err) {
+		err = s.e.WriteFileSssh("/home/test/.ssh/authorized_keys", string(key))
+		s.e.NoError(err)
+	}
+}
 
-   "copy SSH key to server succeeds" {
-       val key = getResource("/id_rsa.pub")
-       dockerUtil.writeFileSsh("/home/test/.ssh/authorized_keys", key)
-   }
+func (s *SshTestSuite) TestSsh_061_ListCommitsKey() {
+	key, err := ioutil.ReadFile("id_rsa")
+	if s.e.NoError(err) {
+		res, _, err := s.remoteApi.ListRemoteCommits(s.ctx, "foo", "origin", titanclient.RemoteParameters{
+			Provider:   "ssh",
+			Properties: map[string]interface{}{"key": string(key)},
+		}, nil)
+		if s.e.NoError(err) {
+			s.Len(res, 1)
+			s.Equal("id", res[0].Id)
+		}
+	}
+}
 
-   "list commits with key succeeds" {
-       val key = getResource("/id_rsa")
-       val commits = remoteApi.listRemoteCommits("foo", "origin", RemoteParameters("ssh", mapOf("key" to key)))
-       commits.size shouldBe 1
-       commits[0].id shouldBe "id"
-   }
+func (s *SshTestSuite) TestSsh_062_PullCommitKey() {
+	key, err := ioutil.ReadFile("id_rsa")
+	if s.e.NoError(err) {
+		_, err := s.commitApi.DeleteCommit(s.ctx, "foo", "id")
+		if s.e.NoError(err) {
+			res, _, err := s.operationsApi.Pull(s.ctx, "foo", "origin", "id", titanclient.RemoteParameters{
+				Provider:   "ssh",
+				Properties: map[string]interface{}{"key": string(key)},
+			}, nil)
+			if s.e.NoError(err) {
+				_, err = s.e.WaitForOperation(res.Id)
+				s.e.NoError(err)
+			}
+		}
+	}
+}
 
-   "pull commit with key succeeds" {
-       val key = getResource("/id_rsa")
-       commitApi.deleteCommit("foo", "id")
-       val op = operationApi.pull("foo", "origin", "id", RemoteParameters("ssh", mapOf("key" to key)))
-       waitForOperation(op.id)
-   }
-
-*/
-
-func (s *SshTestSuite) TestSsh_103_DeleteVolume() {
+func (s *SshTestSuite) TestSsh_070_DeleteVolume() {
 	_, err := s.volumeApi.DeactivateVolume(s.ctx, "foo", "vol")
 	if s.e.NoError(err) {
 		_, err = s.volumeApi.DeleteVolume(s.ctx, "foo", "vol")
@@ -333,7 +373,7 @@ func (s *SshTestSuite) TestSsh_103_DeleteVolume() {
 	}
 }
 
-func (s *SshTestSuite) TestSsh_104_DeleteRepository() {
+func (s *SshTestSuite) TestSsh_071_DeleteRepository() {
 	_, err := s.repoApi.DeleteRepository(s.ctx, "foo")
 	s.e.NoError(err)
 }

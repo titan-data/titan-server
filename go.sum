@@ -13,6 +13,8 @@ github.com/titan-data/titan-client-go v0.0.1 h1:WgqYipVrV3kgnirIrsmE3clhl/AmNe9T
 github.com/titan-data/titan-client-go v0.0.1/go.mod h1:VW6HbA12IPKqS5+UsS7kLNKWEAv3jPvHTgezcVOMMgg=
 github.com/titan-data/titan-client-go v0.1.0 h1:KxjBWR1+eqrnTg9EJsA8H1O86vqeQ//CsF/x3qrQyoA=
 github.com/titan-data/titan-client-go v0.1.0/go.mod h1:VW6HbA12IPKqS5+UsS7kLNKWEAv3jPvHTgezcVOMMgg=
+github.com/titan-data/titan-client-go v0.1.1 h1:YsaZVHWZniV1uc0x4gIxAH9VMVc9SUYlrGlTCZ34iv8=
+github.com/titan-data/titan-client-go v0.1.1/go.mod h1:VW6HbA12IPKqS5+UsS7kLNKWEAv3jPvHTgezcVOMMgg=
 golang.org/x/crypto v0.0.0-20190308221718-c2843e01d9a2/go.mod h1:djNgcEr1/C05ACkg1iLfiJU5Ep61QUkGW8qpdssI0+w=
 golang.org/x/crypto v0.0.0-20191227163750-53104e6ec876 h1:sKJQZMuxjOAR/Uo2LBfU90onWEf1dF4C+0hPJCc9Mpc=
 golang.org/x/crypto v0.0.0-20191227163750-53104e6ec876/go.mod h1:LzIPMQfyMNhhGPhUkYOs5KpL4U8rLKemX1yGLhDgUto=

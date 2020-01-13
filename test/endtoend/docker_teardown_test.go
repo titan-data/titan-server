@@ -9,65 +9,56 @@ import (
 
 type TeardownTestSuite struct {
 	suite.Suite
-	docker *dockerUtil
+	e *EndToEndTest
 }
 
 func (s *TeardownTestSuite) SetupSuite() {
-	s.docker = DockerUtil("docker-zfs")
-	s.docker.SetupStandardDocker()
+	s.e = NewEndToEndTest(&s.Suite, "docker-zfs")
+	s.e.SetupStandardDocker()
 }
 
 func (s *TeardownTestSuite) TearDownSuite() {
-	s.docker.TeardownStandardDocker()
+	s.e.TeardownStandardDocker()
 }
 
-func (s *TeardownTestSuite) TestTeardown_1_CreateRepository() {
-	_, _, err := s.docker.Client.RepositoriesApi.CreateRepository(context.Background(), titanclient.Repository{
+func (s *TeardownTestSuite) TestTeardown_001_CreateRepository() {
+	_, _, err := s.e.Client.RepositoriesApi.CreateRepository(context.Background(), titanclient.Repository{
 		Name:       "foo",
 		Properties: map[string]interface{}{"a": "b"},
 	})
-	if err != nil {
-		s.Fail(err.Error())
+	s.e.NoError(err)
+}
+
+func (s *TeardownTestSuite) TestTeardown_002_GetRepository() {
+	repo, _, err := s.e.Client.RepositoriesApi.GetRepository(context.Background(), "foo")
+	if s.e.NoError(err) {
+		s.Equal("foo", repo.Name)
+		s.Len(repo.Properties, 1)
+		s.Equal("b", repo.Properties["a"])
 	}
 }
 
-func (s *TeardownTestSuite) TestTeardown_2_GetRepository() {
-	repo, _, _ := s.docker.Client.RepositoriesApi.GetRepository(context.Background(), "foo")
-	s.NotNil(repo)
-	s.Equal("foo", repo.Name)
-	s.Len(repo.Properties, 1)
-	s.Equal("b", repo.Properties["a"])
+func (s *TeardownTestSuite) TestTeardown_003_Restart() {
+	err := s.e.RestartServer()
+	s.e.NoError(err)
+	err = s.e.WaitForServer()
+	s.e.NoError(err)
+	repo, _, err := s.e.Client.RepositoriesApi.GetRepository(context.Background(), "foo")
+	if s.e.NoError(err) {
+		s.NotNil(repo)
+		s.Equal("foo", repo.Name)
+	}
 }
 
-func (s *TeardownTestSuite) TestTeardown_3_Restart() {
-	err := s.docker.RestartServer()
-	if err != nil {
-		s.FailNow(err.Error())
-	}
-	err = s.docker.WaitForServer()
-	if err != nil {
-		s.FailNow(err.Error())
-	}
-	repo, _, _ := s.docker.Client.RepositoriesApi.GetRepository(context.Background(), "foo")
-	s.NotNil(repo)
-	s.Equal("foo", repo.Name)
-}
-
-func (s *TeardownTestSuite) TestTeardown_4_RestartTeardown() {
-	err := s.docker.StopServer(false)
-	if err != nil {
-		s.FailNow(err.Error())
-	}
-	err = s.docker.StartServer()
-	if err != nil {
-		s.FailNow(err.Error())
-	}
-	err = s.docker.WaitForServer()
-	if err != nil {
-		s.FailNow(err.Error())
-	}
-	_, _, err = s.docker.Client.RepositoriesApi.GetRepository(context.Background(), "foo")
-	_ = s.Error(err)
+func (s *TeardownTestSuite) TestTeardown_004_RestartTeardown() {
+	err := s.e.StopServer(false)
+	s.e.NoError(err)
+	err = s.e.StartServer()
+	s.e.NoError(err)
+	err = s.e.WaitForServer()
+	s.e.NoError(err)
+	_, _, err = s.e.Client.RepositoriesApi.GetRepository(context.Background(), "foo")
+	s.e.APIError(err, "NoSuchObjectException")
 }
 
 func TestTeardownTestSuite(t *testing.T) {

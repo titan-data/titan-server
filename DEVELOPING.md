@@ -107,20 +107,6 @@ This will build the server and client, run style checks, as well as unit tests a
 then package the server into the titan docker image. If you run into lint or style errors, you can run
 `./gradlew ktlintFormat` to automatically format the code.
 
-There is a third test target,
-`endtoendTest`, that is not run automatically as part of `check` given how much longer it
-can take. This should be run separately to perform the full barrage of tests, but will require
-running the container, potentially connecting to external resources, etc. If you want to run the
-end-to-end tests, you will need to specify the information required to connect to the appropriate
-resources, such as:
-
-```
-./gradlew endtoendTest -P s3.location=bucket/path
-```
-
-The endtoend tests have been rewritten in golang as part of the migration, so you must have go installed
-in order to run them. The gradle target still exists, but will invoke the appropriate golang version of
-the tests as part of the transition.
 
 ## Testing
 
@@ -134,9 +120,21 @@ There are three types of tests:
     can be run as part of `./gradlew integrationTest`. They should be fast and are run as part of each pull
     request.
   * End to end tests - These tests run against the complete docker container, and hence are able to test the full
-    stack, including ZFS. These tests live under `test/endtoendTest` and are written in golang. They can
-    be invoked via `go test` or `./gradlew endtoendTest`. These tests may be slow, may depend on external resources
-    (like S3 buckets), but should remain runnable through CI/CD automation during the release process.
+    stack, including ZFS. These tests live under `test/endtoend` and are written in golang. These tests may be slow,
+    may depend on external resources like S3 buckets), but should remain runnable through CI/CD automation during the
+    release process. End to end tests are not run automatically as part of `check` given how much longer it
+    can take. To run the tests, you will need to run:
+
+    ```
+    go test ./test/endtoend
+    ```
+
+    Some tests require additional configuration. In this case, you will need to specify the configuration as
+    part of the environment, such as:
+
+    ```
+    S3_LOCATION=s3://my-bucket/test-data go test ./test/endtoend
+    ```
     
 These tests do generate coverage reports, but test coverage is not yet rigorously integrated into the development
 process.

@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/antihax/optional"
 	"github.com/stretchr/testify/suite"
 	titan "github.com/titan-data/titan-client-go"
 	"golang.org/x/crypto/ssh"
@@ -365,4 +366,35 @@ func (e *EndToEndTest) GetTag(commit titan.Commit, tag string) string {
 		return tags[tag].(string)
 	}
 	return ""
+}
+
+func (e *EndToEndTest) WaitForOperation(id string) ([]titan.ProgressEntry, error) {
+	completed := false
+	var lastEntry int32 = 0
+	result := []titan.ProgressEntry{}
+	for ok := true; ok; ok = !completed {
+		progress, _, err := e.Client.OperationsApi.GetOperationProgress(context.Background(), id,
+			&titan.GetOperationProgressOpts{LastId: optional.NewInt32(lastEntry)})
+		if err != nil {
+			return nil, err
+		}
+		result = append(result, progress...)
+		for _, p := range progress {
+			switch p.Type {
+			case "COMPLETE":
+				completed = true
+			case "ABORT":
+				return nil, errors.New(fmt.Sprintf("operation aborted: %s", p.Message))
+			case "FAILED":
+				return nil, errors.New(fmt.Sprintf("operation failed: %s", p.Message))
+			}
+			if p.Id > lastEntry {
+				lastEntry = p.Id
+			}
+		}
+		if !completed {
+			time.Sleep(time.Duration(500) * time.Millisecond)
+		}
+	}
+	return result, nil
 }

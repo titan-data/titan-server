@@ -5,6 +5,7 @@ package endtoend
 
 import (
 	"context"
+	"github.com/antihax/optional"
 	"github.com/stretchr/testify/suite"
 	titanclient "github.com/titan-data/titan-client-go"
 	"testing"
@@ -40,7 +41,7 @@ func (s *SshTestSuite) SetupSuite() {
 	s.operationsApi = s.e.Client.OperationsApi
 
 	s.remoteParams = titanclient.RemoteParameters{
-		Provider:   "nop",
+		Provider:   "ssh",
 		Properties: map[string]interface{}{},
 	}
 }
@@ -88,7 +89,7 @@ func (s *SshTestSuite) TestSsh_004_CreateCommit() {
 		Id: "id",
 		Properties: map[string]interface{}{"tags": map[string]string{
 			"a": "b",
-			"c": "e",
+			"c": "d",
 		}},
 	})
 	if s.e.NoError(err) {
@@ -97,119 +98,165 @@ func (s *SshTestSuite) TestSsh_004_CreateCommit() {
 	}
 }
 
+func (s *SshTestSuite) TestSsh_005_AddRemote() {
+	s.e.MkdirSsh("/bar")
+	host, err := s.e.GetSshHost()
+	if s.e.NoError(err) {
+		res, _, err := s.remoteApi.CreateRemote(s.ctx, "foo", titanclient.Remote{
+			Provider: "ssh",
+			Name:     "origin",
+			Properties: map[string]interface{}{
+				"address":  host,
+				"password": "test",
+				"username": "test",
+				"port":     22,
+				"path":     "/bar",
+			},
+		})
+		if s.e.NoError(err) {
+			s.Equal("origin", res.Name)
+			s.Equal(host, res.Properties["address"])
+			s.Equal("test", res.Properties["username"])
+			s.Equal("test", res.Properties["password"])
+			s.Equal(22.0, res.Properties["port"])
+			s.Equal("/bar", res.Properties["path"])
+		}
+	}
+}
+
+func (s *SshTestSuite) TestSsh_010_ListEmptyRemoteCommits() {
+	res, _, err := s.remoteApi.ListRemoteCommits(s.ctx, "foo", "origin", s.remoteParams, nil)
+	if s.e.NoError(err) {
+		s.Len(res, 0)
+	}
+}
+
+func (s *SshTestSuite) TestSsh_011_GetBadRemoteCommit() {
+	_, _, err := s.remoteApi.GetRemoteCommit(s.ctx, "foo", "origin", "id2", s.remoteParams)
+	s.e.APIError(err, "NoSuchObjectException")
+}
+
+func (s *SshTestSuite) TestSsh_020_PushCommit() {
+	res, _, err := s.operationsApi.Push(s.ctx, "foo", "origin", "id", s.remoteParams, nil)
+	if s.e.NoError(err) {
+		_, err = s.e.WaitForOperation(res.Id)
+		s.e.NoError(err)
+	}
+}
+
+func (s *SshTestSuite) TestSsh_021_ListRemoteCommit() {
+	res, _, err := s.remoteApi.ListRemoteCommits(s.ctx, "foo", "origin", s.remoteParams, nil)
+	if s.e.NoError(err) {
+		s.Len(res, 1)
+		s.Equal("id", res[0].Id)
+		s.Equal("b", s.e.GetTag(res[0], "a"))
+	}
+}
+
+func (s *SshTestSuite) TestSsh_022_ListRemoteFilterOut() {
+	res, _, err := s.remoteApi.ListRemoteCommits(s.ctx, "foo", "origin", s.remoteParams,
+		&titanclient.ListRemoteCommitsOpts{Tag: optional.NewInterface([]string{"e"})})
+	if s.e.NoError(err) {
+		s.Len(res, 0)
+	}
+}
+
+func (s *SshTestSuite) TestSsh_023_ListRemoteFilterInclude() {
+	res, _, err := s.remoteApi.ListRemoteCommits(s.ctx, "foo", "origin", s.remoteParams,
+		&titanclient.ListRemoteCommitsOpts{Tag: optional.NewInterface([]string{"a=b", "c=d"})})
+	if s.e.NoError(err) {
+		s.Len(res, 1)
+		s.Equal("id", res[0].Id)
+	}
+}
+
+func (s *SshTestSuite) TestSsh_024_RemoteFileContents() {
+	res, err := s.e.ReadFileSsh("/bar/id/data/vol/testfile")
+	if s.e.NoError(err) {
+		s.Equal("Hello", res)
+	}
+}
+
+func (s *SshTestSuite) TestSsh_030_PushDuplicateCommit() {
+	_, _, err := s.operationsApi.Push(s.ctx, "foo", "origin", "id", s.remoteParams, nil)
+	s.e.APIError(err, "ObjectExistsException")
+}
+
+func (s *SshTestSuite) TestSsh_031_UpdateCommit() {
+	res, _, err := s.commitApi.UpdateCommit(s.ctx, "foo", "id", titanclient.Commit{
+		Id: "id",
+		Properties: map[string]interface{}{"tags": map[string]string{
+			"a": "B",
+			"c": "e",
+		}},
+	})
+	if s.e.NoError(err) {
+		s.Equal("B", s.e.GetTag(res, "a"))
+	}
+}
+
+func (s *SshTestSuite) TestSsh_032_PushMedata() {
+	res, _, err := s.operationsApi.Push(s.ctx, "foo", "origin", "id", s.remoteParams,
+		&titanclient.PushOpts{MetadataOnly: optional.NewBool(true)})
+	if s.e.NoError(err) {
+		_, err = s.e.WaitForOperation(res.Id)
+		s.e.NoError(err)
+	}
+}
+
+func (s *SshTestSuite) TestSsh_033_RemoteMetadataUpdated() {
+	res, _, err := s.remoteApi.GetRemoteCommit(s.ctx, "foo", "origin", "id", s.remoteParams)
+	if s.e.NoError(err) {
+		s.Equal("id", res.Id)
+		s.Equal("B", s.e.GetTag(res, "a"))
+	}
+}
+
+func (s *SshTestSuite) TestSsh_040_DeleteLocalCommit() {
+	_, err := s.commitApi.DeleteCommit(s.ctx, "foo", "id")
+	s.e.NoError(err)
+}
+
+func (s *SshTestSuite) TestSsh_041_ListEmptyCommits() {
+	res, _, err := s.commitApi.ListCommits(s.ctx, "foo", nil)
+	if s.e.NoError(err) {
+		s.Len(res, 0)
+	}
+}
+
+func (s *SshTestSuite) TestSsh_042_UpdateFile() {
+	err := s.e.WriteFile("foo", "vol", "testfile", "Goodbye")
+	if s.e.NoError(err) {
+		res, err := s.e.ReadFile("foo", "vol", "testfile")
+		if s.e.NoError(err) {
+			s.Equal("Goodbye", res)
+		}
+	}
+}
+
+func (s *SshTestSuite) TestSsh_043_PullCommit() {
+	res, _, err := s.operationsApi.Pull(s.ctx, "foo", "origin", "id", s.remoteParams, nil)
+	if s.e.NoError(err) {
+		_, err = s.e.WaitForOperation(res.Id)
+		s.e.NoError(err)
+	}
+}
+
+func (s *SshTestSuite) TestSsh_044_PullDuplicate() {
+	_, _, err := s.operationsApi.Pull(s.ctx, "foo", "origin", "id", s.remoteParams, nil)
+	s.e.APIError(err, "ObjectExistsException")
+}
+
+func (s *SshTestSuite) TestSsh_045_PullMetadata() {
+	res, _, err := s.operationsApi.Pull(s.ctx, "foo", "origin", "id", s.remoteParams,
+		&titanclient.PullOpts{MetadataOnly: optional.NewBool(true)})
+	if s.e.NoError(err) {
+		_, err = s.e.WaitForOperation(res.Id)
+		s.e.NoError(err)
+	}
+}
+
 /*
-   "add ssh remote succeeds" {
-       dockerUtil.mkdirSsh("/bar")
-
-       val remote = RemoteUtil().parseUri("${dockerUtil.getSshUri()}/bar", "origin", mapOf())
-       remote.properties["address"] shouldBe dockerUtil.getSshHost()
-       remote.properties["password"] shouldBe "test"
-       remote.properties["username"] shouldBe "test"
-       remote.properties["port"] shouldBe 22
-       remote.name shouldBe "origin"
-
-       remoteApi.createRemote("foo", remote)
-   }
-
-   "list remote commits returns empty list" {
-       val commits = remoteApi.listRemoteCommits("foo", "origin", params)
-       commits.size shouldBe 0
-   }
-
-   "get non-existent remote commit fails" {
-       val exception = shouldThrow<ClientException> {
-           remoteApi.getRemoteCommit("foo", "origin", "id", params)
-       }
-       exception.code shouldBe "NoSuchObjectException"
-   }
-
-   "push commit succeeds" {
-       val op = operationApi.push("foo", "origin", "id", params)
-       waitForOperation(op.id)
-   }
-
-   "list remote commits returns pushed commit" {
-       val commits = remoteApi.listRemoteCommits("foo", "origin", params)
-       commits.size shouldBe 1
-       commits[0].id shouldBe "id"
-       getTag(commits[0], "a") shouldBe "b"
-   }
-
-   "list remote commits filters out commit" {
-       val commits = remoteApi.listRemoteCommits("foo", "origin", params, listOf("e"))
-       commits.size shouldBe 0
-   }
-
-   "list remote commits filters include commit" {
-       val commits = remoteApi.listRemoteCommits("foo", "origin", params, listOf("a=b", "c=d"))
-       commits.size shouldBe 1
-       commits[0].id shouldBe "id"
-   }
-
-   "remote file contents is correct" {
-       val content = dockerUtil.readFileSsh("/bar/id/data/vol/testfile")
-       content shouldBe "Hello\n"
-   }
-
-   "push of same commit fails" {
-       val exception = shouldThrow<ClientException> {
-           operationApi.push("foo", "origin", "id", params)
-       }
-       exception.code shouldBe "ObjectExistsException"
-   }
-
-   "update commit succeeds" {
-       val newCommit = Commit(id = "id", properties = mapOf("tags" to mapOf("a" to "B", "c" to "d")))
-       commitApi.updateCommit("foo", newCommit)
-       getTag(newCommit, "a") shouldBe "B"
-       val commit = commitApi.getCommit("foo", "id")
-       getTag(commit, "a") shouldBe "B"
-   }
-
-   "push commit metadata succeeds" {
-       val op = operationApi.push("foo", "origin", "id", params, true)
-       waitForOperation(op.id)
-   }
-
-   "remote commit metadata updated" {
-       val commit = commitApi.getCommit("foo", "id")
-       commit.id shouldBe "id"
-       getTag(commit, "a") shouldBe "B"
-       getTag(commit, "c") shouldBe "d"
-   }
-
-   "delete local commit succeeds" {
-       commitApi.deleteCommit("foo", "id")
-   }
-
-   "list local commits is empty" {
-       val result = commitApi.listCommits("foo")
-       result.size shouldBe 0
-   }
-
-   "write new local value succeeds" {
-       dockerUtil.writeFile("foo", "vol", "testfile", "Goodbye")
-       val result = dockerUtil.readFile("foo", "vol", "testfile")
-       result shouldBe "Goodbye\n"
-   }
-
-   "pull original commit succeeds" {
-       val op = operationApi.pull("foo", "origin", "id", params)
-       waitForOperation(op.id)
-   }
-
-   "pull same commit fails" {
-       val exception = shouldThrow<ClientException> {
-           operationApi.pull("foo", "origin", "id", params)
-       }
-       exception.code shouldBe "ObjectExistsException"
-   }
-
-   "pull of metadata only succeeds" {
-       val op = operationApi.pull("foo", "origin", "id", params, true)
-       waitForOperation(op.id)
-   }
-
    "checkout commit succeeds" {
        volumeApi.deactivateVolume("foo", "vol")
        commitApi.checkoutCommit("foo", "id")

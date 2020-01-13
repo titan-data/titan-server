@@ -14,28 +14,14 @@ type TeardownTestSuite struct {
 
 func (s *TeardownTestSuite) SetupSuite() {
 	s.docker = DockerUtil("docker-zfs")
-	err := s.docker.StopServer(true)
-	if err != nil {
-		panic(err)
-	}
-	err = s.docker.StartServer()
-	if err != nil {
-		panic(err)
-	}
-	err = s.docker.WaitForServer()
-	if err != nil {
-		panic(err)
-	}
+	s.docker.SetupStandardDocker()
 }
 
 func (s *TeardownTestSuite) TearDownSuite() {
-	err := s.docker.StopServer(false)
-	if err != nil {
-		panic(err)
-	}
+	s.docker.TeardownStandardDocker()
 }
 
-func (s *TeardownTestSuite) TestTeardownCreateRepository() {
+func (s *TeardownTestSuite) TestTeardown_1_CreateRepository() {
 	_, _, err := s.docker.Client.RepositoriesApi.CreateRepository(context.Background(), titanclient.Repository{
 		Name:       "foo",
 		Properties: map[string]interface{}{"a": "b"},
@@ -45,7 +31,7 @@ func (s *TeardownTestSuite) TestTeardownCreateRepository() {
 	}
 }
 
-func (s *TeardownTestSuite) TestTeardownGetRepository() {
+func (s *TeardownTestSuite) TestTeardown_2_GetRepository() {
 	repo, _, _ := s.docker.Client.RepositoriesApi.GetRepository(context.Background(), "foo")
 	s.NotNil(repo)
 	s.Equal("foo", repo.Name)
@@ -53,7 +39,7 @@ func (s *TeardownTestSuite) TestTeardownGetRepository() {
 	s.Equal("b", repo.Properties["a"])
 }
 
-func (s *TeardownTestSuite) TestTeardownRestart() {
+func (s *TeardownTestSuite) TestTeardown_3_Restart() {
 	err := s.docker.RestartServer()
 	if err != nil {
 		s.FailNow(err.Error())
@@ -67,7 +53,7 @@ func (s *TeardownTestSuite) TestTeardownRestart() {
 	s.Equal("foo", repo.Name)
 }
 
-func (s *TeardownTestSuite) TestTeardownRestartTeardown() {
+func (s *TeardownTestSuite) TestTeardown_4_RestartTeardown() {
 	err := s.docker.StopServer(false)
 	if err != nil {
 		s.FailNow(err.Error())

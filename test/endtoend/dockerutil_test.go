@@ -200,7 +200,7 @@ func (u *dockerUtil) WriteFile(repo string, volume string, filename string, cont
 	}
 	path := fmt.Sprintf("%s/%s", mountpoint, filename)
 	return exec.Command("docker", "exec", u.GetContainer("server"), "sh", "-c",
-		fmt.Sprintf("echo \"%s\" > %s", content, path)).Run()
+		fmt.Sprintf("echo -n \"%s\" > %s", content, path)).Run()
 }
 
 func (u *dockerUtil) ReadFile(repo string, volume string, filename string) (string, error) {
@@ -303,4 +303,41 @@ func (u *dockerUtil) WaitForSsh() error {
 		}
 	}
 	return nil
+}
+func (d *dockerUtil) SetupStandardDocker() {
+	err := d.StopServer(true)
+	if err != nil {
+		panic(err)
+	}
+	err = d.StartServer()
+	if err != nil {
+		panic(err)
+	}
+	err = d.WaitForServer()
+	if err != nil {
+		panic(err)
+	}
+}
+
+func (d *dockerUtil) TeardownStandardDocker() {
+	err := d.StopServer(false)
+	if err != nil {
+		panic(err)
+	}
+}
+
+func (d *dockerUtil) GetAPIError(err error) titan.ApiError {
+	if openApiError, ok := err.(titan.GenericOpenAPIError); ok {
+		if titanApiError, ok := openApiError.Model().(titan.ApiError); ok {
+			return titanApiError
+		}
+	}
+	return titan.ApiError{Message: err.Error()}
+}
+
+func (d *dockerUtil) GetTag(commit titan.Commit, tag string) string {
+	if tags, ok := commit.Properties["tags"].(map[string]interface{}); ok {
+		return tags[tag].(string)
+	}
+	return ""
 }

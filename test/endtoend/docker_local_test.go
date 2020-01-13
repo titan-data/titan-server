@@ -10,6 +10,7 @@ import (
 	titanclient "github.com/titan-data/titan-client-go"
 	"strings"
 	"testing"
+	"time"
 )
 
 type DockerLocalTestSuite struct {
@@ -17,10 +18,15 @@ type DockerLocalTestSuite struct {
 	d   *dockerUtil
 	ctx context.Context
 
+	volumeMountpoint string
+	remoteParams titanclient.RemoteParameters
+	currentOp titanclient.Operation
+
 	repoApi   *titanclient.RepositoriesApiService
 	remoteApi *titanclient.RemotesApiService
 	volumeApi *titanclient.VolumesApiService
 	commitApi *titanclient.CommitsApiService
+	operationsApi *titanclient.OperationsApiService
 }
 
 func (s *DockerLocalTestSuite) SetupSuite() {
@@ -32,6 +38,12 @@ func (s *DockerLocalTestSuite) SetupSuite() {
 	s.volumeApi = s.d.Client.VolumesApi
 	s.remoteApi = s.d.Client.RemotesApi
 	s.commitApi = s.d.Client.CommitsApi
+	s.operationsApi = s.d.Client.OperationsApi
+
+	s.remoteParams = titanclient.RemoteParameters{
+		Provider:   "nop",
+		Properties: map[string]interface{}{},
+	}
 }
 
 func (s *DockerLocalTestSuite) TearDownSuite() {
@@ -122,8 +134,8 @@ func (s *DockerLocalTestSuite) TestLocal_013_GetVolume() {
 	s.Equal("vol", res.Name)
 	s.Len(res.Properties, 1)
 	s.Equal("b", res.Properties["a"])
-	mountpoint := res.Config["mountpoint"].(string)
-	idx := strings.Index(mountpoint, "/var/lib/test/mnt/")
+	s.volumeMountpoint = res.Config["mountpoint"].(string)
+	idx := strings.Index(s.volumeMountpoint, "/var/lib/test/mnt/")
 	s.Equal(0, idx)
 }
 
@@ -208,7 +220,6 @@ func (s *DockerLocalTestSuite) TestLocal_026_CommitStatus() {
 	res, _, _ := s.commitApi.GetCommitStatus(s.ctx, "foo", "id")
 	s.NotZero(res.LogicalSize)
 	s.NotZero(res.ActualSize)
-	s.NotZero(res.UniqueSize)
 }
 
 func (s *DockerLocalTestSuite) TestLocal_027_DeleteBadCommit() {
@@ -261,123 +272,146 @@ func (s *DockerLocalTestSuite) TestLocal_040_VolumeStatus() {
 	s.Empty(res.Error)
 }
 
+func (s *DockerLocalTestSuite) TestLocal_041_WriteNewValue() {
+	err := s.d.WriteFile("foo", "vol", "testfile", "Goodbye")
+	s.Nil(err)
+	res, _ := s.d.ReadFile("foo", "vol", "testfile")
+	s.Equal("Goodbye", res)
+}
+
+func (s *DockerLocalTestSuite) TestLocal_042_Unmount() {
+	_, err := s.volumeApi.DeactivateVolume(s.ctx, "foo", "vol")
+	s.Nil(err)
+}
+
+func (s *DockerLocalTestSuite) TestLocal_043_UnmountIdempotent() {
+	_, err := s.volumeApi.DeactivateVolume(s.ctx, "foo", "vol")
+	s.Nil(err)
+}
+
+func (s *DockerLocalTestSuite) TestLocal_044_Checkout() {
+	_, err := s.commitApi.CheckoutCommit(s.ctx, "foo", "id")
+	s.Nil(err)
+	_, err = s.volumeApi.ActivateVolume(s.ctx, "foo", "vol")
+	s.Nil(err)
+	res, _ := s.d.ReadFile("foo", "vol", "testfile")
+	s.Equal("Hello", res)
+}
+
+func (s *DockerLocalTestSuite) TestLocal_045_NewMountpoint() {
+	res, _, _ := s.volumeApi.GetVolume(s.ctx, "foo", "vol")
+	s.NotEqual(s.volumeMountpoint, res.Config["mountpoint"])
+	s.volumeMountpoint = res.Config["mountpoint"].(string)
+}
+
+func (s *DockerLocalTestSuite) TestLocal_046_SourceCommit() {
+	res, _, _ := s.repoApi.GetRepositoryStatus(s.ctx, "foo")
+	s.Equal("id", res.SourceCommit)
+	s.Equal("id", res.LastCommit)
+}
+
+func (s *DockerLocalTestSuite) TestLocal_050_AddRemote() {
+	res, _, _ := s.remoteApi.CreateRemote(s.ctx, "foo", titanclient.Remote{
+		Provider:   "nop",
+		Name:       "a",
+		Properties: map[string]interface{}{},
+	})
+	s.Equal("a", res.Name)
+}
+
+func (s *DockerLocalTestSuite) TestLocal_051_GetRemote() {
+	res, _, _ := s.remoteApi.GetRemote(s.ctx, "foo", "a")
+	s.Equal("nop", res.Provider)
+	s.Equal("a", res.Name)
+}
+
+func (s *DockerLocalTestSuite) TestLocal_052_DuplicateRemote() {
+	_, _, err := s.remoteApi.CreateRemote(s.ctx, "foo", titanclient.Remote{
+		Provider:   "nop",
+		Name:       "a",
+		Properties: map[string]interface{}{},
+	})
+	apiErr := s.d.GetAPIError(err)
+	s.Equal("ObjectExistsException", apiErr.Code)
+}
+
+func (s *DockerLocalTestSuite) TestLocal_053_ListRemotes() {
+	res, _, _ := s.remoteApi.ListRemotes(s.ctx, "foo")
+	s.Len(res, 1)
+	s.Equal("a", res[0].Name)
+}
+
+func (s *DockerLocalTestSuite) TestLocal_054_ListRemoteCommits() {
+	res, _, _ := s.remoteApi.ListRemoteCommits(s.ctx, "foo", "a", s.remoteParams, nil)
+	s.Len(res, 0)
+}
+
+func (s *DockerLocalTestSuite) TestLocal_055_GetRemoteCommit() {
+	res, _, _ := s.remoteApi.GetRemoteCommit(s.ctx, "foo", "a", "hash", s.remoteParams)
+	s.Equal("hash", res.Id)
+}
+
+func (s *DockerLocalTestSuite) TestLocal_056_DeleteNonExistentRemote() {
+	_, err := s.remoteApi.DeleteRemote(s.ctx, "foo", "b")
+	apiErr := s.d.GetAPIError(err)
+	s.Equal("NoSuchObjectException", apiErr.Code)
+}
+
+func (s *DockerLocalTestSuite) TestLocal_057_UpdateRemote() {
+	_, _, _ = s.remoteApi.UpdateRemote(s.ctx, "foo", "a", titanclient.Remote{
+		Provider:   "nop",
+		Name:       "b",
+		Properties: map[string]interface{}{},
+	})
+	res, _, _ := s.remoteApi.GetRemote(s.ctx, "foo", "b")
+	s.Equal("nop", res.Provider)
+	s.Equal("b", res.Name)
+}
+
+func (s *DockerLocalTestSuite) TestLocal_060_ListEmptyOperations() {
+	res, _, _ := s.operationsApi.ListOperations(s.ctx, nil)
+	s.Len(res, 0)
+}
+
+func (s *DockerLocalTestSuite) TestLocal_061_StartPush() {
+	res, _, _ := s.operationsApi.Push(s.ctx, "foo", "b", "id", nil)
+	s.Equal("id", res.Id)
+	s.Equal("PUSH", res.Type)
+	s.Equal("b", res.Remote)
+	s.currentOp = res
+}
+
+func (s *DockerLocalTestSuite) TestLocal_062_GetOperation() {
+	res, _, _ := s.operationsApi.GetOperation(s.ctx, s.currentOp.Id)
+	s.Equal("id", res.Id)
+	s.Equal("PUSH", res.Type)
+	s.Equal("b", res.Remote)
+	s.Equal(s.currentOp.CommitId, res.CommitId)
+}
+
+func (s *DockerLocalTestSuite) TestLocal_063_ListOperations() {
+	res, _, _ := s.operationsApi.ListOperations(s.ctx, &titanclient.ListOperationsOpts{Repository: optional.NewString("foo")})
+	s.Len(res, 1)
+	s.Equal(s.currentOp.Id, res[0].Id)
+}
+
+func (s *DockerLocalTestSuite) TestLocal_064_GetPushProgress() {
+	time.Sleep(time.Duration(1) * time.Second)
+	res, _, _ := s.operationsApi.GetOperation(s.ctx, s.currentOp.Id)
+	s.Equal(res.State, "COMPLETE")
+	progress, _, _ := s.operationsApi.GetOperationProgress(s.ctx, s.currentOp.Id, nil)
+	s.Len(progress, 2)
+	s.Equal("MESSAGE", progress[0].Type)
+	s.Equal("Pushing id to 'b'", progress[0].Message)
+	s.Equal("COMPLETE", progress[1].Type)
+}
+
+func (s *DockerLocalTestSuite) TestLocal_065_ListNotPresent() {
+	res, _, _ := s.operationsApi.ListOperations(s.ctx, &titanclient.ListOperationsOpts{Repository: optional.NewString("foo")})
+	s.Len(res, 0)
+}
+
 /*
-   "write new local value succeeds" {
-       dockerUtil.writeFile("foo", "vol", "testfile", "Goodbye")
-       val result = dockerUtil.readFile("foo", "vol", "testfile")
-       result shouldBe "Goodbye\n"
-   }
-
-   "unmount volume succeeds" {
-       volumeApi.deactivateVolume("foo", "vol")
-   }
-
-   "unmount volume is idempotent" {
-       volumeApi.deactivateVolume("foo", "vol")
-   }
-
-   "checkout commit and old contents are present" {
-       commitApi.checkoutCommit("foo", "id")
-       volumeApi.activateVolume("foo", "vol")
-       val result = dockerUtil.readFile("foo", "vol", "testfile")
-       result shouldBe "Hello\n"
-   }
-
-   "volume is mounted at a new location" {
-       val vol = volumeApi.getVolume("foo", "vol")
-       vol.config["mountpoint"] shouldNotBe volumeMountpoint
-       volumeMountpoint = vol.config["mountpoint"] as String
-   }
-
-   "get repository status indicates source commit" {
-       val status = repoApi.getRepositoryStatus("foo")
-       status.sourceCommit shouldBe "id"
-       status.lastCommit shouldBe "id"
-   }
-
-   "add remote succeeds" {
-       val result = remoteApi.createRemote("foo", remote)
-       result.name shouldBe "a"
-   }
-
-   "get remote succeeds" {
-       val result = remoteApi.getRemote("foo", "a")
-       result.provider shouldBe "nop"
-       result.name shouldBe "a"
-   }
-
-   "add duplicate remote fails" {
-       val exception = shouldThrow<ClientException> {
-           remoteApi.createRemote("foo", remote)
-       }
-       exception.code shouldBe "ObjectExistsException"
-   }
-
-   "remote shows up in list" {
-       val result = remoteApi.listRemotes("foo")
-       result.size shouldBe 1
-       result[0].name shouldBe "a"
-   }
-
-   "list remote commits succeeds" {
-       val result = remoteApi.listRemoteCommits("foo", "a", params)
-       result.size shouldBe 0
-   }
-
-   "get remote commit succeeds" {
-       val result = remoteApi.getRemoteCommit("foo", "a", "hash", params)
-       result.id shouldBe "hash"
-   }
-
-   "update remote name succeeds" {
-       remoteApi.updateRemote("foo", "a", Remote("nop", "b"))
-       val result = remoteApi.getRemote("foo", "b")
-       result.name shouldBe "b"
-       result.provider shouldBe "nop"
-   }
-
-   "list of operations is empty" {
-       val result = operationApi.listOperations("foo")
-       result.size shouldBe 0
-   }
-
-   "push creates new operation" {
-       currentOp = operationApi.push("foo", "b", "id", params)
-       currentOp.commitId shouldBe "id"
-       currentOp.remote shouldBe "b"
-       currentOp.type shouldBe Operation.Type.PUSH
-   }
-
-   "get push operation succeeds" {
-       val result = operationApi.getOperation(currentOp.id)
-       result.id shouldBe currentOp.id
-       result.commitId shouldBe currentOp.commitId
-       result.remote shouldBe currentOp.remote
-       result.type shouldBe currentOp.type
-   }
-
-   "list operations shows push operation" {
-       val result = operationApi.listOperations("foo")
-       result.size shouldBe 1
-       result[0].id shouldBe currentOp.id
-   }
-
-   "get push operation progress succeeds" {
-       delay(Duration.ofMillis(1000))
-       val result = operationApi.getOperation(currentOp.id)
-       result.state shouldBe Operation.State.COMPLETE
-       val progress = operationApi.getProgress(currentOp.id, 0)
-       progress.size shouldBe 2
-       progress[0].type shouldBe ProgressEntry.Type.MESSAGE
-       progress[0].message shouldBe "Pushing id to 'b'"
-       progress[1].type shouldBe ProgressEntry.Type.COMPLETE
-   }
-
-   "push operation no longer in list of operations" {
-       val result = operationApi.listOperations("foo")
-       result.size shouldBe 0
-   }
-
    "pull creates new operation" {
        currentOp = operationApi.pull("foo", "b", "id2", params)
        currentOp.commitId shouldBe "id2"
@@ -449,20 +483,11 @@ func (s *DockerLocalTestSuite) TestLocal_040_VolumeStatus() {
        progress[0].message shouldBe "Pushing id to 'b'"
        progress[1].type shouldBe ProgressEntry.Type.ABORT
    }
-
-   "delete remote succeeds" {
-       remoteApi.deleteRemote("foo", "b")
-       val exception = shouldThrow<ClientException> {
-           remoteApi.getRemote("foo", "b")
-       }
-       exception.code shouldBe "NoSuchObjectException"
-   }
 */
 
-func (s *DockerLocalTestSuite) TestLocal_098_DeleteNonExistentRemote() {
-	_, err := s.remoteApi.DeleteRemote(s.ctx, "foo", "b")
-	apiErr := s.d.GetAPIError(err)
-	s.Equal("NoSuchObjectException", apiErr.Code)
+func (s *DockerLocalTestSuite) TestLocal_098_DeleteRemote() {
+	_, err := s.remoteApi.DeleteRemote(s.ctx, "foo", "a")
+	s.Nil(err)
 }
 
 func (s *DockerLocalTestSuite) TestLocal_099_DeleteVolume() {

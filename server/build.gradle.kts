@@ -27,7 +27,6 @@ repositories {
 val ktorVersion = "1.2.6"
 
 dependencies {
-    compile(project(":client"))
     compile(kotlin("stdlib"))
     compile("io.ktor:ktor-server-cio:$ktorVersion")
     compile("io.ktor:ktor-gson:$ktorVersion")

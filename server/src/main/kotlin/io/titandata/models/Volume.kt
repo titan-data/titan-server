@@ -3,7 +3,7 @@
  */
 package io.titandata.models
 
-data class Volume (
+data class Volume(
     var name: String,
     var properties: Map<String, Any> = emptyMap(),
     var config: Map<String, Any> = emptyMap()

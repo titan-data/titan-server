@@ -42,10 +42,3 @@ jobs:
         run: |
           docker login -u ${{ secrets.DOCKER_USER }} -p ${{ secrets.DOCKER_PASSWORD }}
           ./gradlew publishDockerVersion publishDockerLatest -PserverImageName=titandata/titan -PtitanVersion=${GITHUB_REF#refs/tags/}
-      - name: Publish client jar
-        run: >
-          ./gradlew :client:publish -PmavenBucket=${{ secrets.MAVEN_BUCKET }}
-          -PtitanVersion=${GITHUB_REF#refs/tags/}
-        env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}

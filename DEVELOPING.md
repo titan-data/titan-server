@@ -17,6 +17,10 @@ There are a few key components of the overall architecture:
 Of these, the docker image is by far the most complicated, as we have to go through several
 different hoops to get ZFS usable within containers on arbitrary host systems.
 
+Note that the project is in the process of being migrated from Kotlin to golang. During this
+process, you will see some less than elegant worts, such as some tests in golang but others
+in Kotlin, plugins in golang being loaded from Kotlin, etc.
+
 ### Titan server and client
 
 The titan server is built from `server/src`. It is a web server wrapped around a storage
@@ -103,16 +107,6 @@ This will build the server and client, run style checks, as well as unit tests a
 then package the server into the titan docker image. If you run into lint or style errors, you can run
 `./gradlew ktlintFormat` to automatically format the code.
 
-There is a third test target,
-`endtoendTest`, that is not run automatically as part of `check` given how much longer it
-can take. This should be run separately to perform the full barrage of tests, but will require
-running the container, potentially connecting to external resources, etc. If you want to run the
-end-to-end tests, you will need to specify the information required to connect to the appropriate
-resources, such as:
-
-```
-./gradlew endtoendTest -P s3.location=bucket/path
-```
 
 ## Testing
 
@@ -126,10 +120,23 @@ There are three types of tests:
     can be run as part of `./gradlew integrationTest`. They should be fast and are run as part of each pull
     request.
   * End to end tests - These tests run against the complete docker container, and hence are able to test the full
-    stack, including ZFS. These tests live under `src/endtoendTest` and can be run as part of
-    `./gradlew endtoendTest`. These tests may be slow, may depend on external resources (like S3 buckets), but
-    should remain runnable through CI/CD automation during the release process.
+    stack, including ZFS. These tests live under `test` and are written in golang. These tests may be slow,
+    may depend on external resources like S3 buckets), but should remain runnable through CI/CD automation during the
+    release process. End to end tests are not run automatically as part of `check` given how much longer it
+    can take.
     
+ End to end tests are further divided into a few sub-directories:
+ 
+  * `docker` - Runs local workflows using docker. Should be runnable on any system that supports titan with ZFS.
+  * `remote` - Runs tests for each of the remotes. In addition to having titan server running locally with docker,
+    these tests require additional configuration, with `S3_LOCATION` set in the environment to a S3 bucket and path
+    that has S3 web server configured. These tests will eventually be moved into the corresponding remote repositories.
+  * `kubernetes` - Runs tests dependent on kubernetes. Must have a working, supported kubernetes cluster as the
+    default cluster.
+    
+If you want to run all of the endtoend tests, note that `go test` by default runs different packages in paralell. You
+will need to explicitly use `go test -p 1`, such as `go test -p 1 ./test/...`
+
 These tests do generate coverage reports, but test coverage is not yet rigorously integrated into the development
 process.
 

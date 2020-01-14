@@ -63,10 +63,11 @@ func (s *KubernetesConfigTestSuite) TestKubernetesConfig_001_StartServer() {
 func (s *KubernetesConfigTestSuite) TestKubernetesConfig_002_GetConfiguration() {
 	res, _, err := s.e.Client.ContextsApi.GetContext(context.Background())
 	if s.e.NoError(err) {
-		s.Len(res.Properties, 4)
+		s.Len(res.Properties, 5)
 		s.Equal(s.ConfigFile, res.Properties["configFile"])
 		s.Equal(s.KubeContext, res.Properties["context"])
 		s.Equal(s.StorageClass, res.Properties["storageClass"])
 		s.Equal(s.SnapshotClass, res.Properties["snapshotClass"])
+		s.Equal("titandata/titan:latest", res.Properties["titanImage"])
 	}
 }

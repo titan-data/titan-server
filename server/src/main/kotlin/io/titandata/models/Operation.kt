@@ -5,11 +5,11 @@
 package io.titandata.models
 
 data class Operation(
-        var id: String,
-        var type: Type,
-        var state: State = State.RUNNING,
-        var remote: String,
-        var commitId: String
+    var id: String,
+    var type: Type,
+    var state: State = State.RUNNING,
+    var remote: String,
+    var commitId: String
 ) {
 
     enum class Type(val value: String) {

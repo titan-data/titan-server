@@ -5,12 +5,12 @@
 package io.titandata.models
 
 data class ProgressEntry(
-        var type: Type,
-        var message: String? = null,
-        var percent: Int? = null,
-        var id: Int = 0
+    var type: Type,
+    var message: String? = null,
+    var percent: Int? = null,
+    var id: Int = 0
 ) {
-    enum class Type(val value: String){
+    enum class Type(val value: String) {
         MESSAGE("MESSAGE"),
         START("START"),
         PROGRESS("PROGRESS"),

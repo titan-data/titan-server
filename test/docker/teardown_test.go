@@ -1,19 +1,20 @@
-package endtoend
+package docker
 
 import (
 	"context"
 	"github.com/stretchr/testify/suite"
 	titanclient "github.com/titan-data/titan-client-go"
 	"testing"
+	endtoend "github.com/titan-data/titan-server/test/common"
 )
 
 type TeardownTestSuite struct {
 	suite.Suite
-	e *EndToEndTest
+	e *endtoend.EndToEndTest
 }
 
 func (s *TeardownTestSuite) SetupSuite() {
-	s.e = NewEndToEndTest(&s.Suite, "docker-zfs")
+	s.e = endtoend.NewEndToEndTest(&s.Suite, "docker-zfs")
 	s.e.SetupStandardDocker()
 }
 

@@ -120,22 +120,20 @@ There are three types of tests:
     can be run as part of `./gradlew integrationTest`. They should be fast and are run as part of each pull
     request.
   * End to end tests - These tests run against the complete docker container, and hence are able to test the full
-    stack, including ZFS. These tests live under `test/endtoend` and are written in golang. These tests may be slow,
+    stack, including ZFS. These tests live under `test` and are written in golang. These tests may be slow,
     may depend on external resources like S3 buckets), but should remain runnable through CI/CD automation during the
     release process. End to end tests are not run automatically as part of `check` given how much longer it
-    can take. To run the tests, you will need to run:
-
-    ```
-    go test ./test/endtoend
-    ```
-
-    Some tests require additional configuration. In this case, you will need to specify the configuration as
-    part of the environment, such as:
-
-    ```
-    S3_LOCATION=s3://my-bucket/test-data go test ./test/endtoend
-    ```
+    can take.
     
+ End to end tests are further divided into a few sub-directories:
+ 
+  * `docker` - Runs local workflows using docker. Should be runnable on any system that supports titan with ZFS.
+  * `remote` - Runs tests for each of the remotes. In addition to having titan server running locally with docker,
+    these tests require additional configuration, with `S3_LOCATION` set in the environment to a S3 bucket and path
+    that has S3 web server configured. These tests will eventually be moved into the corresponding remote repositories.
+  * `kubernetes` - Runs tests dependent on kubernetes. Must have a working, supported kubernetes cluster as the
+    default cluster.
+
 These tests do generate coverage reports, but test coverage is not yet rigorously integrated into the development
 process.
 

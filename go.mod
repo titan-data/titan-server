@@ -1,4 +1,4 @@
-module titan
+module github.com/titan-data/titan-server
 
 require (
 	github.com/antihax/optional v1.0.0

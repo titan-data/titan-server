@@ -1,7 +1,7 @@
 /*
  * Copyright The Titan Project Contributors.
  */
-package endtoend
+package kubernetes
 
 import (
 	"context"
@@ -10,11 +10,12 @@ import (
 	"os/exec"
 	"strings"
 	"testing"
+	endtoend "github.com/titan-data/titan-server/test/common"
 )
 
 type KubernetesConfigTestSuite struct {
 	suite.Suite
-	e *EndToEndTest
+	e *endtoend.EndToEndTest
 
 	ConfigFile    string
 	KubeContext   string
@@ -23,7 +24,7 @@ type KubernetesConfigTestSuite struct {
 }
 
 func (s *KubernetesConfigTestSuite) SetupSuite() {
-	s.e = NewEndToEndTest(&s.Suite, "kubernetes-csi")
+	s.e = endtoend.NewEndToEndTest(&s.Suite, "kubernetes-csi")
 	_ = s.e.StopServer(true)
 
 	s.ConfigFile = "config"

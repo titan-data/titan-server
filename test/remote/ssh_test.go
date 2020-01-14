@@ -1,7 +1,7 @@
 /*
  * Copyright The Titan Project Contributors.
  */
-package endtoend
+package remote
 
 import (
 	"context"
@@ -10,11 +10,12 @@ import (
 	titan "github.com/titan-data/titan-client-go"
 	"io/ioutil"
 	"testing"
+	endtoend "github.com/titan-data/titan-server/test/common"
 )
 
 type SshTestSuite struct {
 	suite.Suite
-	e   *EndToEndTest
+	e   *endtoend.EndToEndTest
 	ctx context.Context
 
 	sshHost      string
@@ -23,7 +24,7 @@ type SshTestSuite struct {
 }
 
 func (s *SshTestSuite) SetupSuite() {
-	s.e = NewEndToEndTest(&s.Suite, "docker-zfs")
+	s.e = endtoend.NewEndToEndTest(&s.Suite, "docker-zfs")
 	s.e.SetupStandardDocker()
 	s.e.SetupStandardSsh()
 

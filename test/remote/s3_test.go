@@ -1,7 +1,7 @@
 /*
  * Copyright The Titan Project Contributors.
  */
-package endtoend
+package remote
 
 import (
 	"context"
@@ -14,11 +14,12 @@ import (
 	"os"
 	"strings"
 	"testing"
+	endtoend "github.com/titan-data/titan-server/test/common"
 )
 
 type S3TestSuite struct {
 	suite.Suite
-	e   *EndToEndTest
+	e   *endtoend.EndToEndTest
 	ctx context.Context
 
 	s3bucket     string
@@ -83,7 +84,7 @@ func (s *S3TestSuite) SetupSuite() {
 		},
 	}
 
-	s.e = NewEndToEndTest(&s.Suite, "docker-zfs")
+	s.e = endtoend.NewEndToEndTest(&s.Suite, "docker-zfs")
 	s.e.SetupStandardDocker()
 
 	s.ctx = context.Background()

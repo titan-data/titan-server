@@ -8,9 +8,9 @@ import (
 	"github.com/antihax/optional"
 	"github.com/stretchr/testify/suite"
 	titan "github.com/titan-data/titan-client-go"
+	endtoend "github.com/titan-data/titan-server/test/common"
 	"io/ioutil"
 	"testing"
-	endtoend "github.com/titan-data/titan-server/test/common"
 )
 
 type SshTestSuite struct {
@@ -318,7 +318,7 @@ func (s *SshTestSuite) TestSsh_054_ListCommitsBadPassword() {
 func (s *SshTestSuite) TestSsh_060_CopyKey() {
 	key, err := ioutil.ReadFile("id_rsa.pub")
 	if s.e.NoError(err) {
-		err = s.e.WriteFileSssh("/home/test/.ssh/authorized_keys", string(key))
+		err = s.e.WriteFileSsh("/home/test/.ssh/authorized_keys", string(key))
 		s.e.NoError(err)
 	}
 }

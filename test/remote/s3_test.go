@@ -11,10 +11,10 @@ import (
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/stretchr/testify/suite"
 	titan "github.com/titan-data/titan-client-go"
+	endtoend "github.com/titan-data/titan-server/test/common"
 	"os"
 	"strings"
 	"testing"
-	endtoend "github.com/titan-data/titan-server/test/common"
 )
 
 type S3TestSuite struct {

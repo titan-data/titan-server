@@ -23,47 +23,6 @@ abstract class KubernetesTest : EndToEndTest("kubernetes-csi") {
     internal val executor = CommandExecutor()
     private val  namespace = "default"
 
-    init {
-        val config = if (System.getProperty("kubernetes.config") != null) {
-            val configValues = System.getProperty("kubernetes.config")
-            val configMap = mutableMapOf<String, String>()
-            for (nameval in configValues.split(",")) {
-                val name = nameval.substringBefore("=")
-                val value = nameval.substringAfter("=")
-                configMap[name] = value
-            }
-            configMap
-        } else {
-            emptyMap<String, String>()
-        }
-        coreApi = CoreV1Api()
-    }
-
-    internal fun waitForVolumeApi(repository: String, volumeName: String) {
-        var status = volumeApi.getVolumeStatus(repository, volumeName)
-        while (!status.ready) {
-            if (status.error != null) {
-                throw Exception(status.error)
-            }
-            status = volumeApi.getVolumeStatus(repository, volumeName)
-            if (!status.ready) {
-                Thread.sleep(1000)
-            }
-        }
-    }
-    internal fun waitForCommitApi(repo: String, commitId: String) {
-        var status = commitApi.getCommitStatus(repo, commitId)
-        while (!status.ready) {
-            if (status.error != null) {
-                throw Exception(status.error)
-            }
-            status = commitApi.getCommitStatus(repo, commitId)
-            if (!status.ready) {
-                Thread.sleep(1000)
-            }
-        }
-    }
-
     internal fun getPodStatus(name: String): Boolean {
         val pod = coreApi.readNamespacedPod(name, namespace, null, null, null)
         val statuses = pod?.status?.containerStatuses ?: return false

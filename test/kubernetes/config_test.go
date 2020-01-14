@@ -7,10 +7,10 @@ import (
 	"context"
 	"fmt"
 	"github.com/stretchr/testify/suite"
+	endtoend "github.com/titan-data/titan-server/test/common"
 	"os/exec"
 	"strings"
 	"testing"
-	endtoend "github.com/titan-data/titan-server/test/common"
 )
 
 type KubernetesConfigTestSuite struct {

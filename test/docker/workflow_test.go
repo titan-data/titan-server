@@ -8,10 +8,10 @@ import (
 	"github.com/antihax/optional"
 	"github.com/stretchr/testify/suite"
 	titan "github.com/titan-data/titan-client-go"
+	endtoend "github.com/titan-data/titan-server/test/common"
 	"strings"
 	"testing"
 	"time"
-	endtoend "github.com/titan-data/titan-server/test/common"
 )
 
 type WorkflowTestSuite struct {

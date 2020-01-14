@@ -32,6 +32,7 @@ type EndToEndTest struct {
 	Image    string
 	SshPort  int
 	SshHost  string
+	HomeDir  string
 
 	Client *titan.APIClient
 
@@ -67,9 +68,22 @@ func NewEndToEndTest(s *suite.Suite, context string) *EndToEndTest {
 	ret.CommitApi = ret.Client.CommitsApi
 	ret.OperationsApi = ret.Client.OperationsApi
 
+	usr, err := user.Current()
+	if err != nil {
+		panic(err)
+	}
+	ret.HomeDir = usr.HomeDir
+	if ret.HomeDir == "" {
+		panic("failed to determine user home directory")
+	}
+
 	return &ret
 }
 
+/*
+ * Run a specific entry point within titan-server. This can either run a full-fledged launch, or can be used to
+ * run other entry points (like teardown).
+ */
 func (e *EndToEndTest) RunTitanDocker(entryPoint string, daemon bool) error {
 	args := []string{"run", "--privileged", "--pid=host", "--network=host",
 		"-v", "/var/lib:/var/lib", "-v", "/run/docker:/run/docker"}
@@ -90,18 +104,14 @@ func (e *EndToEndTest) RunTitanDocker(entryPoint string, daemon bool) error {
 	return exec.Command("docker", args...).Run()
 }
 
+/*
+ * Run an entry point within kubernetes. This always spawns it as a daemon, and runs titan-server directly without
+ * the ZFS-specific launch portion.
+ */
 func (e *EndToEndTest) RunTitanKubernetes(entryPoint string, parameters ...string) error {
-	usr, err := user.Current()
-	if err != nil {
-		return err
-	}
-	homeDir := usr.HomeDir
-	if homeDir == "" {
-		return errors.New("failed to determine user home directory")
-	}
 	args := []string{
 		"run", "-d", "--restart", "always", "--name", e.GetPrimaryContainer(),
-		"-v", fmt.Sprintf("%s/.kube:/root/.kube", homeDir),
+		"-v", fmt.Sprintf("%s/.kube:/root/.kube", e.HomeDir),
 		"-v", fmt.Sprintf("%s-data:/var/lib/%s", e.Identity, e.Identity),
 		"-e", "TITAN_CONTEXT=kubernetes-csi",
 		"-e", fmt.Sprintf("TITAN_IDENTITY=%s", e.Identity),
@@ -113,6 +123,9 @@ func (e *EndToEndTest) RunTitanKubernetes(entryPoint string, parameters ...strin
 	return exec.Command("docker", args...).Run()
 }
 
+/*
+ * Start the server depending on the context type.
+ */
 func (e *EndToEndTest) StartServer(parameters ...string) error {
 	err := exec.Command("docker", "volume", "create", fmt.Sprintf("%s-data", e.Identity)).Run()
 	if err != nil {
@@ -125,10 +138,16 @@ func (e *EndToEndTest) StartServer(parameters ...string) error {
 	}
 }
 
+/*
+ * Get a container name augmented with the identity, such as "test-server"
+ */
 func (e *EndToEndTest) GetContainer(t string) string {
 	return fmt.Sprintf("%s-%s", e.Identity, t)
 }
 
+/*
+ * Get the primary running container, either "launch" for docker-zfs or "server" to kubernetes.
+ */
 func (e *EndToEndTest) GetPrimaryContainer() string {
 	var containerType string
 	if e.Context == "docker-zfs" {
@@ -139,6 +158,9 @@ func (e *EndToEndTest) GetPrimaryContainer() string {
 	return e.GetContainer(containerType)
 }
 
+/*
+ * Wait for the server to be ready.
+ */
 func (e *EndToEndTest) WaitForServer() error {
 	success := false
 	tried := 1
@@ -161,10 +183,16 @@ func (e *EndToEndTest) WaitForServer() error {
 	return nil
 }
 
+/*
+ * Restart the server. This only works for docker-zfs.
+ */
 func (e *EndToEndTest) RestartServer() error {
 	return exec.Command("docker", "rm", "-f", e.GetContainer("server")).Run()
 }
 
+/*
+ * Stop the server completely, including the launch container for docker-zfs.
+ */
 func (e *EndToEndTest) StopServer(ignoreErrors bool) error {
 	if e.Context == "docker-zfs" {
 		err := exec.Command("docker", "rm", "-f", e.GetContainer("launch")).Run()
@@ -192,6 +220,9 @@ func (e *EndToEndTest) StopServer(ignoreErrors bool) error {
 	return nil
 }
 
+/*
+ * Get the path of a volume.
+ */
 func (e *EndToEndTest) GetVolumePath(repo string, volume string) (string, error) {
 	v, _, err := e.Client.VolumesApi.GetVolume(context.Background(), repo, volume)
 	if err != nil {
@@ -200,6 +231,9 @@ func (e *EndToEndTest) GetVolumePath(repo string, volume string) (string, error)
 	return v.Config["mountpoint"].(string), nil
 }
 
+/*
+ * Execute a command on the server container.
+ */
 func (e *EndToEndTest) ExecServer(args ...string) (string, error) {
 	fullArgs := []string{"exec", e.GetContainer("server")}
 	fullArgs = append(fullArgs, args...)
@@ -210,6 +244,10 @@ func (e *EndToEndTest) ExecServer(args ...string) (string, error) {
 	return string(out), nil
 }
 
+/*
+ * Write to a file, relative to a particular volume. This uses a very simplistic "echo", so it will fail for
+ * complex inputs (such as those with quotes).
+ */
 func (e *EndToEndTest) WriteFile(repo string, volume string, filename string, content string) error {
 	mountpoint, err := e.GetVolumePath(repo, volume)
 	if err != nil {
@@ -220,6 +258,9 @@ func (e *EndToEndTest) WriteFile(repo string, volume string, filename string, co
 		fmt.Sprintf("echo -n \"%s\" > %s", content, path)).Run()
 }
 
+/*
+ * Read the contents of a file on the server.
+ */
 func (e *EndToEndTest) ReadFile(repo string, volume string, filename string) (string, error) {
 	mountpoint, err := e.GetVolumePath(repo, volume)
 	if err != nil {
@@ -233,12 +274,18 @@ func (e *EndToEndTest) ReadFile(repo string, volume string, filename string) (st
 	return string(out), nil
 }
 
+/*
+ * Check to see whether the given path exists on the server
+ */
 func (e *EndToEndTest) PathExists(path string) bool {
 	err := exec.Command("docker", "exec", e.GetContainer("server"), "ls", path).Run()
 	return err != nil
 }
 
-func (e *EndToEndTest) WriteFileSssh(path string, content string) error {
+/*
+ * Write to a file on the SSH server.
+ */
+func (e *EndToEndTest) WriteFileSsh(path string, content string) error {
 	return exec.Command("docker", "exec", e.GetContainer("ssh"), "sh", "-c",
 		fmt.Sprintf("echo \"%s\" > %s", content, path)).Run()
 }
@@ -399,4 +446,40 @@ func (e *EndToEndTest) WaitForOperation(id string) ([]titan.ProgressEntry, error
 		}
 	}
 	return result, nil
+}
+
+func (e *EndToEndTest) WaitForVolume(repo string, volume string) error {
+	ready := false
+	for ok := true; ok; ok = !ready {
+		res, _, err := e.VolumeApi.GetVolumeStatus(context.Background(), repo, volume)
+		if err != nil {
+			return err
+		}
+		if res.Error != "" {
+			return errors.New(res.Error)
+		}
+		ready = res.Ready
+		if !ready {
+			time.Sleep(time.Duration(1) * time.Second)
+		}
+	}
+	return nil
+}
+
+func (e *EndToEndTest) WaitForCommit(repo string, id string) error {
+	ready := false
+	for ok := true; ok; ok = !ready {
+		res, _, err := e.CommitApi.GetCommitStatus(context.Background(), repo, id)
+		if err != nil {
+			return err
+		}
+		if res.Error != "" {
+			return errors.New(res.Error)
+		}
+		ready = res.Ready
+		if !ready {
+			time.Sleep(time.Duration(1) * time.Second)
+		}
+	}
+	return nil
 }

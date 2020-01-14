@@ -4,8 +4,8 @@ import (
 	"context"
 	"github.com/stretchr/testify/suite"
 	titanclient "github.com/titan-data/titan-client-go"
-	"testing"
 	endtoend "github.com/titan-data/titan-server/test/common"
+	"testing"
 )
 
 type TeardownTestSuite struct {

@@ -34,6 +34,12 @@ type EndToEndTest struct {
 	SshHost  string
 
 	Client *titan.APIClient
+
+	RepoApi       *titan.RepositoriesApiService
+	RemoteApi     *titan.RemotesApiService
+	VolumeApi     *titan.VolumesApiService
+	CommitApi     *titan.CommitsApiService
+	OperationsApi *titan.OperationsApiService
 }
 
 const waitTimeout = 1
@@ -54,6 +60,12 @@ func NewEndToEndTest(s *suite.Suite, context string) *EndToEndTest {
 	cfg := titan.NewConfiguration()
 	cfg.Host = fmt.Sprintf("localhost:%d", ret.Port)
 	ret.Client = titan.NewAPIClient(cfg)
+
+	ret.RepoApi = ret.Client.RepositoriesApi
+	ret.VolumeApi = ret.Client.VolumesApi
+	ret.RemoteApi = ret.Client.RemotesApi
+	ret.CommitApi = ret.Client.CommitsApi
+	ret.OperationsApi = ret.Client.OperationsApi
 
 	return &ret
 }
@@ -122,7 +134,7 @@ func (e *EndToEndTest) GetPrimaryContainer() string {
 	if e.Context == "docker-zfs" {
 		containerType = "launch"
 	} else {
-		containerType = "sever"
+		containerType = "server"
 	}
 	return e.GetContainer(containerType)
 }

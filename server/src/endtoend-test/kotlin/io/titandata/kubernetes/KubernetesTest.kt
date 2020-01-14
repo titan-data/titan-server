@@ -19,9 +19,9 @@ import io.titandata.shell.CommandExecutor
  */
 abstract class KubernetesTest : EndToEndTest("kubernetes-csi") {
 
-    internal val context: KubernetesCsiContext
     internal val coreApi: CoreV1Api
     internal val executor = CommandExecutor()
+    private val  namespace = "default"
 
     init {
         val config = if (System.getProperty("kubernetes.config") != null) {
@@ -36,21 +36,7 @@ abstract class KubernetesTest : EndToEndTest("kubernetes-csi") {
         } else {
             emptyMap<String, String>()
         }
-        context = KubernetesCsiContext(config)
         coreApi = CoreV1Api()
-    }
-
-    internal fun waitForVolume(volumeSet: String, volumeName: String, config: Map<String, Any>) {
-        var status = context.getVolumeStatus(volumeSet, volumeName, config)
-        while (!status.ready) {
-            if (status.error != null) {
-                throw Exception(status.error)
-            }
-            status = context.getVolumeStatus(volumeSet, volumeName, config)
-            if (!status.ready) {
-                Thread.sleep(1000)
-            }
-        }
     }
 
     internal fun waitForVolumeApi(repository: String, volumeName: String) {
@@ -65,20 +51,6 @@ abstract class KubernetesTest : EndToEndTest("kubernetes-csi") {
             }
         }
     }
-
-    internal fun waitForCommit(volumeSet: String, commitId: String, volumeNames: List<String>) {
-        var status = context.getCommitStatus(volumeSet, commitId, volumeNames)
-        while (!status.ready) {
-            if (status.error != null) {
-                throw Exception(status.error)
-            }
-            status = context.getCommitStatus(volumeSet, commitId, volumeNames)
-            if (!status.ready) {
-                Thread.sleep(1000)
-            }
-        }
-    }
-
     internal fun waitForCommitApi(repo: String, commitId: String) {
         var status = commitApi.getCommitStatus(repo, commitId)
         while (!status.ready) {
@@ -93,7 +65,7 @@ abstract class KubernetesTest : EndToEndTest("kubernetes-csi") {
     }
 
     internal fun getPodStatus(name: String): Boolean {
-        val pod = coreApi.readNamespacedPod(name, context.namespace, null, null, null)
+        val pod = coreApi.readNamespacedPod(name, namespace, null, null, null)
         val statuses = pod?.status?.containerStatuses ?: return false
         for (container in statuses) {
             if (container.restartCount != 0) {
@@ -134,6 +106,6 @@ abstract class KubernetesTest : EndToEndTest("kubernetes-csi") {
                                 .build())
                         .build())
                 .build()
-        coreApi.createNamespacedPod(context.namespace, request, null, null, null)
+        coreApi.createNamespacedPod(namespace, request, null, null, null)
     }
 }

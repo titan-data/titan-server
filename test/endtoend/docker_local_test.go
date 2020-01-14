@@ -7,7 +7,7 @@ import (
 	"context"
 	"github.com/antihax/optional"
 	"github.com/stretchr/testify/suite"
-	titanclient "github.com/titan-data/titan-client-go"
+	titan "github.com/titan-data/titan-client-go"
 	"strings"
 	"testing"
 	"time"
@@ -19,14 +19,8 @@ type DockerLocalTestSuite struct {
 	ctx context.Context
 
 	volumeMountpoint string
-	remoteParams     titanclient.RemoteParameters
-	currentOp        titanclient.Operation
-
-	repoApi       *titanclient.RepositoriesApiService
-	remoteApi     *titanclient.RemotesApiService
-	volumeApi     *titanclient.VolumesApiService
-	commitApi     *titanclient.CommitsApiService
-	operationsApi *titanclient.OperationsApiService
+	remoteParams     titan.RemoteParameters
+	currentOp        titan.Operation
 }
 
 func (s *DockerLocalTestSuite) SetupSuite() {
@@ -34,13 +28,7 @@ func (s *DockerLocalTestSuite) SetupSuite() {
 	s.e.SetupStandardDocker()
 	s.ctx = context.Background()
 
-	s.repoApi = s.e.Client.RepositoriesApi
-	s.volumeApi = s.e.Client.VolumesApi
-	s.remoteApi = s.e.Client.RemotesApi
-	s.commitApi = s.e.Client.CommitsApi
-	s.operationsApi = s.e.Client.OperationsApi
-
-	s.remoteParams = titanclient.RemoteParameters{
+	s.remoteParams = titan.RemoteParameters{
 		Provider:   "nop",
 		Properties: map[string]interface{}{},
 	}
@@ -64,14 +52,14 @@ func (s *DockerLocalTestSuite) TestLocal_001_GetContext() {
 }
 
 func (s *DockerLocalTestSuite) TestLocal_002_EmptyRepoList() {
-	res, _, err := s.repoApi.ListRepositories(s.ctx)
+	res, _, err := s.e.RepoApi.ListRepositories(s.ctx)
 	if s.e.NoError(err) {
 		s.Len(res, 0)
 	}
 }
 
 func (s *DockerLocalTestSuite) TestLocal_003_CreateRepository() {
-	res, _, err := s.repoApi.CreateRepository(s.ctx, titanclient.Repository{
+	res, _, err := s.e.RepoApi.CreateRepository(s.ctx, titan.Repository{
 		Name:       "foo",
 		Properties: map[string]interface{}{"a": "b"},
 	})
@@ -83,7 +71,7 @@ func (s *DockerLocalTestSuite) TestLocal_003_CreateRepository() {
 }
 
 func (s *DockerLocalTestSuite) TestLocal_004_GetRepository() {
-	res, _, err := s.repoApi.GetRepository(s.ctx, "foo")
+	res, _, err := s.e.RepoApi.GetRepository(s.ctx, "foo")
 	if s.e.NoError(err) {
 		s.Equal("foo", res.Name)
 		s.Len(res.Properties, 1)
@@ -92,7 +80,7 @@ func (s *DockerLocalTestSuite) TestLocal_004_GetRepository() {
 }
 
 func (s *DockerLocalTestSuite) TestLocal_005_ListRepositoryPresent() {
-	res, _, err := s.repoApi.ListRepositories(s.ctx)
+	res, _, err := s.e.RepoApi.ListRepositories(s.ctx)
 	if s.e.NoError(err) {
 		s.Len(res, 1)
 		repo := res[0]
@@ -103,7 +91,7 @@ func (s *DockerLocalTestSuite) TestLocal_005_ListRepositoryPresent() {
 }
 
 func (s *DockerLocalTestSuite) TestLocal_006_CreateDuplicate() {
-	_, _, err := s.repoApi.CreateRepository(s.ctx, titanclient.Repository{
+	_, _, err := s.e.RepoApi.CreateRepository(s.ctx, titan.Repository{
 		Name:       "foo",
 		Properties: map[string]interface{}{},
 	})
@@ -111,7 +99,7 @@ func (s *DockerLocalTestSuite) TestLocal_006_CreateDuplicate() {
 }
 
 func (s *DockerLocalTestSuite) TestLocal_010_CreateVolume() {
-	res, _, err := s.volumeApi.CreateVolume(s.ctx, "foo", titanclient.Volume{
+	res, _, err := s.e.VolumeApi.CreateVolume(s.ctx, "foo", titan.Volume{
 		Name:       "vol",
 		Properties: map[string]interface{}{"a": "b"},
 	})
@@ -123,7 +111,7 @@ func (s *DockerLocalTestSuite) TestLocal_010_CreateVolume() {
 }
 
 func (s *DockerLocalTestSuite) TestLocal_011_CreateVolumeBadRepo() {
-	_, _, err := s.volumeApi.CreateVolume(s.ctx, "bar", titanclient.Volume{
+	_, _, err := s.e.VolumeApi.CreateVolume(s.ctx, "bar", titan.Volume{
 		Name:       "vol",
 		Properties: map[string]interface{}{"a": "b"},
 	})
@@ -131,7 +119,7 @@ func (s *DockerLocalTestSuite) TestLocal_011_CreateVolumeBadRepo() {
 }
 
 func (s *DockerLocalTestSuite) TestLocal_012_CreateVolumeDuplicate() {
-	_, _, err := s.volumeApi.CreateVolume(s.ctx, "foo", titanclient.Volume{
+	_, _, err := s.e.VolumeApi.CreateVolume(s.ctx, "foo", titan.Volume{
 		Name:       "vol",
 		Properties: map[string]interface{}{"a": "b"},
 	})
@@ -139,7 +127,7 @@ func (s *DockerLocalTestSuite) TestLocal_012_CreateVolumeDuplicate() {
 }
 
 func (s *DockerLocalTestSuite) TestLocal_013_GetVolume() {
-	res, _, err := s.volumeApi.GetVolume(s.ctx, "foo", "vol")
+	res, _, err := s.e.VolumeApi.GetVolume(s.ctx, "foo", "vol")
 	if s.e.NoError(err) {
 		s.Equal("vol", res.Name)
 		s.Len(res.Properties, 1)
@@ -151,12 +139,12 @@ func (s *DockerLocalTestSuite) TestLocal_013_GetVolume() {
 }
 
 func (s *DockerLocalTestSuite) TestLocal_014_GetBadVolume() {
-	_, _, err := s.volumeApi.GetVolume(s.ctx, "bar", "vol")
+	_, _, err := s.e.VolumeApi.GetVolume(s.ctx, "bar", "vol")
 	s.e.APIError(err, "NoSuchObjectException")
 }
 
 func (s *DockerLocalTestSuite) TestLocal_015_ListVolume() {
-	res, _, err := s.volumeApi.ListVolumes(s.ctx, "foo")
+	res, _, err := s.e.VolumeApi.ListVolumes(s.ctx, "foo")
 	if s.e.NoError(err) {
 		s.Len(res, 1)
 		s.Equal("vol", res[0].Name)
@@ -164,7 +152,7 @@ func (s *DockerLocalTestSuite) TestLocal_015_ListVolume() {
 }
 
 func (s *DockerLocalTestSuite) TestLocal_016_MountVolume() {
-	_, err := s.volumeApi.ActivateVolume(s.ctx, "foo", "vol")
+	_, err := s.e.VolumeApi.ActivateVolume(s.ctx, "foo", "vol")
 	s.e.NoError(err)
 }
 
@@ -179,7 +167,7 @@ func (s *DockerLocalTestSuite) TestLocal_017_CreateFile() {
 }
 
 func (s *DockerLocalTestSuite) TestLocal_020_LastCommitEmpty() {
-	res, _, err := s.repoApi.GetRepositoryStatus(s.ctx, "foo")
+	res, _, err := s.e.RepoApi.GetRepositoryStatus(s.ctx, "foo")
 	if s.e.NoError(err) {
 		s.Empty(res.SourceCommit)
 		s.Empty(res.LastCommit)
@@ -187,7 +175,7 @@ func (s *DockerLocalTestSuite) TestLocal_020_LastCommitEmpty() {
 }
 
 func (s *DockerLocalTestSuite) TestLocal_021_CreateCommit() {
-	res, _, err := s.commitApi.CreateCommit(s.ctx, "foo", titanclient.Commit{
+	res, _, err := s.e.CommitApi.CreateCommit(s.ctx, "foo", titan.Commit{
 		Id: "id",
 		Properties: map[string]interface{}{"tags": map[string]string{
 			"a": "b",
@@ -201,7 +189,7 @@ func (s *DockerLocalTestSuite) TestLocal_021_CreateCommit() {
 }
 
 func (s *DockerLocalTestSuite) TestLocal_022_DuplicateCommit() {
-	_, _, err := s.commitApi.CreateCommit(s.ctx, "foo", titanclient.Commit{
+	_, _, err := s.e.CommitApi.CreateCommit(s.ctx, "foo", titan.Commit{
 		Id:         "id",
 		Properties: map[string]interface{}{},
 	})
@@ -209,7 +197,7 @@ func (s *DockerLocalTestSuite) TestLocal_022_DuplicateCommit() {
 }
 
 func (s *DockerLocalTestSuite) TestLocal_023_GetCommit() {
-	res, _, err := s.commitApi.GetCommit(s.ctx, "foo", "id")
+	res, _, err := s.e.CommitApi.GetCommit(s.ctx, "foo", "id")
 	if s.e.NoError(err) {
 		s.Equal("id", res.Id)
 		s.Equal("b", s.e.GetTag(res, "a"))
@@ -217,12 +205,12 @@ func (s *DockerLocalTestSuite) TestLocal_023_GetCommit() {
 }
 
 func (s *DockerLocalTestSuite) TestLocal_024_GetBadCommit() {
-	_, _, err := s.commitApi.GetCommit(s.ctx, "foo", "id2")
+	_, _, err := s.e.CommitApi.GetCommit(s.ctx, "foo", "id2")
 	s.e.APIError(err, "NoSuchObjectException")
 }
 
 func (s *DockerLocalTestSuite) TestLocal_025_UpdateCommit() {
-	res, _, err := s.commitApi.UpdateCommit(s.ctx, "foo", "id", titanclient.Commit{
+	res, _, err := s.e.CommitApi.UpdateCommit(s.ctx, "foo", "id", titan.Commit{
 		Id: "id",
 		Properties: map[string]interface{}{"tags": map[string]string{
 			"a": "B",
@@ -232,13 +220,13 @@ func (s *DockerLocalTestSuite) TestLocal_025_UpdateCommit() {
 	if s.e.NoError(err) {
 		s.Equal("id", res.Id)
 		s.Equal("B", s.e.GetTag(res, "a"))
-		res, _, _ = s.commitApi.GetCommit(s.ctx, "foo", "id")
+		res, _, _ = s.e.CommitApi.GetCommit(s.ctx, "foo", "id")
 		s.Equal("B", s.e.GetTag(res, "a"))
 	}
 }
 
 func (s *DockerLocalTestSuite) TestLocal_026_CommitStatus() {
-	res, _, err := s.commitApi.GetCommitStatus(s.ctx, "foo", "id")
+	res, _, err := s.e.CommitApi.GetCommitStatus(s.ctx, "foo", "id")
 	if s.e.NoError(err) {
 		s.NotZero(res.LogicalSize)
 		s.NotZero(res.ActualSize)
@@ -246,12 +234,12 @@ func (s *DockerLocalTestSuite) TestLocal_026_CommitStatus() {
 }
 
 func (s *DockerLocalTestSuite) TestLocal_027_DeleteBadCommit() {
-	_, err := s.commitApi.DeleteCommit(s.ctx, "foo", "id2")
+	_, err := s.e.CommitApi.DeleteCommit(s.ctx, "foo", "id2")
 	s.e.APIError(err, "NoSuchObjectException")
 }
 
 func (s *DockerLocalTestSuite) TestLocal_030_ListCommit() {
-	res, _, err := s.commitApi.ListCommits(s.ctx, "foo", nil)
+	res, _, err := s.e.CommitApi.ListCommits(s.ctx, "foo", nil)
 	if s.e.NoError(err) {
 		s.Len(res, 1)
 		s.Equal("id", res[0].Id)
@@ -259,7 +247,7 @@ func (s *DockerLocalTestSuite) TestLocal_030_ListCommit() {
 }
 
 func (s *DockerLocalTestSuite) TestLocal_031_FilterOut() {
-	res, _, err := s.commitApi.ListCommits(s.ctx, "foo", &titanclient.ListCommitsOpts{
+	res, _, err := s.e.CommitApi.ListCommits(s.ctx, "foo", &titan.ListCommitsOpts{
 		Tag: optional.NewInterface([]string{"a=c"}),
 	})
 	if s.e.NoError(err) {
@@ -268,7 +256,7 @@ func (s *DockerLocalTestSuite) TestLocal_031_FilterOut() {
 }
 
 func (s *DockerLocalTestSuite) TestLocal_032_FilterPresent() {
-	res, _, err := s.commitApi.ListCommits(s.ctx, "foo", &titanclient.ListCommitsOpts{
+	res, _, err := s.e.CommitApi.ListCommits(s.ctx, "foo", &titan.ListCommitsOpts{
 		Tag: optional.NewInterface([]string{"a=B"}),
 	})
 	if s.e.NoError(err) {
@@ -278,7 +266,7 @@ func (s *DockerLocalTestSuite) TestLocal_032_FilterPresent() {
 }
 
 func (s *DockerLocalTestSuite) TestLocal_033_FilterCompound() {
-	res, _, err := s.commitApi.ListCommits(s.ctx, "foo", &titanclient.ListCommitsOpts{
+	res, _, err := s.e.CommitApi.ListCommits(s.ctx, "foo", &titan.ListCommitsOpts{
 		Tag: optional.NewInterface([]string{"a=B", "c"}),
 	})
 	s.Len(res, 1)
@@ -288,7 +276,7 @@ func (s *DockerLocalTestSuite) TestLocal_033_FilterCompound() {
 }
 
 func (s *DockerLocalTestSuite) TestLocal_034_RepositoryStatus() {
-	res, _, err := s.repoApi.GetRepositoryStatus(s.ctx, "foo")
+	res, _, err := s.e.RepoApi.GetRepositoryStatus(s.ctx, "foo")
 	if s.e.NoError(err) {
 		s.Equal("id", res.SourceCommit)
 		s.Equal("id", res.LastCommit)
@@ -296,7 +284,7 @@ func (s *DockerLocalTestSuite) TestLocal_034_RepositoryStatus() {
 }
 
 func (s *DockerLocalTestSuite) TestLocal_040_VolumeStatus() {
-	res, _, err := s.volumeApi.GetVolumeStatus(s.ctx, "foo", "vol")
+	res, _, err := s.e.VolumeApi.GetVolumeStatus(s.ctx, "foo", "vol")
 	if s.e.NoError(err) {
 		s.Equal("vol", res.Name)
 		s.NotZero(res.ActualSize)
@@ -317,19 +305,19 @@ func (s *DockerLocalTestSuite) TestLocal_041_WriteNewValue() {
 }
 
 func (s *DockerLocalTestSuite) TestLocal_042_Unmount() {
-	_, err := s.volumeApi.DeactivateVolume(s.ctx, "foo", "vol")
+	_, err := s.e.VolumeApi.DeactivateVolume(s.ctx, "foo", "vol")
 	s.e.NoError(err)
 }
 
 func (s *DockerLocalTestSuite) TestLocal_043_UnmountIdempotent() {
-	_, err := s.volumeApi.DeactivateVolume(s.ctx, "foo", "vol")
+	_, err := s.e.VolumeApi.DeactivateVolume(s.ctx, "foo", "vol")
 	s.e.NoError(err)
 }
 
 func (s *DockerLocalTestSuite) TestLocal_044_Checkout() {
-	_, err := s.commitApi.CheckoutCommit(s.ctx, "foo", "id")
+	_, err := s.e.CommitApi.CheckoutCommit(s.ctx, "foo", "id")
 	if s.e.NoError(err) {
-		_, err = s.volumeApi.ActivateVolume(s.ctx, "foo", "vol")
+		_, err = s.e.VolumeApi.ActivateVolume(s.ctx, "foo", "vol")
 		if s.e.NoError(err) {
 			res, err := s.e.ReadFile("foo", "vol", "testfile")
 			if s.e.NoError(err) {
@@ -340,7 +328,7 @@ func (s *DockerLocalTestSuite) TestLocal_044_Checkout() {
 }
 
 func (s *DockerLocalTestSuite) TestLocal_045_NewMountpoint() {
-	res, _, err := s.volumeApi.GetVolume(s.ctx, "foo", "vol")
+	res, _, err := s.e.VolumeApi.GetVolume(s.ctx, "foo", "vol")
 	if s.e.NoError(err) {
 		s.NotEqual(s.volumeMountpoint, res.Config["mountpoint"])
 		s.volumeMountpoint = res.Config["mountpoint"].(string)
@@ -348,7 +336,7 @@ func (s *DockerLocalTestSuite) TestLocal_045_NewMountpoint() {
 }
 
 func (s *DockerLocalTestSuite) TestLocal_046_SourceCommit() {
-	res, _, err := s.repoApi.GetRepositoryStatus(s.ctx, "foo")
+	res, _, err := s.e.RepoApi.GetRepositoryStatus(s.ctx, "foo")
 	if s.e.NoError(err) {
 		s.Equal("id", res.SourceCommit)
 		s.Equal("id", res.LastCommit)
@@ -356,7 +344,7 @@ func (s *DockerLocalTestSuite) TestLocal_046_SourceCommit() {
 }
 
 func (s *DockerLocalTestSuite) TestLocal_050_AddRemote() {
-	res, _, err := s.remoteApi.CreateRemote(s.ctx, "foo", titanclient.Remote{
+	res, _, err := s.e.RemoteApi.CreateRemote(s.ctx, "foo", titan.Remote{
 		Provider:   "nop",
 		Name:       "a",
 		Properties: map[string]interface{}{},
@@ -367,7 +355,7 @@ func (s *DockerLocalTestSuite) TestLocal_050_AddRemote() {
 }
 
 func (s *DockerLocalTestSuite) TestLocal_051_GetRemote() {
-	res, _, err := s.remoteApi.GetRemote(s.ctx, "foo", "a")
+	res, _, err := s.e.RemoteApi.GetRemote(s.ctx, "foo", "a")
 	if s.e.NoError(err) {
 		s.Equal("nop", res.Provider)
 		s.Equal("a", res.Name)
@@ -375,7 +363,7 @@ func (s *DockerLocalTestSuite) TestLocal_051_GetRemote() {
 }
 
 func (s *DockerLocalTestSuite) TestLocal_052_DuplicateRemote() {
-	_, _, err := s.remoteApi.CreateRemote(s.ctx, "foo", titanclient.Remote{
+	_, _, err := s.e.RemoteApi.CreateRemote(s.ctx, "foo", titan.Remote{
 		Provider:   "nop",
 		Name:       "a",
 		Properties: map[string]interface{}{},
@@ -384,7 +372,7 @@ func (s *DockerLocalTestSuite) TestLocal_052_DuplicateRemote() {
 }
 
 func (s *DockerLocalTestSuite) TestLocal_053_ListRemotes() {
-	res, _, err := s.remoteApi.ListRemotes(s.ctx, "foo")
+	res, _, err := s.e.RemoteApi.ListRemotes(s.ctx, "foo")
 	if s.e.NoError(err) {
 		s.Len(res, 1)
 		s.Equal("a", res[0].Name)
@@ -392,32 +380,32 @@ func (s *DockerLocalTestSuite) TestLocal_053_ListRemotes() {
 }
 
 func (s *DockerLocalTestSuite) TestLocal_054_ListRemoteCommits() {
-	res, _, err := s.remoteApi.ListRemoteCommits(s.ctx, "foo", "a", s.remoteParams, nil)
+	res, _, err := s.e.RemoteApi.ListRemoteCommits(s.ctx, "foo", "a", s.remoteParams, nil)
 	if s.e.NoError(err) {
 		s.Len(res, 0)
 	}
 }
 
 func (s *DockerLocalTestSuite) TestLocal_055_GetRemoteCommit() {
-	res, _, err := s.remoteApi.GetRemoteCommit(s.ctx, "foo", "a", "hash", s.remoteParams)
+	res, _, err := s.e.RemoteApi.GetRemoteCommit(s.ctx, "foo", "a", "hash", s.remoteParams)
 	if s.e.NoError(err) {
 		s.Equal("hash", res.Id)
 	}
 }
 
 func (s *DockerLocalTestSuite) TestLocal_056_DeleteNonExistentRemote() {
-	_, err := s.remoteApi.DeleteRemote(s.ctx, "foo", "b")
+	_, err := s.e.RemoteApi.DeleteRemote(s.ctx, "foo", "b")
 	s.e.APIError(err, "NoSuchObjectException")
 }
 
 func (s *DockerLocalTestSuite) TestLocal_057_UpdateRemote() {
-	_, _, err := s.remoteApi.UpdateRemote(s.ctx, "foo", "a", titanclient.Remote{
+	_, _, err := s.e.RemoteApi.UpdateRemote(s.ctx, "foo", "a", titan.Remote{
 		Provider:   "nop",
 		Name:       "b",
 		Properties: map[string]interface{}{},
 	})
 	if s.e.NoError(err) {
-		res, _, err := s.remoteApi.GetRemote(s.ctx, "foo", "b")
+		res, _, err := s.e.RemoteApi.GetRemote(s.ctx, "foo", "b")
 		if s.e.NoError(err) {
 			s.Equal("nop", res.Provider)
 			s.Equal("b", res.Name)
@@ -426,14 +414,14 @@ func (s *DockerLocalTestSuite) TestLocal_057_UpdateRemote() {
 }
 
 func (s *DockerLocalTestSuite) TestLocal_060_ListEmptyOperations() {
-	res, _, err := s.operationsApi.ListOperations(s.ctx, nil)
+	res, _, err := s.e.OperationsApi.ListOperations(s.ctx, nil)
 	if s.e.NoError(err) {
 		s.Len(res, 0)
 	}
 }
 
 func (s *DockerLocalTestSuite) TestLocal_061_StartPush() {
-	res, _, err := s.operationsApi.Push(s.ctx, "foo", "b", "id", s.remoteParams, nil)
+	res, _, err := s.e.OperationsApi.Push(s.ctx, "foo", "b", "id", s.remoteParams, nil)
 	if s.e.NoError(err) {
 		s.Equal("id", res.CommitId)
 		s.Equal("PUSH", res.Type)
@@ -443,7 +431,7 @@ func (s *DockerLocalTestSuite) TestLocal_061_StartPush() {
 }
 
 func (s *DockerLocalTestSuite) TestLocal_062_GetOperation() {
-	res, _, err := s.operationsApi.GetOperation(s.ctx, s.currentOp.Id)
+	res, _, err := s.e.OperationsApi.GetOperation(s.ctx, s.currentOp.Id)
 	if s.e.NoError(err) {
 		s.Equal("id", res.CommitId)
 		s.Equal("PUSH", res.Type)
@@ -453,7 +441,7 @@ func (s *DockerLocalTestSuite) TestLocal_062_GetOperation() {
 }
 
 func (s *DockerLocalTestSuite) TestLocal_063_ListOperations() {
-	res, _, err := s.operationsApi.ListOperations(s.ctx, &titanclient.ListOperationsOpts{Repository: optional.NewString("foo")})
+	res, _, err := s.e.OperationsApi.ListOperations(s.ctx, &titan.ListOperationsOpts{Repository: optional.NewString("foo")})
 	if s.e.NoError(err) {
 		s.Len(res, 1)
 		s.Equal(s.currentOp.Id, res[0].Id)
@@ -462,10 +450,10 @@ func (s *DockerLocalTestSuite) TestLocal_063_ListOperations() {
 
 func (s *DockerLocalTestSuite) TestLocal_064_GetPushProgress() {
 	time.Sleep(time.Duration(1) * time.Second)
-	res, _, err := s.operationsApi.GetOperation(s.ctx, s.currentOp.Id)
+	res, _, err := s.e.OperationsApi.GetOperation(s.ctx, s.currentOp.Id)
 	if s.e.NoError(err) {
 		s.Equal(res.State, "COMPLETE")
-		progress, _, err := s.operationsApi.GetOperationProgress(s.ctx, s.currentOp.Id, nil)
+		progress, _, err := s.e.OperationsApi.GetOperationProgress(s.ctx, s.currentOp.Id, nil)
 		if s.e.NoError(err) {
 			s.Len(progress, 2)
 			s.Equal("MESSAGE", progress[0].Type)
@@ -476,14 +464,14 @@ func (s *DockerLocalTestSuite) TestLocal_064_GetPushProgress() {
 }
 
 func (s *DockerLocalTestSuite) TestLocal_065_ListNotPresent() {
-	res, _, err := s.operationsApi.ListOperations(s.ctx, &titanclient.ListOperationsOpts{Repository: optional.NewString("foo")})
+	res, _, err := s.e.OperationsApi.ListOperations(s.ctx, &titan.ListOperationsOpts{Repository: optional.NewString("foo")})
 	if s.e.NoError(err) {
 		s.Len(res, 0)
 	}
 }
 
 func (s *DockerLocalTestSuite) TestLocal_070_StartPull() {
-	res, _, err := s.operationsApi.Pull(s.ctx, "foo", "b", "id2", s.remoteParams, nil)
+	res, _, err := s.e.OperationsApi.Pull(s.ctx, "foo", "b", "id2", s.remoteParams, nil)
 	if s.e.NoError(err) {
 		s.Equal("id2", res.CommitId)
 		s.Equal("PULL", res.Type)
@@ -493,7 +481,7 @@ func (s *DockerLocalTestSuite) TestLocal_070_StartPull() {
 }
 
 func (s *DockerLocalTestSuite) TestLocal_071_GetPull() {
-	res, _, err := s.operationsApi.GetOperation(s.ctx, s.currentOp.Id)
+	res, _, err := s.e.OperationsApi.GetOperation(s.ctx, s.currentOp.Id)
 	if s.e.NoError(err) {
 		s.Equal("id2", res.CommitId)
 		s.Equal("PULL", res.Type)
@@ -503,7 +491,7 @@ func (s *DockerLocalTestSuite) TestLocal_071_GetPull() {
 }
 
 func (s *DockerLocalTestSuite) TestLocal_072_ListPullOperation() {
-	res, _, err := s.operationsApi.ListOperations(s.ctx, &titanclient.ListOperationsOpts{Repository: optional.NewString("foo")})
+	res, _, err := s.e.OperationsApi.ListOperations(s.ctx, &titan.ListOperationsOpts{Repository: optional.NewString("foo")})
 	if s.e.NoError(err) {
 		s.Len(res, 1)
 		s.Equal(s.currentOp.Id, res[0].Id)
@@ -512,10 +500,10 @@ func (s *DockerLocalTestSuite) TestLocal_072_ListPullOperation() {
 
 func (s *DockerLocalTestSuite) TestLocal_073_GetPullProgress() {
 	time.Sleep(time.Duration(1) * time.Second)
-	res, _, err := s.operationsApi.GetOperation(s.ctx, s.currentOp.Id)
+	res, _, err := s.e.OperationsApi.GetOperation(s.ctx, s.currentOp.Id)
 	if s.e.NoError(err) {
 		s.Equal(res.State, "COMPLETE")
-		progress, _, err := s.operationsApi.GetOperationProgress(s.ctx, s.currentOp.Id, nil)
+		progress, _, err := s.e.OperationsApi.GetOperationProgress(s.ctx, s.currentOp.Id, nil)
 		if s.e.NoError(err) {
 			s.Len(progress, 2)
 			s.Equal("MESSAGE", progress[0].Type)
@@ -526,21 +514,21 @@ func (s *DockerLocalTestSuite) TestLocal_073_GetPullProgress() {
 }
 
 func (s *DockerLocalTestSuite) TestLocal_080_GetPulledCommit() {
-	res, _, err := s.commitApi.GetCommit(s.ctx, "foo", "id2")
+	res, _, err := s.e.CommitApi.GetCommit(s.ctx, "foo", "id2")
 	if s.e.NoError(err) {
 		s.Equal("id2", res.Id)
 	}
 }
 
 func (s *DockerLocalTestSuite) TestLocal_081_ListMultipleCommits() {
-	res, _, err := s.commitApi.ListCommits(s.ctx, "foo", nil)
+	res, _, err := s.e.CommitApi.ListCommits(s.ctx, "foo", nil)
 	if s.e.NoError(err) {
 		s.Len(res, 2)
 	}
 }
 
 func (s *DockerLocalTestSuite) TestLocal_082_FilterOutCommit() {
-	res, _, err := s.commitApi.ListCommits(s.ctx, "foo", &titanclient.ListCommitsOpts{Tag: optional.NewInterface([]string{"a=B"})})
+	res, _, err := s.e.CommitApi.ListCommits(s.ctx, "foo", &titan.ListCommitsOpts{Tag: optional.NewInterface([]string{"a=B"})})
 	if s.e.NoError(err) {
 		s.Len(res, 1)
 		s.Equal("id", res[0].Id)
@@ -548,31 +536,31 @@ func (s *DockerLocalTestSuite) TestLocal_082_FilterOutCommit() {
 }
 
 func (s *DockerLocalTestSuite) TestLocal_083_PushBadCommit() {
-	_, _, err := s.operationsApi.Push(s.ctx, "foo", "b", "id3", s.remoteParams, nil)
+	_, _, err := s.e.OperationsApi.Push(s.ctx, "foo", "b", "id3", s.remoteParams, nil)
 	s.e.APIError(err, "NoSuchObjectException")
 }
 
 func (s *DockerLocalTestSuite) TestLocal_090_AbortOperation() {
-	params := titanclient.RemoteParameters{
+	params := titan.RemoteParameters{
 		Provider:   "nop",
 		Properties: map[string]interface{}{"delay": 10},
 	}
-	res, _, err := s.operationsApi.Push(s.ctx, "foo", "b", "id", params, nil)
+	res, _, err := s.e.OperationsApi.Push(s.ctx, "foo", "b", "id", params, nil)
 	if !s.e.NoError(err) {
 		return
 	}
 
 	time.Sleep(time.Duration(1) * time.Second)
-	_, err = s.operationsApi.AbortOperation(s.ctx, res.Id)
+	_, err = s.e.OperationsApi.AbortOperation(s.ctx, res.Id)
 	if !s.e.NoError(err) {
 		return
 	}
 
 	time.Sleep(time.Duration(1) * time.Second)
-	res, _, err = s.operationsApi.GetOperation(s.ctx, res.Id)
+	res, _, err = s.e.OperationsApi.GetOperation(s.ctx, res.Id)
 	if s.e.NoError(err) {
 		s.Equal("ABORTED", res.State)
-		progress, _, err := s.operationsApi.GetOperationProgress(s.ctx, res.Id, nil)
+		progress, _, err := s.e.OperationsApi.GetOperationProgress(s.ctx, res.Id, nil)
 		if s.e.NoError(err) {
 			s.Len(progress, 2)
 			s.Equal("MESSAGE", progress[0].Type)
@@ -583,24 +571,24 @@ func (s *DockerLocalTestSuite) TestLocal_090_AbortOperation() {
 }
 
 func (s *DockerLocalTestSuite) TestLocal_100_DeleteCommit() {
-	_, err := s.commitApi.DeleteCommit(s.ctx, "foo", "id2")
+	_, err := s.e.CommitApi.DeleteCommit(s.ctx, "foo", "id2")
 	s.e.NoError(err)
 }
 
 func (s *DockerLocalTestSuite) TestLocal_102_DeleteRemote() {
-	_, err := s.remoteApi.DeleteRemote(s.ctx, "foo", "b")
+	_, err := s.e.RemoteApi.DeleteRemote(s.ctx, "foo", "b")
 	s.e.NoError(err)
 }
 
 func (s *DockerLocalTestSuite) TestLocal_103_DeleteVolume() {
-	_, err := s.volumeApi.DeactivateVolume(s.ctx, "foo", "vol")
+	_, err := s.e.VolumeApi.DeactivateVolume(s.ctx, "foo", "vol")
 	if s.e.NoError(err) {
-		_, err = s.volumeApi.DeleteVolume(s.ctx, "foo", "vol")
+		_, err = s.e.VolumeApi.DeleteVolume(s.ctx, "foo", "vol")
 		s.e.NoError(err)
 	}
 }
 
 func (s *DockerLocalTestSuite) TestLocal_104_DeleteRepository() {
-	_, err := s.repoApi.DeleteRepository(s.ctx, "foo")
+	_, err := s.e.RepoApi.DeleteRepository(s.ctx, "foo")
 	s.e.NoError(err)
 }

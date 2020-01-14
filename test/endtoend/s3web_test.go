@@ -11,7 +11,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/stretchr/testify/suite"
-	titanclient "github.com/titan-data/titan-client-go"
+	titan "github.com/titan-data/titan-client-go"
 	"os"
 	"strings"
 	"testing"
@@ -24,17 +24,11 @@ type S3WebTestSuite struct {
 
 	s3bucket      string
 	s3path        string
-	s3remote      titanclient.Remote
-	webRemote     titanclient.Remote
-	s3parameters  titanclient.RemoteParameters
-	webParameters titanclient.RemoteParameters
-	currentOp     titanclient.Operation
-
-	repoApi       *titanclient.RepositoriesApiService
-	remoteApi     *titanclient.RemotesApiService
-	volumeApi     *titanclient.VolumesApiService
-	commitApi     *titanclient.CommitsApiService
-	operationsApi *titanclient.OperationsApiService
+	s3remote      titan.Remote
+	webRemote     titan.Remote
+	s3parameters  titan.RemoteParameters
+	webParameters titan.RemoteParameters
+	currentOp     titan.Operation
 }
 
 func (s *S3WebTestSuite) ClearBucket() error {
@@ -80,7 +74,7 @@ func (s *S3WebTestSuite) SetupSuite() {
 		panic(err)
 	}
 
-	s.s3remote = titanclient.Remote{
+	s.s3remote = titan.Remote{
 		Provider: "s3",
 		Name:     "origin",
 		Properties: map[string]interface{}{
@@ -91,7 +85,7 @@ func (s *S3WebTestSuite) SetupSuite() {
 			"region":    sess.Config.Region,
 		},
 	}
-	s.webRemote = titanclient.Remote{
+	s.webRemote = titan.Remote{
 		Provider: "s3web",
 		Name:     "web",
 		Properties: map[string]interface{}{
@@ -104,18 +98,12 @@ func (s *S3WebTestSuite) SetupSuite() {
 
 	s.ctx = context.Background()
 
-	s.repoApi = s.e.Client.RepositoriesApi
-	s.volumeApi = s.e.Client.VolumesApi
-	s.remoteApi = s.e.Client.RemotesApi
-	s.commitApi = s.e.Client.CommitsApi
-	s.operationsApi = s.e.Client.OperationsApi
-
-	s.s3parameters = titanclient.RemoteParameters{
+	s.s3parameters = titan.RemoteParameters{
 		Provider:   "s3",
 		Properties: map[string]interface{}{},
 	}
 
-	s.webParameters = titanclient.RemoteParameters{
+	s.webParameters = titan.RemoteParameters{
 		Provider:   "s3web",
 		Properties: map[string]interface{}{},
 	}
@@ -130,7 +118,7 @@ func TestS3WebTestSuite(t *testing.T) {
 }
 
 func (s *S3WebTestSuite) TestS3Web_001_CreateRepository() {
-	_, _, err := s.repoApi.CreateRepository(s.ctx, titanclient.Repository{
+	_, _, err := s.e.RepoApi.CreateRepository(s.ctx, titan.Repository{
 		Name:       "foo",
 		Properties: map[string]interface{}{},
 	})
@@ -138,12 +126,12 @@ func (s *S3WebTestSuite) TestS3Web_001_CreateRepository() {
 }
 
 func (s *S3WebTestSuite) TestS3Web_002_CreateMountVolume() {
-	_, _, err := s.volumeApi.CreateVolume(s.ctx, "foo", titanclient.Volume{
+	_, _, err := s.e.VolumeApi.CreateVolume(s.ctx, "foo", titan.Volume{
 		Name:       "vol",
 		Properties: map[string]interface{}{},
 	})
 	if s.e.NoError(err) {
-		_, err := s.volumeApi.ActivateVolume(s.ctx, "foo", "vol")
+		_, err := s.e.VolumeApi.ActivateVolume(s.ctx, "foo", "vol")
 		s.e.NoError(err)
 	}
 }
@@ -159,7 +147,7 @@ func (s *S3WebTestSuite) TestS3Web_003_CreateFile() {
 }
 
 func (s *S3WebTestSuite) TestS3Web_004_CreateCommit() {
-	res, _, err := s.commitApi.CreateCommit(s.ctx, "foo", titanclient.Commit{
+	res, _, err := s.e.CommitApi.CreateCommit(s.ctx, "foo", titan.Commit{
 		Id: "id",
 		Properties: map[string]interface{}{"tags": map[string]string{
 			"a": "b",
@@ -173,29 +161,29 @@ func (s *S3WebTestSuite) TestS3Web_004_CreateCommit() {
 }
 
 func (s *S3WebTestSuite) TestS3Web_005_AddS3Remote() {
-	_, _, err := s.remoteApi.CreateRemote(s.ctx, "foo", s.s3remote)
+	_, _, err := s.e.RemoteApi.CreateRemote(s.ctx, "foo", s.s3remote)
 	s.e.NoError(err)
 }
 
 func (s *S3WebTestSuite) TestS3Web_006_AddS3WebRemote() {
-	_, _, err := s.remoteApi.CreateRemote(s.ctx, "foo", s.webRemote)
+	_, _, err := s.e.RemoteApi.CreateRemote(s.ctx, "foo", s.webRemote)
 	s.e.NoError(err)
 }
 
 func (s *S3WebTestSuite) TestS3Web_010_ListEmptyRemoteCommits() {
-	res, _, err := s.remoteApi.ListRemoteCommits(s.ctx, "foo", "web", s.webParameters, nil)
+	res, _, err := s.e.RemoteApi.ListRemoteCommits(s.ctx, "foo", "web", s.webParameters, nil)
 	if s.e.NoError(err) {
 		s.Len(res, 0)
 	}
 }
 
 func (s *S3WebTestSuite) TestS3Web_011_GetBadRemoteCommit() {
-	_, _, err := s.remoteApi.GetRemoteCommit(s.ctx, "foo", "web", "id2", s.webParameters)
+	_, _, err := s.e.RemoteApi.GetRemoteCommit(s.ctx, "foo", "web", "id2", s.webParameters)
 	s.e.APIError(err, "NoSuchObjectException")
 }
 
 func (s *S3WebTestSuite) TestS3Web_020_PushCommit() {
-	res, _, err := s.operationsApi.Push(s.ctx, "foo", "origin", "id", s.s3parameters, nil)
+	res, _, err := s.e.OperationsApi.Push(s.ctx, "foo", "origin", "id", s.s3parameters, nil)
 	if s.e.NoError(err) {
 		_, err = s.e.WaitForOperation(res.Id)
 		s.e.NoError(err)
@@ -203,7 +191,7 @@ func (s *S3WebTestSuite) TestS3Web_020_PushCommit() {
 }
 
 func (s *S3WebTestSuite) TestS3Web_021_ListRemoteCommit() {
-	res, _, err := s.remoteApi.ListRemoteCommits(s.ctx, "foo", "web", s.webParameters, nil)
+	res, _, err := s.e.RemoteApi.ListRemoteCommits(s.ctx, "foo", "web", s.webParameters, nil)
 	if s.e.NoError(err) {
 		s.Len(res, 1)
 		s.Equal("id", res[0].Id)
@@ -212,16 +200,16 @@ func (s *S3WebTestSuite) TestS3Web_021_ListRemoteCommit() {
 }
 
 func (s *S3WebTestSuite) TestS3Web_022_ListRemoteFilterOut() {
-	res, _, err := s.remoteApi.ListRemoteCommits(s.ctx, "foo", "web", s.webParameters,
-		&titanclient.ListRemoteCommitsOpts{Tag: optional.NewInterface([]string{"e"})})
+	res, _, err := s.e.RemoteApi.ListRemoteCommits(s.ctx, "foo", "web", s.webParameters,
+		&titan.ListRemoteCommitsOpts{Tag: optional.NewInterface([]string{"e"})})
 	if s.e.NoError(err) {
 		s.Len(res, 0)
 	}
 }
 
 func (s *S3WebTestSuite) TestS3Web_023_ListRemoteFilterInclude() {
-	res, _, err := s.remoteApi.ListRemoteCommits(s.ctx, "foo", "web", s.webParameters,
-		&titanclient.ListRemoteCommitsOpts{Tag: optional.NewInterface([]string{"a=b", "c=d"})})
+	res, _, err := s.e.RemoteApi.ListRemoteCommits(s.ctx, "foo", "web", s.webParameters,
+		&titan.ListRemoteCommitsOpts{Tag: optional.NewInterface([]string{"a=b", "c=d"})})
 	if s.e.NoError(err) {
 		s.Len(res, 1)
 		s.Equal("id", res[0].Id)
@@ -229,7 +217,7 @@ func (s *S3WebTestSuite) TestS3Web_023_ListRemoteFilterInclude() {
 }
 
 func (s *S3WebTestSuite) TestS3Web_030_CreateSecondCommit() {
-	_, _, err := s.commitApi.CreateCommit(s.ctx, "foo", titanclient.Commit{
+	_, _, err := s.e.CommitApi.CreateCommit(s.ctx, "foo", titan.Commit{
 		Id:         "id2",
 		Properties: map[string]interface{}{},
 	})
@@ -237,7 +225,7 @@ func (s *S3WebTestSuite) TestS3Web_030_CreateSecondCommit() {
 }
 
 func (s *S3WebTestSuite) TestS3Web_031_PushWeb() {
-	res, _, err := s.operationsApi.Push(s.ctx, "foo", "web", "id2", s.webParameters, nil)
+	res, _, err := s.e.OperationsApi.Push(s.ctx, "foo", "web", "id2", s.webParameters, nil)
 	if s.e.NoError(err) {
 		progress, err := s.e.WaitForOperation(res.Id)
 		s.Error(err)
@@ -246,7 +234,7 @@ func (s *S3WebTestSuite) TestS3Web_031_PushWeb() {
 }
 
 func (s *S3WebTestSuite) TestS3Web_032_PushSecondCommit() {
-	res, _, err := s.operationsApi.Push(s.ctx, "foo", "origin", "id2", s.s3parameters, nil)
+	res, _, err := s.e.OperationsApi.Push(s.ctx, "foo", "origin", "id2", s.s3parameters, nil)
 	if s.e.NoError(err) {
 		_, err = s.e.WaitForOperation(res.Id)
 		s.e.NoError(err)
@@ -254,7 +242,7 @@ func (s *S3WebTestSuite) TestS3Web_032_PushSecondCommit() {
 }
 
 func (s *S3WebTestSuite) TestS3Web_033_ListMultipleCommits() {
-	res, _, err := s.remoteApi.ListRemoteCommits(s.ctx, "foo", "web", s.webParameters, nil)
+	res, _, err := s.e.RemoteApi.ListRemoteCommits(s.ctx, "foo", "web", s.webParameters, nil)
 	if s.e.NoError(err) {
 		s.Len(res, 2)
 		s.Equal("id2", res[0].Id)
@@ -263,15 +251,15 @@ func (s *S3WebTestSuite) TestS3Web_033_ListMultipleCommits() {
 }
 
 func (s *S3WebTestSuite) TestS3Web_040_DeleteLocalCommits() {
-	_, err := s.commitApi.DeleteCommit(s.ctx, "foo", "id")
+	_, err := s.e.CommitApi.DeleteCommit(s.ctx, "foo", "id")
 	if s.e.NoError(err) {
-		_, err = s.commitApi.DeleteCommit(s.ctx, "foo", "id2")
+		_, err = s.e.CommitApi.DeleteCommit(s.ctx, "foo", "id2")
 		s.e.NoError(err)
 	}
 }
 
 func (s *S3WebTestSuite) TestS3Web_041_ListEmptyCommits() {
-	res, _, err := s.commitApi.ListCommits(s.ctx, "foo", nil)
+	res, _, err := s.e.CommitApi.ListCommits(s.ctx, "foo", nil)
 	if s.e.NoError(err) {
 		s.Len(res, 0)
 	}
@@ -288,7 +276,7 @@ func (s *S3WebTestSuite) TestS3Web_042_UpdateFile() {
 }
 
 func (s *S3WebTestSuite) TestS3Web_043_PullCommit() {
-	res, _, err := s.operationsApi.Pull(s.ctx, "foo", "web", "id", s.webParameters, nil)
+	res, _, err := s.e.OperationsApi.Pull(s.ctx, "foo", "web", "id", s.webParameters, nil)
 	if s.e.NoError(err) {
 		_, err = s.e.WaitForOperation(res.Id)
 		s.e.NoError(err)
@@ -296,16 +284,16 @@ func (s *S3WebTestSuite) TestS3Web_043_PullCommit() {
 }
 
 func (s *S3WebTestSuite) TestS3Web_044_PullDuplicate() {
-	_, _, err := s.operationsApi.Pull(s.ctx, "foo", "web", "id", s.webParameters, nil)
+	_, _, err := s.e.OperationsApi.Pull(s.ctx, "foo", "web", "id", s.webParameters, nil)
 	s.e.APIError(err, "ObjectExistsException")
 }
 
 func (s *S3WebTestSuite) TestS3Web_046_CheckoutCommit() {
-	_, err := s.volumeApi.DeactivateVolume(s.ctx, "foo", "vol")
+	_, err := s.e.VolumeApi.DeactivateVolume(s.ctx, "foo", "vol")
 	if s.e.NoError(err) {
-		_, err := s.commitApi.CheckoutCommit(s.ctx, "foo", "id")
+		_, err := s.e.CommitApi.CheckoutCommit(s.ctx, "foo", "id")
 		if s.e.NoError(err) {
-			_, err = s.volumeApi.ActivateVolume(s.ctx, "foo", "vol")
+			_, err = s.e.VolumeApi.ActivateVolume(s.ctx, "foo", "vol")
 			s.e.NoError(err)
 		}
 	}
@@ -319,19 +307,19 @@ func (s *S3WebTestSuite) TestS3Web_047_OriginalContents() {
 }
 
 func (s *S3WebTestSuite) TestS3Web_050_RemoveRemote() {
-	_, err := s.remoteApi.DeleteRemote(s.ctx, "foo", "origin")
+	_, err := s.e.RemoteApi.DeleteRemote(s.ctx, "foo", "origin")
 	s.e.NoError(err)
 }
 
 func (s *S3WebTestSuite) TestS3Web_051_DeleteVolume() {
-	_, err := s.volumeApi.DeactivateVolume(s.ctx, "foo", "vol")
+	_, err := s.e.VolumeApi.DeactivateVolume(s.ctx, "foo", "vol")
 	if s.e.NoError(err) {
-		_, err = s.volumeApi.DeleteVolume(s.ctx, "foo", "vol")
+		_, err = s.e.VolumeApi.DeleteVolume(s.ctx, "foo", "vol")
 		s.e.NoError(err)
 	}
 }
 
 func (s *S3WebTestSuite) TestS3Web_052_DeleteRepository() {
-	_, err := s.repoApi.DeleteRepository(s.ctx, "foo")
+	_, err := s.e.RepoApi.DeleteRepository(s.ctx, "foo")
 	s.e.NoError(err)
 }

@@ -11,6 +11,7 @@ import (
 	"github.com/stretchr/testify/suite"
 	titan "github.com/titan-data/titan-client-go"
 	"golang.org/x/crypto/ssh"
+	"os"
 	"os/exec"
 	"os/user"
 	"strings"
@@ -109,6 +110,21 @@ func (e *EndToEndTest) RunTitanDocker(entryPoint string, daemon bool) error {
  * the ZFS-specific launch portion.
  */
 func (e *EndToEndTest) RunTitanKubernetes(entryPoint string, parameters ...string) error {
+	imageSpecified := false
+	for _, p := range parameters {
+		if strings.Index(p, "titanImage=") == 0 {
+			imageSpecified = true
+			break
+		}
+	}
+	if !imageSpecified {
+		image := os.Getenv("TITAN_IMAGE")
+		if image == "" {
+			image = "titandata/titan:latest"
+		}
+		parameters = append(parameters, fmt.Sprintf("titanImage=%s", image))
+	}
+
 	args := []string{
 		"run", "-d", "--restart", "always", "--name", e.GetPrimaryContainer(),
 		"-v", fmt.Sprintf("%s/.kube:/root/.kube", e.HomeDir),

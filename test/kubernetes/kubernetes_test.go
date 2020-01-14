@@ -30,7 +30,7 @@ type KubernetesWorkflowTestSuite struct {
 	uuid         string
 	pod1         string
 	pod2         string
-	remote titan.Remote
+	remote       titan.Remote
 	remoteParams titan.RemoteParameters
 }
 
@@ -38,7 +38,11 @@ func (s *KubernetesWorkflowTestSuite) SetupSuite() {
 	s.e = endtoend.NewEndToEndTest(&s.Suite, "kubernetes-csi")
 	_ = s.e.StopServer(true)
 
-	config := strings.Split(os.Getenv("KUBERNETES_CONFIG"), ",")
+	config := []string{}
+	configEnv := os.Getenv("KUBERNETES_CONFIG")
+	if configEnv != "" {
+		config = strings.Split(configEnv, ",")
+	}
 	_ = s.e.StopServer(true)
 	err := s.e.StartServer(config...)
 	if err != nil {
@@ -211,19 +215,6 @@ func (s *KubernetesWorkflowTestSuite) TestKubernetesConfig_020_CreateCommit() {
 	s.e.NoError(err)
 }
 
-func (s *KubernetesWorkflowTestSuite) TestKubernetesConfig_021_LaunchNewPod() {
-	vol, _, err := s.e.VolumeApi.GetVolume(s.ctx, "foo", "vol")
-	if s.e.NoError(err) {
-		pvc := vol.Config["pvc"].(string)
-		err = s.LaunchPod(s.pod2, pvc)
-		if s.e.NoError(err) {
-			err = s.WaitForPod(s.pod2)
-			s.e.NoError(err)
-		}
-	}
-}
-
-
 func (s *KubernetesWorkflowTestSuite) TestKubernetesConfig_021_CommitStatus() {
 	err := s.e.WaitForCommit("foo", "id")
 	if s.e.NoError(err) {
@@ -250,14 +241,26 @@ func (s *KubernetesWorkflowTestSuite) TestKubernetesConfig_030_Checkout() {
 	s.e.NoError(err)
 }
 
-func (s *KubernetesWorkflowTestSuite) TestKubernetesConfig_031_VerifyContents() {
+func (s *KubernetesWorkflowTestSuite) TestKubernetesConfig_031_LaunchNewPod() {
+	vol, _, err := s.e.VolumeApi.GetVolume(s.ctx, "foo", "vol")
+	if s.e.NoError(err) {
+		pvc := vol.Config["pvc"].(string)
+		err = s.LaunchPod(s.pod2, pvc)
+		if s.e.NoError(err) {
+			err = s.WaitForPod(s.pod2)
+			s.e.NoError(err)
+		}
+	}
+}
+
+func (s *KubernetesWorkflowTestSuite) TestKubernetesConfig_032_VerifyContents() {
 	out, err := exec.Command("kubectl", "exec", s.pod2, "cat", "/data/out").Output()
 	if s.e.NoError(err) {
 		s.Equal("one", strings.TrimSpace(string(out)))
 	}
 }
 
-func (s *KubernetesWorkflowTestSuite) TestKubernetesConfig_032_DeleteClonedPod() {
+func (s *KubernetesWorkflowTestSuite) TestKubernetesConfig_033_DeleteClonedPod() {
 	err := exec.Command("kubectl", "delete", "pod", "--grace-period=0", "--force", s.pod2).Run()
 	s.e.NoError(err)
 }

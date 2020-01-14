@@ -133,6 +133,9 @@ There are three types of tests:
     that has S3 web server configured. These tests will eventually be moved into the corresponding remote repositories.
   * `kubernetes` - Runs tests dependent on kubernetes. Must have a working, supported kubernetes cluster as the
     default cluster.
+    
+If you want to run all of the endtoend tests, note that `go test` by default runs different packages in paralell. You
+will need to explicitly use `go test -p 1`, such as `go test -p 1 ./test/...`
 
 These tests do generate coverage reports, but test coverage is not yet rigorously integrated into the development
 process.

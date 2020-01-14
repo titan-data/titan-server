@@ -9,8 +9,6 @@ There are a few key components of the overall architecture:
 
   * `titan-server` - A kotlin web server that provides an API for the titan CLI as well as the 
      docker volume API.
-  * `titan-client` - A JAR providing a HTTP client for use with `titan-server`, used by the CLI to
-     make API requests to the server, and manage remotes.
   * `titan` - A Docker image that provides a runtime environment for `titan-server`, as well as
      the means to execute ZFS commands within that container.
       
@@ -21,7 +19,7 @@ Note that the project is in the process of being migrated from Kotlin to golang.
 process, you will see some less than elegant worts, such as some tests in golang but others
 in Kotlin, plugins in golang being loaded from Kotlin, etc.
 
-### Titan server and client
+### Titan server
 
 The titan server is built from `server/src`. It is a web server wrapped around a storage
 persistence layer, and remote executor framework. The important parts of the server can be
@@ -29,6 +27,7 @@ found at:
 
   * `io.titandata.apis.*` - Entry points for the remote APIs. Very thin layer that translates
     from JSON into native models and then invokes the appropriate backend model.
+  * `io.titandata.models.*` - Object models used within the APIs.
   * `io.titandata.metadata.*` - Metadata persistence layer. We run a PostgreSQL database within
     the server container.
   * `io.titandata.context.*` - Provider for context-specific operations, such as managing storage
@@ -38,12 +37,6 @@ found at:
     starting and stopping operations, reporting back to the APIs, etc. For more information,
     see `OperationProvider`
   
-The titan client is built from `client/src`, and creates a separate JAR that is then published
-to an artifact repository for the CLI to use. It is not much more than a framework to marshall
-data between the JAVA and JSON representation, though it does contain a few additional helper
-routines, such as converting from a URI string to a remote object. The server references this
-client as well so that it is sure to use the same data models.
-
 ### Container architecture
 
 The underlying architecture can be a bit complex due to the intricacies of docker and ZFS. Our goal is

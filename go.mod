@@ -4,6 +4,7 @@ require (
 	github.com/antihax/optional v1.0.0
 	github.com/aws/aws-sdk-go v1.27.0
 	github.com/gogo/protobuf v1.3.1 // indirect
+	github.com/google/uuid v1.1.1
 	github.com/googleapis/gnostic v0.3.1 // indirect
 	github.com/imdario/mergo v0.3.8 // indirect
 	github.com/json-iterator/go v1.1.9 // indirect

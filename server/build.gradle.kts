@@ -79,6 +79,5 @@ tasks.register("publish") {
 apply{ from("${project.projectDir}/gradle/ktlint.gradle.kts") }
 apply{ from("${project.projectDir}/gradle/unitTest.gradle") }
 apply{ from("${project.projectDir}/gradle/integrationTest.gradle") }
-apply{ from("${project.projectDir}/gradle/endtoendTest.gradle") }
 apply{ from("${project.projectDir}/gradle/docker.gradle.kts") }
 apply{ from("${project.projectDir}/gradle/shell.gradle.kts") }

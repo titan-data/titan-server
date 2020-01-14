@@ -374,9 +374,9 @@ func (e *EndToEndTest) WaitForOperation(id string) ([]titan.ProgressEntry, error
 			case "COMPLETE":
 				completed = true
 			case "ABORT":
-				return nil, errors.New(fmt.Sprintf("operation aborted: %s", p.Message))
+				return result, errors.New(fmt.Sprintf("operation aborted: %s", p.Message))
 			case "FAILED":
-				return nil, errors.New(fmt.Sprintf("operation failed: %s", p.Message))
+				return result, errors.New(fmt.Sprintf("operation failed: %s", p.Message))
 			}
 			if p.Id > lastEntry {
 				lastEntry = p.Id

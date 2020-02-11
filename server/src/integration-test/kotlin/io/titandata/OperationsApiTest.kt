@@ -74,7 +74,7 @@ class OperationsApiTest : StringSpec() {
     }
 
     override fun afterSpec(spec: Spec) {
-        engine.stop(0L, 0L, TimeUnit.MILLISECONDS)
+        engine.stop(0L, 0L)
     }
 
     override fun beforeTest(testCase: TestCase) {

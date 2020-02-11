@@ -25,7 +25,6 @@ import io.mockk.clearAllMocks
 import io.mockk.mockk
 import io.titandata.models.Remote
 import io.titandata.models.Repository
-import java.util.concurrent.TimeUnit
 import org.jetbrains.exposed.sql.transactions.transaction
 
 @UseExperimental(KtorExperimentalAPI::class)
@@ -44,7 +43,7 @@ class RemotesApiTest : StringSpec() {
     }
 
     override fun afterSpec(spec: Spec) {
-        engine.stop(0L, 0L, TimeUnit.MILLISECONDS)
+        engine.stop(0L, 0L)
     }
 
     override fun beforeTest(testCase: TestCase) {

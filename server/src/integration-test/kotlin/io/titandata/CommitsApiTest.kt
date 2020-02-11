@@ -40,7 +40,6 @@ import io.titandata.models.Commit
 import io.titandata.models.CommitStatus
 import io.titandata.models.Error
 import io.titandata.models.Repository
-import java.util.concurrent.TimeUnit
 import org.jetbrains.exposed.sql.transactions.transaction
 
 @UseExperimental(KtorExperimentalAPI::class)
@@ -66,7 +65,7 @@ class CommitsApiTest : StringSpec() {
     }
 
     override fun afterSpec(spec: Spec) {
-        engine.stop(0L, 0L, TimeUnit.MILLISECONDS)
+        engine.stop(0L, 0L)
     }
 
     override fun beforeTest(testCase: TestCase) {

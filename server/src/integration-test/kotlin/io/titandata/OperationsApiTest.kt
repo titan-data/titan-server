@@ -44,7 +44,6 @@ import io.titandata.models.Repository
 import io.titandata.models.Volume
 import java.time.Duration
 import java.util.UUID
-import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.time.delay
 import org.jetbrains.exposed.sql.transactions.transaction
 
@@ -74,7 +73,7 @@ class OperationsApiTest : StringSpec() {
     }
 
     override fun afterSpec(spec: Spec) {
-        engine.stop(0L, 0L, TimeUnit.MILLISECONDS)
+        engine.stop(0L, 0L)
     }
 
     override fun beforeTest(testCase: TestCase) {

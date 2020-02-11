@@ -24,7 +24,7 @@ repositories {
     }
 }
 
-val ktorVersion = "1.2.6"
+val ktorVersion = "1.3.1"
 
 dependencies {
     compile(kotlin("stdlib"))
@@ -32,10 +32,10 @@ dependencies {
     compile("io.ktor:ktor-gson:$ktorVersion")
     compile("ch.qos.logback:logback-classic:1.2.3")
     compile("com.google.code.gson:gson:2.8.6")
-    compile("com.squareup.okhttp3:okhttp:4.2.2")
+    compile("com.squareup.okhttp3:okhttp:4.3.1")
     compile("org.jetbrains.exposed:exposed:0.17.7")
-    compile("org.postgresql:postgresql:42.2.9")
-    compile("com.zaxxer:HikariCP:3.4.1")
+    compile("org.postgresql:postgresql:42.2.10")
+    compile("com.zaxxer:HikariCP:3.4.2")
     compile("io.kubernetes:client-java:7.0.0")
 
     // Remotes

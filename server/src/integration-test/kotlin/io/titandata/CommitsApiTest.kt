@@ -40,7 +40,6 @@ import io.titandata.models.Commit
 import io.titandata.models.CommitStatus
 import io.titandata.models.Error
 import io.titandata.models.Repository
-import java.util.concurrent.TimeUnit
 import org.jetbrains.exposed.sql.transactions.transaction
 
 @UseExperimental(KtorExperimentalAPI::class)

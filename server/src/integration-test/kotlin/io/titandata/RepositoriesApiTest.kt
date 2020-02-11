@@ -34,7 +34,6 @@ import io.mockk.mockk
 import io.titandata.context.docker.DockerZfsContext
 import io.titandata.models.Error
 import io.titandata.models.Repository
-import java.util.concurrent.TimeUnit
 import org.jetbrains.exposed.sql.transactions.transaction
 
 @UseExperimental(KtorExperimentalAPI::class)

@@ -25,7 +25,6 @@ import io.mockk.clearAllMocks
 import io.mockk.mockk
 import io.titandata.models.Remote
 import io.titandata.models.Repository
-import java.util.concurrent.TimeUnit
 import org.jetbrains.exposed.sql.transactions.transaction
 
 @UseExperimental(KtorExperimentalAPI::class)

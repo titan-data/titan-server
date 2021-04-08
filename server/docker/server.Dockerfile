@@ -36,6 +36,7 @@ RUN apt-get -y update --fix-missing
 RUN apt-get -y install kmod iproute2
 RUN apt-get -y install vim rsync sshpass jq
 RUN apt-get -y install openjdk-11-jre-headless
+RUN apt-get -y install zfsutils-linux
 RUN apt-get -y install lsof
 RUN apt-get -y install docker-ce
 RUN DEBIAN_FRONTEND=noninteractive apt-get -y install tzdata

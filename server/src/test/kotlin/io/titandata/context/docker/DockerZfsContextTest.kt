@@ -214,7 +214,7 @@ class DockerZfsContextTest : StringSpec() {
             context.activateVolume("vs", "vol", mapOf("mountpoint" to "/var/lib/test/mnt/vs/vol"))
             verifyAll {
                 executor.exec("mkdir", "-p", "/var/lib/test/mnt/vs/vol")
-                executor.exec("mount", "-t", "zfs", "test/data/vs/vol", "/var/lib/test/mnt/vs/vol")
+                executor.exec("mount", "-i", "-t", "zfs", "test/data/vs/vol", "/var/lib/test/mnt/vs/vol")
             }
         }
 

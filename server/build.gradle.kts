@@ -36,7 +36,7 @@ dependencies {
     compile("org.jetbrains.exposed:exposed:0.17.7")
     compile("org.postgresql:postgresql:42.2.10")
     compile("com.zaxxer:HikariCP:3.4.2")
-    compile("io.kubernetes:client-java:7.0.0")
+    compile("io.kubernetes:client-java:11.0.0")
 
     // Remotes
     compile("io.titandata:remote-sdk:0.2.0")

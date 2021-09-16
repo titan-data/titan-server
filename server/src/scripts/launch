@@ -78,6 +78,18 @@ source $(dirname $0)/util.sh
 log_begin
 
 #
+# Linuxkit / Docker Desktop is a special case that installs through a docker image. This needs
+# to be installed every time docker restarts. In order for previously mounted datasets to load
+# ZFS needs to be loaded early each time.
+#
+uname=$(uname -r)
+if [[ $uname == *"linuxkit"* ]]; then
+    echo "Installing ZFS for Docker Desktop ($uname)"
+    tag="${uname%%-*}"
+    docker run --rm --privileged titandata/docker-desktop-zfs-kernel:$tag
+fi
+
+#
 # Ensure that various needed
 #
 mkdir -p $POOL_DIR || log_error "failed to create $POOL_DIR"

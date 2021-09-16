@@ -204,7 +204,7 @@ class DockerZfsContext(private val properties: Map<String, String> = emptyMap())
      */
     override fun activateVolume(volumeSet: String, volumeName: String, config: Map<String, Any>) {
         executor.exec("mkdir", "-p", config["mountpoint"] as String)
-        executor.exec("mount", "-t", "zfs", "$poolName/data/$volumeSet/$volumeName",
+        executor.exec("mount", "-i", "-t", "zfs", "$poolName/data/$volumeSet/$volumeName",
                 config["mountpoint"] as String)
     }
 

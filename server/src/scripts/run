@@ -22,6 +22,15 @@
 #                   separated by commas.
 #
 
+set -x
+
+#
+# Return a timestamp to use in log messages and elsewhere.
+#
+function timestamp {
+  date +"%F_%T"
+}
+
 function log_error {
   local ts=$(timestamp)
   local msg=$1
@@ -38,7 +47,7 @@ function mount_database() {
   if [[ $? != 0 ]]; then
     echo "Mounting $TITAN_IDENTITY/db at $db_dir"
     mkdir -p $db_dir
-    mount -t zfs $TITAN_IDENTITY/db $db_dir || log_error "failed to mount database directory"
+    mount -i -t zfs $TITAN_IDENTITY/db $db_dir || log_error "failed to mount database directory"
   fi
 }
 
@@ -89,7 +98,7 @@ if [[ $TITAN_CONTEXT = "docker-zfs" ]]; then
 elif [[ $TITAN_CONTEXT = "kubernetes-csi" ]]; then
   start_database $DB_DIR
 
-  exec java -Dtitan.context=$TITAN_CONTEXT -Dtitan.contextConfig=$TITAN_CONFIG -jar /titan/titan-server.jar
+  exec java -Dtitan.context=$TITAN_CONTEXT -Dtitan.contextConfig=$TITAN_CONFIG -Djdk.tls.client.protocols=TLSv1.2 -jar /titan/titan-server.jar
 else
   log_error "Unknown context $TITAN_CONTEXT"
 fi

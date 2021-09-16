@@ -463,7 +463,7 @@ class KubernetesCsiContext(private val properties: Map<String, String> = emptyMa
     }
 
     private fun getPodFromJob(name: String): String {
-        val pods = coreApi.listNamespacedPod(namespace, null, null, null, null, "job-name=$name", null, null, null, null)
+        val pods = coreApi.listNamespacedPod(namespace, null, null, null, null, "job-name=$name", null, null, null, null, null)
         if (pods.items.size != 1) {
             throw IllegalStateException("found ${pods.items.size} pods instead of 1 for job $name")
         }
@@ -503,7 +503,7 @@ class KubernetesCsiContext(private val properties: Map<String, String> = emptyMa
             return emptyList()
         }
 
-        val output = coreApi.readNamespacedPodLog(name, namespace, null, null, null, null, null, 3, null, null)
+        val output = coreApi.readNamespacedPodLog(name, namespace, null, false, null, null, null, false, null, null, null)
                 ?: return emptyList()
 
         val ret = mutableListOf<ProgressEntry>()
@@ -558,7 +558,7 @@ class KubernetesCsiContext(private val properties: Map<String, String> = emptyMa
                     if (job.status?.failed == 1) {
                         try {
                             // Try to log what we can
-                            val output = coreApi.readNamespacedPodLog(podName, namespace, null, null, null, null, null, null, null, null)
+                            val output = coreApi.readNamespacedPodLog(podName, namespace, null, null, null, null, null, null, null, null, null)
                             if (output != null) {
                                 log.error(output)
                             }

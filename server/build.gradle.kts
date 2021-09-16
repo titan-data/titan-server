@@ -4,7 +4,7 @@ plugins {
     kotlin("jvm")
     jacoco
     application
-    id("com.github.johnrengelman.shadow") version("5.2.0")
+    id("com.github.johnrengelman.shadow") version("6.0.0")
 }
 
 val titanVersion: String by rootProject.extra
@@ -36,7 +36,7 @@ dependencies {
     compile("org.jetbrains.exposed:exposed:0.17.7")
     compile("org.postgresql:postgresql:42.2.10")
     compile("com.zaxxer:HikariCP:3.4.2")
-    compile("io.kubernetes:client-java:7.0.0")
+    compile("io.kubernetes:client-java:11.0.0")
 
     // Remotes
     compile("io.titandata:remote-sdk:0.2.0")

@@ -5,15 +5,15 @@
 
 #
 # Minimum ZFS version. Starting in version 0.8.0, the community is going to attempt to maintain
-# backwards compatability, such that newer versions of the utilities will continue to run against
+# backwards compatibility, such that newer versions of the utilities will continue to run against
 # older versions of the kernel modules.
-min_zfs_version=0.8.0
+min_zfs_version=2.0.0
 
 #
 # Return the tag in the ZFS repository we should be using to build ZFS binaries.
 #
 function get_zfs_build_version() {
-  echo "0.8.2"
+  echo "2.0.4"
 }
 
 #
@@ -118,7 +118,7 @@ function load_zfs_module() {
 }
 
 #
-# Get the download URL of the preocmpiled module, if one exists. Returns the empty string if
+# Get the download URL of the precompiled module, if one exists. Returns the empty string if
 # there is no known asset for the current version.
 #
 function get_precompiled_module_url() {

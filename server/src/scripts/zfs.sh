@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 #
 # Copyright The Titan Project Contributors.
 #
@@ -13,7 +13,7 @@ min_zfs_version=2.0.0
 # Return the tag in the ZFS repository we should be using to build ZFS binaries.
 #
 function get_zfs_build_version() {
-  echo "2.0.6"
+  echo "2.1.5"
 }
 
 #

@@ -86,7 +86,7 @@ uname=$(uname -r)
 if [[ $uname == *"linuxkit"* ]]; then
     echo "Installing ZFS for Docker Desktop ($uname)"
     tag="${uname%%-*}"
-    docker run --rm --privileged titandata/docker-desktop-zfs-kernel:$tag
+    docker run --rm --privileged titandata/docker-desktop-zfs-kernel:$tag-$(get_zfs_build_version)
 fi
 
 #

@@ -46,15 +46,18 @@ function zfs_version_compatible() {
   # The current version is less than the minimum version, fail
   [[ ${min_components[1]} -gt ${req_components[1]} ]] && return 1
 
-  local build_version=$(get_zfs_build_version)
-  local build_components=(${build_version//./ })
 
-  # The minor version is greater than current version, fail
-  [[ ${build_components[1]} -gt ${req_components[1]} ]] && return 1
+# Since moving to ZFS 2.0 + allow an older userland to run with later kernel modules.
 
-  # The patch version is greater than current version, fail
-  [[ ${build_components[1]} -eq ${req_components[1]} &&
-     ${build_components[2]} -lt ${req_components[2]} ]] && return 1
+#  local build_version=$(get_zfs_build_version)
+#  local build_components=(${build_version//./ })
+#
+#  # The minor version is greater than current version, fail
+#  [[ ${build_components[1]} -gt ${req_components[1]} ]] && return 1
+#
+#  # The patch version is greater than current version, fail
+#  [[ ${build_components[1]} -eq ${req_components[1]} &&
+#     ${build_components[2]} -lt ${req_components[2]} ]] && return 1
 
   return 0
 }
